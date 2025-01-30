@@ -11,7 +11,7 @@ export type TransactionDetailResult = {
 
 export const useTransactionDetail = (id: string): TransactionDetailResult => {
   const { data } = useSWR<{ transactions: Transaction[] }>(
-    `${PATHS.TRANSACTION_DETAIL}?txHash=${id}&type=requery`,
+    `${PATHS.TRANSACTION_DETAIL}?txId=${id}&type=requery`,
     fetcher
   )
 

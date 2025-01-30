@@ -1,10 +1,10 @@
-# Shardeum Explorer
+# Liberdus Explorer
 
-Shardeum Explorer serves as a comprehensive Data Collector, Indexer, and API Server for the Shardeum Network. It operates by collecting data from the distributor, indexing it for efficient search capabilities, and providing APIs and a Web Interface for easy access to this information.
+Liberdus Explorer serves as a comprehensive Data Collector, Indexer, and API Server for the Liberdus Network. It operates by collecting data from the distributor, indexing it for efficient search capabilities, and providing APIs and a Web Interface for easy access to this information.
 
 ## Server Components
 
-Shardeum Explorer consists of three componenets:
+Liberdus Explorer consists of three componenets:
 
 - [Collector](./src/collector.ts): Responsible for gathering data from the distributor.
 - [API and UI Server](./src/server.ts): Provides APIs and a User Interface for accessing indexed data.
@@ -14,14 +14,14 @@ The Explorer server uses Fastify.js for its backend implementation, while the Us
 
 ## Requirements
 
-> Before starting the explorer, be sure that the distributor and rpc services are up and running. Shardeum Explorer uses the distributor to collect data and the rpc service to decode the contract information.
+> Before starting the explorer, be sure that the distributor and rpc services are up and running. Liberdus Explorer uses the distributor to collect data and the rpc service to decode the contract information.
 
-If you are running a local Shardeum Network, you can start the distributor and rpc services with the following repos:
+If you are running a local Liberdus Network, you can start the distributor and rpc services with the following repos:
 
-- Distributor Repo: https://github.com/shardeum/relayer-distributor
-- RPC Repo: https://github.com/shardeum/json-rpc-server
+- Distributor Repo: https://github.com/liberdus/relayer-distributor
+- RPC Repo: https://github.com/liberdus/json-rpc-server
 
-## How to start Shardeum Explorer
+## How to start Liberdus Explorer
 
 1. Install dependencies:
 
@@ -85,4 +85,4 @@ GET `/is-healthy` currently the same as `/is-alive` but will be expanded
 
 # Contributing
 
-Contributions to Shardeum Explorer are highly encouraged! We welcome everyone to participate in our codebases, issue trackers, and any other form of communication. However, we expect all contributors to adhere to our [code of conduct](./CODE_OF_CONDUCT.md) to ensure a positive and collaborative environment for all involved in the project.
+Contributions to Liberdus Explorer are highly encouraged! We welcome everyone to participate in our codebases, issue trackers, and any other form of communication. However, we expect all contributors to adhere to our [code of conduct](./CODE_OF_CONDUCT.md) to ensure a positive and collaborative environment for all involved in the project.

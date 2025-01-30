@@ -1,6 +1,5 @@
+import { Signature } from '@shardus/crypto-utils'
 import { AccountsCopy } from './account'
-import { Log } from './transaction'
-import { Signature } from '@shardeum-foundation/lib-crypto-utils'
 
 export type Proposal = {
   applied: boolean
@@ -12,6 +11,11 @@ export type Proposal = {
   txid: string
 }
 
+export type Vote = {
+  proposalHash: string
+  sign?: Signature
+}
+
 export type SignedReceipt = {
   proposal: Proposal
   proposalHash: string // Redundant, may go
@@ -19,13 +23,12 @@ export type SignedReceipt = {
   voteOffsets: number[]
   sign?: Signature
 }
-
 /**
  * ArchiverReceipt is the full data (shardusReceipt + appReceiptData + accounts ) of a tx that is sent to the archiver
  */
 export interface ArchiverReceipt {
   tx: {
-    originalTxData: object
+    originalTxData: object & { tx: any } // eslint-disable-line @typescript-eslint/no-explicit-any
     txId: string
     timestamp: number
   }
@@ -82,35 +85,4 @@ export interface Receipt extends ArchiverReceipt {
   receiptId: string
   timestamp: number
   applyTimestamp: number
-}
-
-export interface ReadableReceipt {
-  status?: boolean | string | number
-  transactionHash: string
-  transactionIndex: string
-  blockNumber: string
-  nonce: string
-  blockHash: string
-  cumulativeGasUsed: string
-  gasUsed: string
-  logs: Log[]
-  logBloom: string
-  contractAddress: string | null
-  from: string
-  to: string | null
-  value: string
-  data: string
-  stakeInfo?: {
-    nominee?: string
-    stakeAmount?: string
-    totalStakeAmount?: string
-    totalUnstakeAmount?: string
-    stake?: string
-    reward?: string
-    penalty?: string
-  }
-  internalTx?: {
-    isInternalTx: boolean
-    internalTXType: number
-  }
 }

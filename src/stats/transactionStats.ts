@@ -1,7 +1,7 @@
 /* eslint-disable no-empty */
-import * as db from './sqlite3storage'
-import { extractValues, extractValuesFromArray } from './sqlite3storage'
-import { config } from '../config/index'
+import { config } from '../config'
+import * as db from '../storage/sqlite3storage'
+import { transactionStatsDatabase } from '.'
 
 export interface TransactionStats {
   timestamp: number
@@ -27,9 +27,9 @@ export async function insertTransactionStats(transactionStats: TransactionStats)
   try {
     const fields = Object.keys(transactionStats).join(', ')
     const placeholders = Object.keys(transactionStats).fill('?').join(', ')
-    const values = extractValues(transactionStats)
+    const values = db.extractValues(transactionStats)
     const sql = 'INSERT OR REPLACE INTO transactions (' + fields + ') VALUES (' + placeholders + ')'
-    await db.run(sql, values)
+    await db.run(transactionStatsDatabase, sql, values)
     console.log('Successfully inserted TransactionStats', transactionStats.cycle)
   } catch (e) {
     console.log(e)
@@ -44,12 +44,12 @@ export async function bulkInsertTransactionsStats(transactionsStats: Transaction
   try {
     const fields = Object.keys(transactionsStats[0]).join(', ')
     const placeholders = Object.keys(transactionsStats[0]).fill('?').join(', ')
-    const values = extractValuesFromArray(transactionsStats)
+    const values = db.extractValuesFromArray(transactionsStats)
     let sql = 'INSERT OR REPLACE INTO transactions (' + fields + ') VALUES (' + placeholders + ')'
     for (let i = 1; i < transactionsStats.length; i++) {
       sql = sql + ', (' + placeholders + ')'
     }
-    await db.run(sql, values)
+    await db.run(transactionStatsDatabase, sql, values)
     const addedCycles = transactionsStats.map((v) => v.cycle)
     console.log(
       'Successfully bulk inserted TransactionsStats',
@@ -66,7 +66,7 @@ export async function bulkInsertTransactionsStats(transactionsStats: Transaction
 export async function queryLatestTransactionStats(count: number): Promise<TransactionStats[]> {
   try {
     const sql = `SELECT * FROM transactions ORDER BY cycle DESC LIMIT ${count ? count : 100}`
-    const transactionsStats: TransactionStats[] = await db.all(sql)
+    const transactionsStats: TransactionStats[] = await db.all(transactionStatsDatabase, sql)
     if (config.verbose) console.log('transactionStats count', transactionsStats)
     if (transactionsStats.length > 0) {
       transactionsStats.sort((a, b) => (a.timestamp > b.timestamp ? 1 : -1))
@@ -83,7 +83,7 @@ export async function queryTransactionStatsBetween(
 ): Promise<TransactionStats[]> {
   try {
     const sql = `SELECT * FROM transactions WHERE cycle BETWEEN ? AND ? ORDER BY cycle DESC LIMIT 100`
-    const transactionsStats: TransactionStats[] = await db.all(sql, [startCycle, endCycle])
+    const transactionsStats: TransactionStats[] = await db.all(transactionStatsDatabase, sql, [startCycle, endCycle])
     if (config.verbose) console.log('transactionStats between', transactionsStats)
     if (transactionsStats.length > 0) {
       transactionsStats.sort((a, b) => (a.timestamp > b.timestamp ? 1 : -1))

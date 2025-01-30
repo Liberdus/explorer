@@ -5,20 +5,19 @@ import { Tab } from '../../../components/Tab'
 import { breadcrumbsList } from '../../../types'
 import { JsonView } from '../JsonView'
 import { Ovewview } from '../Overview'
-import { Logs } from '../Logs'
 import { Receipt } from '../Receipt'
 import { AccountInfo } from '../AccountInfo'
 
 import styles from './TransactionDetail.module.scss'
 import { useTransactionDetailHook } from './useTransactionDetailHook'
+import { AccountsCopy } from '../../../../types'
 
 export const TransactionDetail: React.FC = () => {
   const router = useRouter()
 
-  const txHash = router?.query?.id as string
-  const txId = router?.query?.txId as string
+  const txId = router?.query?.id as string
 
-  const { transactionData, receiptData, setShowReceipt, showReceipt } = useTransactionDetailHook(txHash, txId)
+  const { transactionData, receiptData, setShowReceipt, showReceipt } = useTransactionDetailHook(txId)
 
   const tabs = useMemo(() => {
     const tabsArray = [
@@ -33,14 +32,6 @@ export const TransactionDetail: React.FC = () => {
         content: <JsonView transaction={transactionData} />,
       },
     ]
-    // hides logs tab if there are no logs
-    if (transactionData?.wrappedEVMAccount?.readableReceipt?.logs?.length) {
-      tabsArray.splice(1, 0, {
-        key: 'log',
-        value: 'Logs',
-        content: <Logs transaction={transactionData} />,
-      })
-    }
 
     return tabsArray
   }, [transactionData])
@@ -55,7 +46,7 @@ export const TransactionDetail: React.FC = () => {
       {
         key: 'accountInfo',
         value: 'Account Info',
-        content: <AccountInfo receipt={receiptData} />,
+        content: <AccountInfo accounts={receiptData ? receiptData.afterStates : [] as AccountsCopy[]} />,
       },
     ],
     [receiptData]

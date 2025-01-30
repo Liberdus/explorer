@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react'
+import React, { ReactElement, ReactNode } from 'react'
 import styles from './Table.module.scss'
 import get from 'lodash/get'
 
@@ -19,7 +19,7 @@ interface ITableBody<T> {
   row: T
 }
 
-export function Table<T = unknown>({ columns, data }: ITableProps<T>): ReactNode {
+export function Table<T = unknown>({ columns, data }: ITableProps<T>): ReactElement {
   return (
     <div className={styles.Table}>
       <table>
@@ -45,11 +45,11 @@ export function Table<T = unknown>({ columns, data }: ITableProps<T>): ReactNode
   )
 }
 
-export function TableHeaderItem({ value }: { value: string | ReactNode }): ReactNode {
+export function TableHeaderItem({ value }: { value: string | ReactNode }): ReactElement {
   return <th>{typeof value === 'string' ? <span>{value}</span> : value}</th>
 }
 
-export function TableBodyItem<T>({ col, row }: ITableBody<T>): ReactNode {
+export function TableBodyItem<T>({ col, row }: ITableBody<T>): ReactElement {
   const value = get(row, col.key)
 
   return (

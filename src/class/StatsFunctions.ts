@@ -1,16 +1,8 @@
-import * as CoinStats from '../stats/coinStats'
-import * as TransactionStats from '../stats/transactionStats'
-import * as ValidatorStats from '../stats/validatorStats'
-import * as NodeStats from '../stats/nodeStats'
-import * as Metadata from '../stats/metadata'
-import * as Cycle from '../storage/cycle'
-import * as Transaction from '../storage/transaction'
-import { InternalTXType, TransactionSearchType, TransactionType } from '../types'
-import BN from 'bn.js'
-import BigNumber from 'decimal.js'
-import { CycleRecord } from '@shardeum-foundation/lib-types/build/src/p2p/CycleCreatorTypes'
+import { CoinStatsDB, TransactionStatsDB, ValidatorStatsDB, NodeStatsDB, MetadataDB } from '../stats'
+import { CycleDB, TransactionDB } from '../storage'
+import {  TransactionType } from '../types'
+import { P2P } from '@shardus/types'
 import { config } from '../config/index'
-import { JoinRequest, JoinedConsensor } from '@shardeum-foundation/lib-types/build/src/p2p/JoinTypes'
 
 interface NodeState {
   state: string
@@ -18,8 +10,8 @@ interface NodeState {
   nominator?: string
 }
 
-export const insertValidatorStats = async (cycleRecord: CycleRecord): Promise<void> => {
-  const validatorsInfo: ValidatorStats.ValidatorStats = {
+export const insertValidatorStats = async (cycleRecord: P2P.CycleCreatorTypes.CycleRecord): Promise<void> => {
+  const validatorsInfo: ValidatorStatsDB.ValidatorStats = {
     cycle: cycleRecord.counter,
     active: cycleRecord.active,
     activated: cycleRecord.activated.length,
@@ -29,20 +21,20 @@ export const insertValidatorStats = async (cycleRecord: CycleRecord): Promise<vo
     apoped: cycleRecord.apoptosized.length,
     timestamp: cycleRecord.start,
   }
-  await ValidatorStats.insertValidatorStats(validatorsInfo)
+  await ValidatorStatsDB.insertValidatorStats(validatorsInfo)
 }
 
 export const recordOldValidatorsStats = async (
   latestCycle: number,
   lastStoredCycle: number
 ): Promise<void> => {
-  let combineValidatorsStats: ValidatorStats.ValidatorStats[] = []
+  let combineValidatorsStats: ValidatorStatsDB.ValidatorStats[] = []
   const bucketSize = 100
   let startCycle = lastStoredCycle + 1
   let endCycle = startCycle + bucketSize
   while (startCycle <= latestCycle) {
     if (endCycle > latestCycle) endCycle = latestCycle
-    const cycles = await Cycle.queryCycleRecordsBetween(startCycle, endCycle)
+    const cycles = await CycleDB.queryCycleRecordsBetween(startCycle, endCycle)
     if (cycles.length > 0) {
       for (const cycle of cycles) {
         combineValidatorsStats.push({
@@ -56,7 +48,7 @@ export const recordOldValidatorsStats = async (
           timestamp: cycle.cycleRecord.start,
         })
       }
-      await ValidatorStats.bulkInsertValidatorsStats(combineValidatorsStats)
+      await ValidatorStatsDB.bulkInsertValidatorsStats(combineValidatorsStats)
       combineValidatorsStats = []
     } else {
       console.log(`Fail to fetch cycleRecords between ${startCycle} and ${endCycle}`)
@@ -70,40 +62,40 @@ export const recordTransactionsStats = async (
   latestCycle: number,
   lastStoredCycle: number
 ): Promise<void> => {
-  let combineTransactionStats: TransactionStats.TransactionStats[] = []
+  let combineTransactionStats: TransactionStatsDB.TransactionStats[] = []
   const bucketSize = 50
   let startCycle = lastStoredCycle + 1
   let endCycle = startCycle + bucketSize
   while (startCycle <= latestCycle) {
     if (endCycle > latestCycle) endCycle = latestCycle
-    const cycles = await Cycle.queryCycleRecordsBetween(startCycle, endCycle)
+    const cycles = await CycleDB.queryCycleRecordsBetween(startCycle, endCycle)
     if (cycles.length > 0) {
-      const transactions = await Transaction.queryTransactionCountByCycles(startCycle, endCycle)
-      const stakeTransactions = await Transaction.queryTransactionCountByCycles(
+      const transactions = await TransactionDB.queryTransactionCountByCycles(startCycle, endCycle)
+      const stakeTransactions = await TransactionDB.queryTransactionCountByCycles(
         startCycle,
         endCycle,
-        TransactionSearchType.StakeReceipt
+        TransactionType.deposit_stake
       )
-      const unstakeTransactions = await Transaction.queryTransactionCountByCycles(
+      const unstakeTransactions = await TransactionDB.queryTransactionCountByCycles(
         startCycle,
         endCycle,
-        TransactionSearchType.UnstakeReceipt
+        TransactionType.withdraw_stake
       )
 
-      const internalTransactions = await Transaction.queryTransactionCountByCycles(
-        startCycle,
-        endCycle,
-        TransactionSearchType.InternalTxReceipt
-      )
-      const granularInternalTransactions = await Transaction.queryInternalTransactionCountByCycles(
-        startCycle,
-        endCycle
-      )
+      // const internalTransactions = await TransactionDB.queryTransactionCountByCycles(
+      //   startCycle,
+      //   endCycle,
+      //   TransactionSearchType.InternalTxReceipt
+      // )
+      // const granularInternalTransactions = await TransactionDB.queryInternalTransactionCountByCycles(
+      //   startCycle,
+      //   endCycle
+      // )
       for (const cycle of cycles) {
         const txsCycle = transactions.filter((a: { cycle: number }) => a.cycle === cycle.counter)
-        const internalTxsCycle = internalTransactions.filter(
-          (a: { cycle: number }) => a.cycle === cycle.counter
-        )
+        // const internalTxsCycle = internalTransactions.filter(
+        //   (a: { cycle: number }) => a.cycle === cycle.counter
+        // )
         const stakeTxsCycle = stakeTransactions.filter((a: { cycle: number }) => a.cycle === cycle.counter)
         const unstakeTxsCycle = unstakeTransactions.filter(
           (a: { cycle: number }) => a.cycle === cycle.counter
@@ -125,56 +117,57 @@ export const recordTransactionsStats = async (
           totalPenaltyTxs: 0,
         }
 
-        granularInternalTransactions
-          .filter(({ cycle: c }) => c === cycle.counter)
-          .forEach(({ internalTXType, count }) => {
-            switch (internalTXType) {
-              case InternalTXType.SetGlobalCodeBytes:
-                granularInternalTxCounts.totalSetGlobalCodeBytesTxs += count
-                break
-              case InternalTXType.InitNetwork:
-                granularInternalTxCounts.totalInitNetworkTxs += count
-                break
-              case InternalTXType.NodeReward:
-                granularInternalTxCounts.totalNodeRewardTxs += count
-                break
-              case InternalTXType.ChangeConfig:
-                granularInternalTxCounts.totalChangeConfigTxs += count
-                break
-              case InternalTXType.ApplyChangeConfig:
-                granularInternalTxCounts.totalApplyChangeConfigTxs += count
-                break
-              case InternalTXType.SetCertTime:
-                granularInternalTxCounts.totalSetCertTimeTxs += count
-                break
-              case InternalTXType.Stake:
-                granularInternalTxCounts.totalStakeTxs += count
-                break
-              case InternalTXType.Unstake:
-                granularInternalTxCounts.totalUnstakeTxs += count
-                break
-              case InternalTXType.InitRewardTimes:
-                granularInternalTxCounts.totalInitRewardTimesTxs += count
-                break
-              case InternalTXType.ClaimReward:
-                granularInternalTxCounts.totalClaimRewardTxs += count
-                break
-              case InternalTXType.ChangeNetworkParam:
-                granularInternalTxCounts.totalChangeNetworkParamTxs += count
-                break
-              case InternalTXType.ApplyNetworkParam:
-                granularInternalTxCounts.totalApplyNetworkParamTxs += count
-                break
-              case InternalTXType.Penalty:
-                granularInternalTxCounts.totalPenaltyTxs += count
-                break
-            }
-          })
+        // granularInternalTransactions
+        //   .filter(({ cycle: c }) => c === cycle.counter)
+        //   .forEach(({ internalTXType, count }) => {
+        //     switch (internalTXType) {
+        //       case InternalTXType.SetGlobalCodeBytes:
+        //         granularInternalTxCounts.totalSetGlobalCodeBytesTxs += count
+        //         break
+        //       case InternalTXType.InitNetwork:
+        //         granularInternalTxCounts.totalInitNetworkTxs += count
+        //         break
+        //       case InternalTXType.NodeReward:
+        //         granularInternalTxCounts.totalNodeRewardTxs += count
+        //         break
+        //       case InternalTXType.ChangeConfig:
+        //         granularInternalTxCounts.totalChangeConfigTxs += count
+        //         break
+        //       case InternalTXType.ApplyChangeConfig:
+        //         granularInternalTxCounts.totalApplyChangeConfigTxs += count
+        //         break
+        //       case InternalTXType.SetCertTime:
+        //         granularInternalTxCounts.totalSetCertTimeTxs += count
+        //         break
+        //       case InternalTXType.Stake:
+        //         granularInternalTxCounts.totalStakeTxs += count
+        //         break
+        //       case InternalTXType.Unstake:
+        //         granularInternalTxCounts.totalUnstakeTxs += count
+        //         break
+        //       case InternalTXType.InitRewardTimes:
+        //         granularInternalTxCounts.totalInitRewardTimesTxs += count
+        //         break
+        //       case InternalTXType.ClaimReward:
+        //         granularInternalTxCounts.totalClaimRewardTxs += count
+        //         break
+        //       case InternalTXType.ChangeNetworkParam:
+        //         granularInternalTxCounts.totalChangeNetworkParamTxs += count
+        //         break
+        //       case InternalTXType.ApplyNetworkParam:
+        //         granularInternalTxCounts.totalApplyNetworkParamTxs += count
+        //         break
+        //       case InternalTXType.Penalty:
+        //         granularInternalTxCounts.totalPenaltyTxs += count
+        //         break
+        //     }
+        //   })
 
         combineTransactionStats.push({
           cycle: cycle.counter,
           totalTxs: txsCycle.length > 0 ? txsCycle[0].transactions : 0,
-          totalInternalTxs: internalTxsCycle.length > 0 ? internalTxsCycle[0].transactions : 0,
+          // totalInternalTxs: internalTxsCycle.length > 0 ? internalTxsCycle[0].transactions : 0,
+          totalInternalTxs: 0,
           totalStakeTxs: stakeTxsCycle.length > 0 ? stakeTxsCycle[0].transactions : 0,
           totalUnstakeTxs: unstakeTxsCycle.length > 0 ? unstakeTxsCycle[0].transactions : 0,
           ...granularInternalTxCounts,
@@ -182,7 +175,7 @@ export const recordTransactionsStats = async (
         })
       }
       /* prettier-ignore */ if (config.verbose)  console.log('combineTransactionStats', combineTransactionStats)
-      await TransactionStats.bulkInsertTransactionsStats(combineTransactionStats)
+      await TransactionStatsDB.bulkInsertTransactionsStats(combineTransactionStats)
       combineTransactionStats = []
     } else {
       console.log(`Fail to fetch cycleRecords between ${startCycle} and ${endCycle}`)
@@ -198,100 +191,59 @@ export const recordCoinStats = async (latestCycle: number, lastStoredCycle: numb
   let endCycle = startCycle + bucketSize
   while (startCycle <= latestCycle) {
     if (endCycle > latestCycle) endCycle = latestCycle
-    const cycles = await Cycle.queryCycleRecordsBetween(startCycle, endCycle)
+    const cycles = await CycleDB.queryCycleRecordsBetween(startCycle, endCycle)
     if (cycles.length > 0) {
-      let combineCoinStats: CoinStats.CoinStats[] = []
+      let combineCoinStats: CoinStatsDB.CoinStats[] = []
       for (const cycle of cycles) {
         // Fetch transactions
-        const transactions = await Transaction.queryTransactionsForCycle(cycle.counter)
+        const transactions = await TransactionDB.queryTransactionsForCycle(cycle.counter)
 
         // Filter transactions
         const stakeTransactions = transactions.filter(
-          (a) => a.transactionType === TransactionType.StakeReceipt
+          (a) => a.transactionType === TransactionType.deposit_stake
         )
         const unstakeTransactions = transactions.filter(
-          (a) => a.transactionType === TransactionType.UnstakeReceipt
+          (a) => a.transactionType === TransactionType.withdraw_stake
         )
 
         try {
           // Calculate total staked amount in cycle
-          const stakeAmount = stakeTransactions.reduce((sum, current) => {
-            if (
-              'readableReceipt' in current.wrappedEVMAccount &&
-              current.wrappedEVMAccount.readableReceipt?.stakeInfo?.stake
-            ) {
-              const stakeAmountBN = new BN(
-                current.wrappedEVMAccount.readableReceipt.stakeInfo.stake.toString()
-              ) // changed to accomodate BigInt instead of Hex string
-              return sum.add(stakeAmountBN)
-            } else {
-              return sum
-            }
-          }, new BN(0))
+          const stakeAmount: bigint = stakeTransactions.reduce((sum, current) => {
+            const stakeAmount = (current.originalTxData as any).tx.stake || BigInt(0)
+            return sum + stakeAmount
+          }, BigInt(0))
           // Calculate total unstaked amount in cycle
-          const unStakeAmount = unstakeTransactions.reduce((sum, current) => {
-            if (
-              'readableReceipt' in current.wrappedEVMAccount &&
-              current.wrappedEVMAccount.readableReceipt?.stakeInfo?.stake
-            ) {
-              const unStakeAmountBN = new BN(
-                current.wrappedEVMAccount.readableReceipt.stakeInfo.stake.toString()
-              )
-              return sum.add(unStakeAmountBN)
-            } else {
-              return sum
-            }
-          }, new BN(0))
+          const unStakeAmount: bigint = unstakeTransactions.reduce((sum, current) => {
+            const unStakeAmount = (current.originalTxData as any).tx.unstake || BigInt(0)
+            return sum + unStakeAmount
+          }, BigInt(0))
           // Calculate total node rewards in cycle
-          const nodeRewardAmount = unstakeTransactions.reduce((sum, current) => {
-            if (
-              'readableReceipt' in current.wrappedEVMAccount &&
-              current.wrappedEVMAccount.readableReceipt?.stakeInfo?.reward
-            ) {
-              const rewardBN = new BN(current.wrappedEVMAccount.readableReceipt.stakeInfo.reward.toString())
-              return sum.add(rewardBN)
-            } else {
-              return sum
-            }
-          }, new BN(0))
+          const nodeRewardAmount: bigint = unstakeTransactions.reduce((sum, current) => {
+            const nodeRewardAmount = (current.originalTxData as any).tx.nodeReward || BigInt(0)
+            return sum + nodeRewardAmount
+          }, BigInt(0))
           // Calculate total reward penalties in cycle
-          const nodePenaltyAmount = unstakeTransactions.reduce((sum, current) => {
-            if (
-              'readableReceipt' in current.wrappedEVMAccount &&
-              current.wrappedEVMAccount.readableReceipt?.stakeInfo?.penalty
-            ) {
-              const penaltyBN = new BN(current.wrappedEVMAccount.readableReceipt.stakeInfo.penalty.toString())
-              return sum.add(penaltyBN)
-            } else {
-              return sum
-            }
-          }, new BN(0))
+          const nodePenaltyAmount: bigint = unstakeTransactions.reduce((sum, current) => {
+            const nodePenaltyAmount = (current.originalTxData as any).tx.penalty || BigInt(0)
+            return sum + nodePenaltyAmount
+          }, BigInt(0))
           // Calculate total gas burnt in cycle
-          const gasBurnt = transactions.reduce((sum, current) => {
-            if ('amountSpent' in current.wrappedEVMAccount && current.wrappedEVMAccount.amountSpent) {
-              // remove prefix 0x from amountSpent hex string
-              const amountSpentBN = new BN(current.wrappedEVMAccount.amountSpent.substring(2), 16)
-              return sum.add(amountSpentBN)
-            } else {
-              return sum
-            }
-          }, new BN(0))
+          const transactionFee: bigint = transactions.reduce((sum, current) => {
+            const transactionFee = (current.originalTxData as any).transactionFee || BigInt(0)
+            return sum + transactionFee
+          }, BigInt(0))
 
-          const weiBNToEth = (bn: BN): number => {
-            let stringVal = ''
-            if (bn.isNeg()) {
-              stringVal = `-${bn.neg().toString()}`
-            } else {
-              stringVal = bn.toString()
-            }
-            const result = new BigNumber(stringVal).div('1e18')
-            return result.toNumber()
+          console.log
+
+          const weiBNToEth = (bn: bigint): number => {
+            const result = Number(bn) / 1e18
+            return result
           }
 
           const coinStatsForCycle = {
             cycle: cycle.counter,
-            totalSupplyChange: weiBNToEth(nodeRewardAmount.sub(nodePenaltyAmount).sub(gasBurnt)),
-            totalStakeChange: weiBNToEth(stakeAmount.sub(unStakeAmount)),
+            totalSupplyChange: weiBNToEth(nodeRewardAmount-  nodePenaltyAmount - transactionFee),
+            totalStakeChange: weiBNToEth(stakeAmount- unStakeAmount),
             timestamp: cycle.cycleRecord.start,
           }
           // await CoinStats.insertCoinStats(coinStatsForCycle)
@@ -300,7 +252,7 @@ export const recordCoinStats = async (latestCycle: number, lastStoredCycle: numb
           console.log(`Failed to record coin stats for cycle ${cycle.counter}`, e)
         }
       }
-      await CoinStats.bulkInsertCoinsStats(combineCoinStats)
+      await CoinStatsDB.bulkInsertCoinsStats(combineCoinStats)
       combineCoinStats = []
     } else {
       console.log(`Fail to fetch cycleRecords between ${startCycle} and ${endCycle}`)
@@ -312,10 +264,10 @@ export const recordCoinStats = async (latestCycle: number, lastStoredCycle: numb
 
 // Update NodeStats record based on new status
 export function updateNodeStats(
-  nodeStats: NodeStats.NodeStats,
+  nodeStats: NodeStatsDB.NodeStats,
   newState: NodeState,
   currentTimestamp: number
-): NodeStats.NodeStats {
+): NodeStatsDB.NodeStats {
   const timeStampDiff = currentTimestamp - nodeStats.timestamp
   switch (nodeStats.currentState) {
     case 'standbyAdd':
@@ -379,7 +331,7 @@ export const recordNodeStats = async (latestCycle: number, lastStoredCycle: numb
       if (endCycle > latestCycle) endCycle = latestCycle
       /* prettier-ignore */ if (config.verbose) console.log(`recordNodeStats: processing nodeStats for cycles from ${startCycle} to ${endCycle}`)
 
-      const cycles = await Cycle.queryCycleRecordsBetween(startCycle, endCycle, 'ASC')
+      const cycles = await CycleDB.queryCycleRecordsBetween(startCycle, endCycle)
       /* prettier-ignore */ if (config.verbose) console.log('recordNodeStats: fetched cycle records', cycles)
 
       if (cycles.length > 0) {
@@ -397,11 +349,11 @@ export const recordNodeStats = async (latestCycle: number, lastStoredCycle: numb
             ) {
               // pre-Id states containing complex object list
               if (key == 'joinedConsensors') {
-                value.forEach((item: JoinedConsensor) => {
+                value.forEach((item: P2P.JoinTypes.JoinedConsensor) => {
                   pubKeyToStateMap.set(item['address'], { state: 'joinedConsensors', id: item['id'] })
                 })
               } else if (key == 'standbyAdd') {
-                value.forEach((item: JoinRequest) => {
+                value.forEach((item: P2P.JoinTypes.JoinRequest) => {
                   pubKeyToStateMap.set(item['nodeInfo']['address'], {
                     state: 'standbyAdd',
                     nominator: item?.appJoinData?.stakeCert?.nominator,
@@ -438,19 +390,19 @@ export const recordNodeStats = async (latestCycle: number, lastStoredCycle: numb
 
           /* prettier-ignore */ if (config.verbose) console.log(`pubKeyToStateMap for cycle ${cycle.counter}:`, pubKeyToStateMap)
           /* prettier-ignore */ if (config.verbose) console.log(`IdToStateMap for cycle ${cycle.counter}:`, IdToStateMap)
-          const updatedNodeStatsCombined: NodeStats.NodeStats[] = []
+          const updatedNodeStatsCombined: NodeStatsDB.NodeStats[] = []
           // Iterate over pubKeyToStateMap
           for (const [nodeKey, nodeState] of pubKeyToStateMap) {
-            const existingNodeStats: NodeStats.NodeStats = await NodeStats.getNodeStatsByAddress(nodeKey)
+            const existingNodeStats: NodeStatsDB.NodeStats = await NodeStatsDB.getNodeStatsByAddress(nodeKey)
             if (existingNodeStats) {
               /* prettier-ignore */ if (config.verbose) console.log(`existingNodeStats: `, existingNodeStats)
               // node statistics exists, update node statistics record
               const updatedNodeStats = updateNodeStats(existingNodeStats, nodeState, cycle.cycleRecord.start)
               /* prettier-ignore */ if (config.verbose) console.log(`updatedNodeStats: `, updatedNodeStats)
               updatedNodeStatsCombined.push(updatedNodeStats)
-              await NodeStats.insertOrUpdateNodeStats(updatedNodeStats)
+              await NodeStatsDB.insertOrUpdateNodeStats(updatedNodeStats)
             } else {
-              const nodeStats: NodeStats.NodeStats = {
+              const nodeStats: NodeStatsDB.NodeStats = {
                 nodeAddress: nodeKey,
                 nominator: nodeState.nominator ?? null,
                 nodeId: nodeState.id,
@@ -462,13 +414,13 @@ export const recordNodeStats = async (latestCycle: number, lastStoredCycle: numb
               }
               /* prettier-ignore */ if (config.verbose) console.log('Adding new node stats:', nodeStats)
               updatedNodeStatsCombined.push(nodeStats)
-              await NodeStats.insertOrUpdateNodeStats(nodeStats)
+              await NodeStatsDB.insertOrUpdateNodeStats(nodeStats)
             }
           }
 
           // Iterate over nodeStatus Map
           for (const [nodeId, nodeState] of IdToStateMap) {
-            const existingNodeStats: NodeStats.NodeStats = await NodeStats.getNodeStatsById(nodeId)
+            const existingNodeStats: NodeStatsDB.NodeStats = await NodeStatsDB.getNodeStatsById(nodeId)
             if (existingNodeStats) {
               /* prettier-ignore */ if (config.verbose) console.log(`existingNodeStats: `, existingNodeStats)
               // node statistics exists, update node statistics record
@@ -478,7 +430,7 @@ export const recordNodeStats = async (latestCycle: number, lastStoredCycle: numb
                 cycle.cycleRecord.start
               )
               /* prettier-ignore */ if (config.verbose) console.log(`updatedNodeStats: `, updatedNodeStats)
-              await NodeStats.insertOrUpdateNodeStats(updatedNodeStats)
+              await NodeStatsDB.insertOrUpdateNodeStats(updatedNodeStats)
               updatedNodeStatsCombined.push(updatedNodeStats)
             } else {
               console.warn(
@@ -491,13 +443,13 @@ export const recordNodeStats = async (latestCycle: number, lastStoredCycle: numb
 
           // Update node stats for shutdown mode
           if (cycle.cycleRecord.mode == 'shutdown') {
-            NodeStats.updateAllNodeStates(cycle.cycleRecord.start)
+            NodeStatsDB.updateAllNodeStates(cycle.cycleRecord.start)
           }
         }
       } else {
         console.error(`Failed to fetch cycleRecords between ${startCycle} and ${endCycle}`)
       }
-      await insertOrUpdateMetadata(Metadata.MetadataType.NodeStats, endCycle)
+      await insertOrUpdateMetadata(MetadataDB.MetadataType.NodeStats, endCycle)
       startCycle = endCycle + 1
       endCycle = endCycle + bucketSize
     }
@@ -514,8 +466,8 @@ export const patchStatsBetweenCycles = async (startCycle: number, endCycle: numb
 }
 
 export async function insertOrUpdateMetadata(
-  type: Metadata.MetadataType,
+  type: MetadataDB.MetadataType,
   latestCycleNumber: number
 ): Promise<void> {
-  await Metadata.insertOrUpdateMetadata({ type, cycleNumber: latestCycleNumber })
+  await MetadataDB.insertOrUpdateMetadata({ type, cycleNumber: latestCycleNumber })
 }

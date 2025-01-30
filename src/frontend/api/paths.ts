@@ -1,13 +1,13 @@
 // config variables
-import { config as CONFIG } from '../../config'
+import { config } from '../../config'
 
 const port = process.argv[2]
 if (port && Number.isInteger(Number(port))) {
-  CONFIG.port.server = port
+  config.port.server = port
 }
-let BASE_URL = `http://${CONFIG.host}:${CONFIG.port.server}`
+let BASE_URL = `http://${config.host}:${config.port.server}`
 
-if (CONFIG.apiUrl != '') BASE_URL = CONFIG.apiUrl
+if (config.apiUrl != '') BASE_URL = config.apiUrl
 
 console.log('BASE_URL', BASE_URL)
 
@@ -19,8 +19,6 @@ export const PATHS = {
   RECEIPT_DETAIL: BASE_URL + '/api/receipt',
   CYCLE: BASE_URL + '/api/cycleinfo',
   ACCOUNT: BASE_URL + '/api/account',
-  TOKEN: BASE_URL + '/api/token',
-  LOG: BASE_URL + '/api/log',
   ORIGINAL_TX: BASE_URL + '/api/originalTx',
   STATS_VALIDATOR: BASE_URL + '/api/stats/validator',
   STATS_TRANSACTION: BASE_URL + '/api/stats/transaction',

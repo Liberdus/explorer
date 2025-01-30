@@ -1,35 +1,33 @@
 import React, { useEffect, useState } from 'react'
 import moment from 'moment'
 
-import { AnchorLink, Chip } from '../../components'
+import { AnchorLink } from '../../components'
 
-import { calculateTokenValue, calculateValue } from '../../utils/calculateValue'
-import { showTxMethod } from '../../utils/showMethod'
+import { calculateFullValue } from '../../utils/calculateValue'
 
 import {
   OriginalTxData,
-  TokenTx,
   Transaction,
+  TransactionSearchParams,
   TransactionSearchType,
   TransactionType,
-  ReadableReceipt,
 } from '../../../types'
 import { Table } from '../../components/TableComp'
 import { IColumnProps } from '../../components/TableComp/Table'
 
 interface ITransactionTable {
-  data: (Transaction | TokenTx | OriginalTxData)[]
+  data: (Transaction | OriginalTxData)[]
   loading?: boolean
   txType?: TransactionSearchType
 }
 
-const tempHeader: IColumnProps<ReadableReceipt | Transaction | TokenTx | OriginalTxData>[] = [
+const tempHeader: IColumnProps<Transaction | OriginalTxData>[] = [
   {
-    key: 'txHash',
-    value: 'Txn Hash',
-    render: (val: string, item: Transaction | TokenTx | OriginalTxData) => (
+    key: 'txId',
+    value: 'Txn ID',
+    render: (val: string) => (
       <AnchorLink
-        href={`/transaction/${val}?txId=${item?.txId}`}
+        href={`/transaction/${val}`}
         label={val as string}
         size="small"
         ellipsis
@@ -38,26 +36,7 @@ const tempHeader: IColumnProps<ReadableReceipt | Transaction | TokenTx | Origina
     ),
   },
   {
-    key: 'method',
-    value: 'Method',
-    render: (_: unknown, item: Transaction | TokenTx | OriginalTxData) => (
-      <Chip
-        title={showTxMethod(item)}
-        color={
-          'wrappedEVMAccount' in item
-            ? item?.wrappedEVMAccount?.readableReceipt?.status === 0
-              ? 'error'
-              : 'success'
-            : 'tokenType' in item
-            ? 'success'
-            : 'gray'
-        }
-        size="medium"
-      />
-    ),
-  },
-  {
-    key: 'cycle',
+    key: 'cycleNumber',
     value: 'Cycle',
   },
   {
@@ -68,214 +47,66 @@ const tempHeader: IColumnProps<ReadableReceipt | Transaction | TokenTx | Origina
 ]
 
 export const TransactionTable: React.FC<ITransactionTable> = (props) => {
-  const { data, txType = TransactionSearchType.All } = props
+  const { data, txType = TransactionType.transfer } = props
 
-  const [header, setHeader] = useState<
-    IColumnProps<ReadableReceipt | Transaction | TokenTx | OriginalTxData>[]
-  >([])
+  const [header, setHeader] = useState<IColumnProps<Transaction | OriginalTxData>[]>([])
 
   useEffect(() => {
-    let tHeader: IColumnProps<ReadableReceipt | Transaction | TokenTx | OriginalTxData>[] = []
+    let tHeader: IColumnProps<Transaction | OriginalTxData>[] = []
 
     if (
-      txType === TransactionSearchType.AllExceptInternalTx ||
-      txType === TransactionSearchType.NodeRewardReceipt ||
-      txType === TransactionSearchType.StakeReceipt ||
-      txType === TransactionSearchType.UnstakeReceipt
+      txType === TransactionType.transfer ||
+      txType === TransactionType.message ||
+      txType === TransactionType.deposit_stake ||
+      txType === TransactionType.withdraw_stake
     ) {
       tHeader = [
         {
-          key: 'wrappedEVMAccount.readableReceipt.from',
+          key: 'txFrom',
           value: 'From',
           render: (val: string | TransactionType) => (
             <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
           ),
         },
         {
-          key: 'wrappedEVMAccount.readableReceipt',
+          key: 'txTo',
           value: 'To',
-          render: (val: ReadableReceipt) =>
-            val &&
-            (val?.to ? (
-              <AnchorLink href={`/account/${val.to}`} label={val.to} size="small" ellipsis width={150} />
-            ) : (
-              <AnchorLink
-                href={`/account/${val.contractAddress}`}
-                label={'Contract creation'}
-                size="small"
-                ellipsis
-                width={150}
-              />
-            )),
+          render: (val: string) => (
+            <AnchorLink href={`/account/${val}`} label={val} size="small" ellipsis width={150} />
+          ),
         },
-        {
-          key: 'wrappedEVMAccount.readableReceipt.nonce',
-          value: 'Nonce',
-          render: (val: string) => parseInt(val),
-        },
-        {
-          key: 'wrappedEVMAccount.readableReceipt.value',
+      ]
+      if (txType === TransactionType.transfer) {
+        tHeader.push({
+          key: 'originalTxData.tx.amount',
           value: 'Value',
-          render: (val: string | TransactionType) => calculateValue(`${val}` as string),
+          render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
         },
         {
-          key: 'wrappedEVMAccount.amountSpent',
+          key: 'originalTxData.tx.fee',
           value: 'Txn Fee',
-          render: (val: string | TransactionType) => calculateValue(`${val}` as string),
-        },
-      ]
+          render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
+        })
+      }
+      if (txType === TransactionType.message) {
+        tHeader.push({
+            key: 'originalTxData.tx.amount',
+            value: 'Toll',
+            render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
+          })
+      }
+      if (txType === TransactionType.deposit_stake || txType === TransactionType.withdraw_stake) {
+        tHeader.push({
+          key: 'stake',
+          value: 'Stake Amount',
+          render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
+        })
+      }
     }
 
-    if (txType === TransactionSearchType.EVM_Internal) {
-      tHeader = [
-        {
-          key: 'tokenFrom',
-          value: 'From',
-          render: (val: string | TransactionType) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'tokenTo',
-          value: 'To',
-          render: (val: string | TransactionType) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'tokenType',
-          value: 'Value',
-          render: (val: string | TransactionType, item?: Transaction | TokenTx) =>
-            calculateTokenValue(item as TokenTx, val as TransactionType),
-        },
-        {
-          key: 'transactionFee',
-          value: 'Txn Fee',
-        },
-      ]
-    }
+    
 
-    if (txType === TransactionSearchType.ERC_20) {
-      tHeader = [
-        {
-          key: 'tokenFrom',
-          value: 'From',
-          render: (val: unknown) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'tokenTo',
-          value: 'To',
-          render: (val: unknown) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'tokenType',
-          value: 'Value',
-          render: (val: string | TransactionType, item?: Transaction | TokenTx) =>
-            calculateTokenValue(item as TokenTx, val as TransactionType),
-        },
-        {
-          key: 'token',
-          value: 'Token',
-          render: (_: string | TransactionType, item?: Transaction | TokenTx) =>
-            (item as TokenTx)?.contractInfo?.name || (item as TokenTx)?.contractAddress || '',
-        },
-        {
-          key: 'transactionFee',
-          value: 'Txn Fee',
-          render: (val: string | TransactionType) => calculateValue(`${val}` as string),
-        },
-      ]
-    }
-
-    if (txType === TransactionSearchType.ERC_721) {
-      tHeader = [
-        {
-          key: 'tokenFrom',
-          value: 'From',
-          render: (val: unknown) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'tokenTo',
-          value: 'To',
-          render: (val: unknown) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'tokenType',
-          value: 'Token ID',
-          maxChar: 30,
-          render: (val: TransactionType | string, item: Transaction | TokenTx) =>
-            calculateTokenValue(item as TokenTx, val as TransactionType, true),
-        },
-        {
-          key: 'token',
-          value: 'Token',
-          render: (_: TransactionType | string, item: Transaction | TokenTx) =>
-            (item as TokenTx)?.contractInfo?.name || (item as TokenTx)?.contractAddress || '',
-        },
-        {
-          key: 'transactionFee',
-          value: 'Txn Fee',
-          render: (val: TransactionType | string) => calculateValue(`${val}` as string),
-        },
-      ]
-    }
-
-    if (txType === TransactionSearchType.ERC_1155) {
-      tHeader = [
-        {
-          key: 'tokenFrom',
-          value: 'From',
-          render: (val: unknown) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'tokenTo',
-          value: 'To',
-          render: (val: unknown) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'tokenType',
-          value: 'Token ID',
-          render: (val: string | TransactionType, item: Transaction | TokenTx) =>
-            calculateTokenValue(item as TokenTx, val as TransactionType, true),
-        },
-        {
-          key: 'tokenType',
-          value: 'Value',
-          render: (val: string | TransactionType, item: Transaction | TokenTx) =>
-            calculateTokenValue(item as TokenTx, val as TransactionType),
-        },
-        {
-          key: 'contractAddress',
-          value: 'Token',
-          render: (val: string | TransactionType, item: Transaction | TokenTx) => {
-            return (item as TokenTx)?.contractInfo?.name ? (
-              (item as TokenTx)?.contractInfo?.name
-            ) : (
-              <AnchorLink href={`/token/${val}`} label={val as string} size="small" ellipsis width={150} />
-            )
-          },
-        },
-        {
-          key: 'transactionFee',
-          value: 'Txn Fee',
-          render: (val: string | TransactionType) => calculateValue(`${val}` as string),
-        },
-      ]
-    }
-
-    if (txType === TransactionSearchType.Pending) {
+    if (txType === TransactionSearchParams.pending) {
       tHeader = [
         {
           key: 'originalTxData.readableReceipt.from',

@@ -1,4 +1,4 @@
-import { TransactionSearchType, Transaction, OriginalTxData } from '../../types'
+import { TransactionSearchType, Transaction, OriginalTxData, TransactionSearchParams, TransactionType } from '../../types'
 
 export interface ReadableReceipt {
   blockHash: string
@@ -33,24 +33,18 @@ export interface TransactionQuery {
   page?: number
   count?: number
   txType?: TransactionSearchType
-  totalStakeData?: boolean
+  totalTxsDetail?: boolean
 }
 
 export const TransactionSearchList: {
   key: TransactionSearchType
   value: string
 }[] = [
-  { key: TransactionSearchType.AllExceptInternalTx, value: 'All Transactions' },
-  { key: TransactionSearchType.StakeReceipt, value: 'Stake Transactions' },
-  { key: TransactionSearchType.UnstakeReceipt, value: 'Unstake Transactions' },
-  { key: TransactionSearchType.EVM_Internal, value: 'Internal Transactions' },
-  { key: TransactionSearchType.ERC_20, value: 'ERC 20 Token Transactions' },
-  { key: TransactionSearchType.ERC_721, value: 'ERC 721 Token Transactions' },
-  {
-    key: TransactionSearchType.ERC_1155,
-    value: 'ERC 1155 Token Transactions',
-  },
-  { key: TransactionSearchType.Pending, value: 'Pending Transactions' },
+  { key: TransactionType.transfer, value: 'Transfer Txns' },
+  { key: TransactionType.message, value: 'Message Txns' },
+  { key: TransactionType.deposit_stake, value: 'Deposit Stake Txns' },
+  { key: TransactionType.withdraw_stake, value: 'Withdraw Stake Txns' },
+  { key: TransactionSearchParams.pending, value: 'Pending Transactions' },
 ]
 
 export interface StakeInfo {
@@ -73,9 +67,10 @@ export type PagedTransaction = {
   transactions: Transaction[]
   totalPages: number
   totalTransactions: number
-  totalRewardTxs: number
-  totalStakeTxs: number
-  totalUnstakeTxs: number
+  totalTransferTxs: number
+  totalMessageTxs: number
+  totalDepositStakeTxs: number
+  totalWithdrawStakeTxs: number
   originalTxs: OriginalTxData[]
   totalOriginalTxs: number
   loading: boolean

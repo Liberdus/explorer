@@ -1,4 +1,5 @@
-import * as db from './sqlite3storage'
+import * as db from '../storage/sqlite3storage'
+import { nodeStatsDatabase } from '.'
 
 export interface NodeStats {
   nodeAddress: string
@@ -26,7 +27,7 @@ export function isNodeStats(obj: NodeStats): obj is NodeStats {
 export async function getNodeStatsByAddress(nodeAddress: string): Promise<NodeStats | null> {
   try {
     const sql = 'SELECT * FROM node_stats WHERE nodeAddress=? LIMIT 1'
-    const nodeStats: NodeStats = await db.get(sql, [nodeAddress])
+    const nodeStats: NodeStats = await db.get(nodeStatsDatabase, sql, [nodeAddress])
     if (nodeStats) {
       return nodeStats
     }
@@ -39,7 +40,7 @@ export async function getNodeStatsByAddress(nodeAddress: string): Promise<NodeSt
 export async function getNodeStatsById(nodeId: string): Promise<NodeStats | null> {
   try {
     const sql = 'SELECT * FROM node_stats WHERE nodeId=? LIMIT 1'
-    const nodeStats: NodeStats = await db.get(sql, [nodeId])
+    const nodeStats: NodeStats = await db.get(nodeStatsDatabase, sql, [nodeId])
     if (nodeStats) {
       return nodeStats
     }
@@ -55,7 +56,7 @@ export async function insertOrUpdateNodeStats(nodeStats: NodeStats): Promise<voi
     const placeholders = Object.keys(nodeStats).fill('?').join(', ')
     const values = db.extractValues(nodeStats)
     const sql = 'INSERT OR REPLACE INTO node_stats (' + fields + ') VALUES (' + placeholders + ')'
-    await db.run(sql, values)
+    await db.run(nodeStatsDatabase, sql, values)
   } catch (e) {
     console.error(e)
     console.error('Unable to insert nodeStats in to database', nodeStats)
@@ -65,7 +66,7 @@ export async function insertOrUpdateNodeStats(nodeStats: NodeStats): Promise<voi
 export async function queryLatestNodeStats(limit = 100): Promise<NodeStats[]> {
   try {
     const sql = 'SELECT * FROM node_stats ORDER BY timestamp DESC LIMIT ?'
-    const nodeStats: NodeStats[] = await db.all(sql, [limit])
+    const nodeStats: NodeStats[] = await db.all(nodeStatsDatabase, sql, [limit])
     return nodeStats
   } catch (e) {
     console.error(e)
@@ -92,7 +93,7 @@ export async function updateAllNodeStates(currCycleTimestamp: number): Promise<v
                             END,
             timestamp = ${currCycleTimestamp}
         WHERE currentState IN ('activated', 'standbyAdd', 'startedSyncing', 'standbyRefresh');`
-    await db.all(sql)
+    await db.all(nodeStatsDatabase, sql)
   } catch (e) {
     console.error(e)
     console.error(`queryLatestNodeStats: failed to fetch latest node statistics`)

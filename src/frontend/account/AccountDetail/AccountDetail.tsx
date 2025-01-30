@@ -1,31 +1,31 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/router'
-import web3 from 'web3'
-import { utils } from 'ethers'
 import moment from 'moment'
-import { Button, ContentLayout, CopyButton, Spacer, Pagination } from '../../components'
+import {  ContentLayout, CopyButton, Spacer, Pagination } from '../../components'
 import { Tab } from '../../components/Tab'
 import { DetailCard } from '../DetailCard'
-import { TokenDropdown } from '../TokenDropdown'
 
 import { useAccountDetailHook } from './useAccountDetailHook'
 
 import styles from './AccountDetail.module.scss'
-import { AccountType, breadcrumbsList, ContractType, TransactionSearchType } from '../../types'
-import { calculateValue } from '../../utils/calculateValue'
+import { AccountType, TransactionSearchType } from '../../../types'
+
+import { calculateFullValue } from '../../utils/calculateValue'
 
 import { TransactionTable } from '../../transaction'
+import { TransactionType } from '../../../types'
+import { breadcrumbsList } from '../../types'
 
 export const AccountDetail: React.FC = () => {
   const router = useRouter()
 
   const id = router?.query?.id
-  const txType: TransactionSearchType = parseInt(router?.query?.txType as string)
+  const txType = router?.query?.txType as TransactionSearchType
 
   const siblingCount = 3
   const pageSize = 10
 
-  const { account, accountType, totalTransactions, page, tokens, transactions, setTransactionType, setPage } =
+  const { account, totalTransactions, page, transactions, setTransactionType, setPage } =
     useAccountDetailHook({
       id: id as string,
       txType,
@@ -33,11 +33,11 @@ export const AccountDetail: React.FC = () => {
 
   const tabs = [
     {
-      key: TransactionSearchType.AllExceptInternalTx,
-      value: 'Transactions',
+      key: TransactionType.transfer as TransactionSearchType,
+      value: 'Transfer Txns',
       content: (
         <>
-          <TransactionTable data={transactions} txType={TransactionSearchType.AllExceptInternalTx} />
+          <TransactionTable data={transactions} txType={TransactionType.transfer} />
           <div className={styles.paginationWrapper}>
             <Pagination
               onPageChange={(p) => setPage(p)}
@@ -51,65 +51,11 @@ export const AccountDetail: React.FC = () => {
       ),
     },
     {
-      key: TransactionSearchType.EVM_Internal,
-      value: 'Internal Txns',
+      key: TransactionType.message,
+      value: 'Message Txns',
       content: (
         <>
-          <TransactionTable data={transactions} txType={TransactionSearchType.EVM_Internal} />
-          <div className={styles.paginationWrapper}>
-            <Pagination
-              onPageChange={(p) => setPage(p)}
-              totalCount={totalTransactions}
-              siblingCount={siblingCount}
-              currentPage={page}
-              pageSize={pageSize}
-            />
-          </div>
-        </>
-      ),
-    },
-    {
-      key: TransactionSearchType.ERC_20,
-      value: 'ERC-20 Token Txns',
-      content: (
-        <>
-          <TransactionTable data={transactions} txType={TransactionSearchType.ERC_20} />
-          <div className={styles.paginationWrapper}>
-            <Pagination
-              onPageChange={(p) => setPage(p)}
-              totalCount={totalTransactions}
-              siblingCount={siblingCount}
-              currentPage={page}
-              pageSize={pageSize}
-            />
-          </div>
-        </>
-      ),
-    },
-    {
-      key: TransactionSearchType.ERC_721,
-      value: 'ERC-721 Token Txns',
-      content: (
-        <>
-          <TransactionTable data={transactions} txType={TransactionSearchType.ERC_721} />
-          <div className={styles.paginationWrapper}>
-            <Pagination
-              onPageChange={(p) => setPage(p)}
-              totalCount={totalTransactions}
-              siblingCount={siblingCount}
-              currentPage={page}
-              pageSize={pageSize}
-            />
-          </div>
-        </>
-      ),
-    },
-    {
-      key: TransactionSearchType.ERC_1155,
-      value: 'ERC-1155 Token Txns',
-      content: (
-        <>
-          <TransactionTable loading={false} data={transactions} txType={TransactionSearchType.ERC_1155} />
+          <TransactionTable data={transactions} txType={TransactionType.message} />
           <div className={styles.paginationWrapper}>
             <Pagination
               onPageChange={(p) => setPage(p)}
@@ -128,14 +74,15 @@ export const AccountDetail: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState(tabs[0].key)
 
+  console.log('account', account, AccountType.UserAccount, account?.data?.data?.balance)
+
   return (
     <div className={styles.AccountDetail}>
       <ContentLayout
         title={
           <div className={styles.header}>
             <div className={styles.title}>
-              {accountType === AccountType.NodeAccount2 ? 'Node ID -' : 'Address -'}
-              <span>&nbsp;&nbsp;{id}&nbsp;&nbsp;</span>
+              Account ID -<span>&nbsp;&nbsp;{id}&nbsp;&nbsp;</span>
             </div>
             <CopyButton text={id as string} title="Copy address to clipboard" />
           </div>
@@ -147,125 +94,80 @@ export const AccountDetail: React.FC = () => {
           <>
             <div className={styles.row}>
               <>
-                {accountType === AccountType.Account && account ? (
+                {account.accountType === AccountType.UserAccount ? (
                   <DetailCard
                     title="Overview"
-                    titleRight={
-                      account?.contractType &&
-                      (account?.contractType as ContractType) !== ContractType.GENERIC ? (
-                        <div className={styles.buttonWrapper}>
-                          <Button
-                            apperance="outlined"
-                            className={styles.btn}
-                            onClick={() => router.push(`/token/${id}`)}
-                          >
-                            Token Tracker
-                          </Button>
-                          <Button
-                            apperance="outlined"
-                            className={styles.btn}
-                            onClick={() => router.push(`/log?address=${id}`)}
-                          >
-                            Filter By Logs
-                          </Button>
-                        </div>
-                      ) : null
-                    }
+                    titleRight={null}
                     items={[
                       {
+                        key: 'Username: ',
+                        value: account?.data?.alias,
+                      },
+                      {
                         key: 'Balance :',
-                        value: calculateValue(`0x${account?.account?.account?.balance}`) + '   SHM',
+                        value: calculateFullValue(account?.data?.data?.balance) + '   LIB',
                       },
-                      {
-                        key: 'Nonce :',
-                        value:
-                          account?.account?.account?.nonce &&
-                          web3.utils.hexToNumber(`0x${account?.account?.account?.nonce}`),
-                      },
-                      {
-                        key: 'Tokens :',
-                        value: <TokenDropdown tokens={tokens} />,
-                      },
+                      // {
+                      //   key: 'Tokens :',
+                      //   value: <TokenDropdown tokens={tokens} />,
+                      // },
                     ]}
                   />
-                ) : (
+                ) : account?.accountType === AccountType.NodeAccount ? (
                   <DetailCard
                     title="Overview"
                     items={[
                       {
                         key: 'Node status',
                         value:
-                          account?.account?.rewardStartTime > 0 && account?.account?.rewardEndTime === 0
+                          account?.data?.rewardStartTime > 0 && account?.data?.rewardEndTime === 0
                             ? 'Active'
                             : 'Inactive',
                       },
                       {
                         key: 'Nominator',
-                        value: account?.account?.nominator && account?.account?.nominator,
+                        value: account?.data?.nominator && account?.data?.nominator,
                       },
                       {
                         key: 'StakeLock',
-                        value:
-                          account?.account?.stakeLock && calculateValue(`0x${account?.account?.stakeLock}`),
+                        value: account?.data?.stakeLock && calculateFullValue(`0x${account?.data?.stakeLock}`),
                       },
                     ]}
+                    titleRight={null} 
                   />
-                )}
-                {accountType !== AccountType.Account ? (
+                )
+              : null} 
+                {account.accountType === AccountType.NodeAccount && (
                   <DetailCard
                     title="More Info"
                     items={[
                       {
                         key: 'Reward Start Time',
                         value:
-                          account?.account?.rewardStartTime &&
-                          moment(account?.account?.rewardStartTime * 1000).calendar(),
+                          account?.data?.rewardStartTime &&
+                          moment(account?.data?.rewardStartTime * 1000).calendar(),
                       },
                       {
                         key: 'Reward End Time',
                         value:
-                          account?.account?.rewardEndTime &&
-                          moment(account?.account?.rewardEndTime * 1000).calendar(),
+                          account?.data?.rewardEndTime &&
+                          moment(account?.data?.rewardEndTime * 1000).calendar(),
                       },
                       {
                         key: 'Reward',
-                        value: account?.account?.reward && calculateValue(`0x${account?.account?.reward}`),
+                        value: account?.data?.reward && calculateFullValue(`0x${account?.data?.reward}`),
                       },
                       {
                         key: 'Penalty',
-                        value: account?.account?.penalty && calculateValue(`0x${account?.account?.penalty}`),
+                        value: account?.data?.penalty && calculateFullValue(`0x${account?.data?.penalty}`),
                       },
                     ]}
                   />
-                ) : (
-                  account?.contractType &&
-                  (account?.contractType as ContractType) !== ContractType.GENERIC && (
-                    <DetailCard
-                      title="More Info"
-                      items={[
-                        { key: 'Name : ', value: account?.contractInfo?.name },
-                        { key: 'Symbol :', value: account?.contractInfo?.symbol },
-                        {
-                          key: 'Max Total Supply :',
-                          value: account?.contractInfo?.totalSupply
-                            ? utils
-                                .formatUnits(
-                                  account?.contractInfo?.totalSupply,
-                                  account?.contractInfo?.decimals
-                                    ? parseInt(account?.contractInfo?.decimals)
-                                    : 18
-                                )
-                                .toString()
-                            : '',
-                        },
-                      ]}
-                    />
-                  )
                 )}
               </>
             </div>
             <Spacer space="64" />
-            {accountType === AccountType.Account ? (
+            {account.accountType === AccountType.UserAccount ? (
               <Tab
                 tabs={tabs}
                 activeTab={activeTab}
@@ -275,7 +177,7 @@ export const AccountDetail: React.FC = () => {
                 }}
               />
             ) : (
-              <TransactionTable data={transactions} txType={TransactionSearchType.AllExceptInternalTx} />
+              <TransactionTable data={transactions} txType={TransactionType.transfer} />
             )}
           </>
         ) : (

@@ -1,175 +1,313 @@
-import { Account as EVMAccount } from '@ethereumjs/util'
-import { TxReceipt } from '@ethereumjs/vm/dist/types'
-import { ReadableReceipt } from './receipt'
-import { NetworkParameters } from '.'
-import { ContractInfo, TokenTx, TokenType } from './transaction'
+import { Message } from './transaction'
 
-export interface AccountsCopy {
+/** Same as type AccountsCopy in the shardus core */
+export type AccountsCopy = {
   accountId: string
-  data: any // Todo: Create a type of different accounts
+  data: any // eslint-disable-line @typescript-eslint/no-explicit-any
   timestamp: number
   hash: string
   cycleNumber: number
   isGlobal: boolean
 }
 
-export interface Account {
-  accountId: string
-  cycle: number
-  timestamp: number
-  ethAddress: string
-  account: WrappedEVMAccount
-  isGlobal: boolean
-  hash: string
-  accountType: AccountType
-  contractType?: ContractType
-  contractInfo?: ContractInfo
-}
-
-export interface Token {
-  ethAddress: string
-  contractAddress: string
-  tokenValue: string
-  tokenType: TokenType
-}
-
-export enum ContractType {
-  GENERIC,
-  ERC_20,
-  ERC_721,
-  ERC_1155,
-}
-
-export enum AccountType {
-  Account, //  EOA or CA
-  ContractStorage, // Contract storage key value pair
-  ContractCode, // Contract code bytes
-  Receipt, //This holds logs for a TX
-  Debug,
-  NetworkAccount,
-  NodeAccount,
-  NodeRewardReceipt,
-  DevAccount,
-  NodeAccount2,
-  StakeReceipt,
-  UnstakeReceipt,
-  InternalTxReceipt,
-  SecureAccount,
-}
-
-export enum AccountSearchType {
-  All, // All Accounts Type
-  EOA,
-  CA,
-  GENERIC, // Generic Contract Type
-  ERC_20,
-  ERC_721,
-  ERC_1155,
-  Receipt, // EVM Receipt
-  StakeReceipt,
-  UnstakeReceipt,
-  NetworkAccount,
-  NodeAccount,
-  NodeRewardReceipt,
-  NodeAccount2,
-  ContractStorage,
-  ContractCode,
-  InternalTxReceipt,
-}
-
-export interface BaseAccount {
-  accountType: AccountType
-}
-
-interface BaseWrappedEVMAccount extends BaseAccount {
-  /** account address in EVM space. can have different meanings depending on account type */
-  ethAddress: string
-
-  /** account hash */
-  hash: string
-
-  /** account timestamp. last time a TX changed it */
-  timestamp: number
+export interface Account extends AccountsCopy {
+  accountType?: AccountType
 }
 
 /**
- * Still working out the details here.
- * This has become a variant data type now that can hold an EVM account or a key value pair from CA storage
- * I think that is the shortest path for now to get syncing and repair functionality working
- *
- * Long term I am not certain if we will be able to hold these in memory.  They may have to be a temporary thing
- * that is held in memory for awhile but eventually cleared.  This would mean that we have to be able to pull these
- * from disk again, and that could be a bit tricky.
+ * ---------------------- ACCOUNT export interfaceS ----------------------
  */
-export type WrappedEVMAccount = BaseWrappedEVMAccount &
-  (WrappedDataReceipt | WrappedDataAccount | WrappedDataContractStorage | WrappedDataContractCode)
 
-/** Variant data: account */
-export interface WrappedDataAccount {
-  accountType: AccountType.Account
-  account: EVMAccount
-}
-
-/** Variant data: contract storage */
-export interface WrappedDataContractStorage {
-  accountType: AccountType.ContractStorage
-
-  /** EVM CA storage key */
-  key: string
-
-  /** EVM buffer value if this is of type CA_KVP */
-  value: Uint8Array
-}
-
-/** Variant data: contract code related and addresses */
-export interface WrappedDataContractCode {
-  accountType: AccountType.ContractCode
-
-  codeByte: Uint8Array
-  codeHash: Uint8Array
-  contractAddress: string
-}
-
-/** Variant data: receipt related */
-export interface WrappedDataReceipt {
-  accountType:
-    | AccountType.Receipt
-    | AccountType.NodeRewardReceipt
-    | AccountType.StakeReceipt
-    | AccountType.UnstakeReceipt
-    | AccountType.InternalTxReceipt
-
-  /** For debug tx */
-  balance: string
-  amountSpent: string
-  contractInfo: ContractInfo
-  nonce: string
-  readableReceipt: ReadableReceipt
-  receipt: TxReceipt
-  tokenTx: TokenTx
-  txFrom: string
-  txId: string
-}
-
-export interface NodeAccount extends BaseAccount {
+export interface UserAccount {
   id: string
-  balance: number
-  nodeRewardTime: number
+  type: string
+  data: {
+    balance: bigint
+    toll: bigint | null
+    chats: chatMessages
+    chatTimestamp: number
+    friends: object
+    stake?: bigint
+    remove_stake_request: number | null
+    // transactions: object[]
+    payments: DeveloperPayment[]
+  }
+  alias: string | null
+  emailHash: string | null
+  verified: string | boolean
+  lastMaintenance: number
+  claimedSnapshot: boolean
+  timestamp: number
+  hash: string
+  operatorAccountInfo?: OperatorAccountInfo
+  publicKey: string
+}
+
+interface chatMessages {
+  [address: string]: {
+    receivedTimestamp: number
+    chatId: string
+  }
+}
+
+export interface OperatorAccountInfo {
+  stake: bigint
+  nominee: string
+  certExp: number
+  operatorStats: OperatorStats
+}
+
+export interface OperatorStats {
+  //update when node is rewarded/penalized (exits)
+  totalNodeReward: bigint
+  totalNodePenalty: bigint
+  totalNodeTime: number
+  //push begin and end times when rewarded
+  history: { b: number; e: number }[]
+
+  //update then unstaked
+  totalUnstakeReward: bigint
+  unstakeCount: number
+
+  lastStakedNodeKey: string
+}
+
+export interface NodeAccount {
+  id: string
+  type: string
+  balance: bigint
+  nodeRewardTime: number // TODO: remove
   hash: string
   timestamp: number
+  nominator: string
+  stakeLock: bigint //amount of coins in
+  stakeTimestamp: number
+  reward: bigint
+  rewardStartTime: number
+  rewardEndTime: number
+  penalty: bigint
+  nodeAccountStats: NodeAccountStats
+  rewarded: boolean
+  rewardRate: bigint
 }
 
-/** Unrelated to `WrappedEVMAccount`,  */
-export interface WrappedAccount {
-  accountId: string
-  data: WrappedDataReceipt & WrappedEVMAccount
+export interface NodeAccountStats {
+  //update when node is rewarded/penalized (exits)
+  totalReward: bigint
+  totalPenalty: bigint
+  //push begin and end times when rewarded
+  history: { b: number; e: number }[]
+  lastPenaltyTime: number
+  penaltyHistory: { type: ViolationType; amount: bigint; timestamp: number }[]
+}
+
+export interface ChatAccount {
+  id: string
+  type: string
+  messages: Message[]
+  timestamp: number
+  hash: string
+}
+
+export interface AliasAccount {
+  id: string
+  type: string
+  hash: string
+  inbox: string
+  address: string
   timestamp: number
 }
 
-export interface NetworkAccount extends BaseAccount {
+export interface NetworkAccount {
   id: string
+  type: string
+  listOfChanges: Array<{
+    cycle: number
+    change: any
+    appData: any
+  }>
   current: NetworkParameters
   next: NetworkParameters | object
+  windows: Windows
+  nextWindows: Windows | object
+  devWindows: DevWindows
+  nextDevWindows: DevWindows | object
+  issue: number
+  devIssue: number
+  developerFund: DeveloperPayment[]
+  nextDeveloperFund: DeveloperPayment[]
+  hash: string
+  timestamp: number
+  snapshot?: object
+}
+
+export interface IssueAccount {
+  id: string
+  type: string
+  active: boolean | null
+  proposals: string[]
+  proposalCount: number
+  tallied: boolean
+  number: number | null
+  winnerId: string | null
   hash: string
   timestamp: number
 }
+
+export interface DevIssueAccount {
+  id: string
+  type: string
+  devProposals: string[]
+  devProposalCount: number
+  winners: string[]
+  active: boolean | null
+  tallied: boolean
+  number: number | null
+  hash: string
+  timestamp: number
+}
+
+export interface ProposalAccount {
+  id: string
+  type: string
+  power: number
+  totalVotes: number
+  parameters: NetworkParameters
+  winner: boolean
+  number: number | null
+  hash: string
+  timestamp: number
+}
+
+export interface DevProposalAccount {
+  id: string
+  type: string
+  approve: bigint
+  reject: bigint
+  title: string | null
+  description: string | null
+  totalVotes: number
+  totalAmount: bigint | null
+  payAddress: string
+  payments: DeveloperPayment[]
+  approved: boolean | null
+  number: number | null
+  hash: string
+  timestamp: number
+}
+
+export type Accounts = NetworkAccount &
+  IssueAccount &
+  DevIssueAccount &
+  UserAccount &
+  AliasAccount &
+  ProposalAccount &
+  DevProposalAccount &
+  NodeAccount &
+  ChatAccount
+export type AccountVariant =
+  | NetworkAccount
+  | IssueAccount
+  | DevIssueAccount
+  | UserAccount
+  | AliasAccount
+  | ProposalAccount
+  | DevProposalAccount
+  | NodeAccount
+  | ChatAccount
+
+/**
+ * ---------------------- NETWORK DATA export interfaceS ----------------------
+ */
+
+export interface NetworkParameters {
+  title: string
+  description: string
+  nodeRewardInterval: number
+  transactionFee: bigint
+  maintenanceInterval: number
+  maintenanceFee: bigint
+  proposalFee: bigint
+  devProposalFee: bigint
+  faucetAmount: bigint
+  defaultToll: bigint
+  nodeRewardAmountUsd: bigint
+  nodePenaltyUsd: bigint
+  stakeRequiredUsd: bigint
+  restakeCooldown: number
+  stabilityScaleMul: number
+  stabilityScaleDiv: number
+  minVersion: string
+  activeVersion: string
+  latestVersion: string
+  archiver: {
+    minVersion: string
+    activeVersion: string
+    latestVersion: string
+  }
+  txPause: boolean
+  certCycleDuration: number
+  enableNodeSlashing: boolean
+  slashing: {
+    enableLeftNetworkEarlySlashing: boolean
+    enableSyncTimeoutSlashing: boolean
+    enableNodeRefutedSlashing: boolean
+    leftNetworkEarlyPenaltyPercent: number
+    syncTimeoutPenaltyPercent: number
+    nodeRefutedPenaltyPercent: number
+  }
+}
+
+export interface Windows {
+  proposalWindow: number[]
+  votingWindow: number[]
+  graceWindow: number[]
+  applyWindow: number[]
+}
+
+export interface DevWindows {
+  devProposalWindow: number[]
+  devVotingWindow: number[]
+  devGraceWindow: number[]
+  devApplyWindow: number[]
+}
+
+export interface DeveloperPayment {
+  id: string
+  address: string
+  amount: bigint
+  delay: number
+  timestamp: number
+}
+
+export enum ViolationType {
+  ShardusCoreMaxID = 999,
+  LiberdusMinID = 1000,
+  // 0-999 reserved for shardus core
+  LeftNetworkEarly = 1000,
+  SyncingTooLong = 1001,
+  DoubleVote = 1002,
+  NodeRefuted = 1003,
+  //..others tbd
+
+  LiberdusMaxID = 2000,
+}
+
+export enum AccountType {
+  UserAccount = 'UserAccount',
+  NodeAccount = 'NodeAccount',
+  AliasAccount = 'AliasAccount',
+  ChatAccount = 'ChatAccount',
+  NetworkAccount = 'NetworkAccount',
+  IssueAccount = 'IssueAccount',
+  DevIssueAccount = 'DevIssueAccount',
+  ProposalAccount = 'ProposalAccount',
+  DevProposalAccount = 'DevProposalAccount',
+}
+
+export enum AccountSearchParams {
+  'all', // All Accounts Type
+  // e.g 'UserAndNodeAccounts' for User and Node Accounts
+}
+
+export type AccountSearchType = AccountType | AccountSearchParams

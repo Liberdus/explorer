@@ -1,10 +1,12 @@
-import * as crypto from '@shardeum-foundation/lib-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 import * as utils from '../utils'
-import { config as CONFIG } from '../config'
+import { config } from '../config'
 import { insertOrUpdateCycle } from '../storage/cycle'
 import { processReceiptData } from '../storage/receipt'
 import { processOriginalTxData } from '../storage/originalTxData'
-import { Receipt, Cycle, OriginalTxData } from '../types'
+import { CycleLogWriter, ReceiptLogWriter, OriginalTxDataLogWriter } from './DataLogWriter'
+import { Cycle, OriginalTxData, Receipt } from '../types'
+import { Utils as StringUtils } from '@shardus/types'
 
 export interface Data {
   receipt?: Receipt
@@ -31,7 +33,7 @@ export async function validateData(data: Data): Promise<boolean> {
   if (err) {
     return false
   }
-  if (data.sign.owner !== CONFIG.distributorInfo.publicKey) {
+  if (data.sign.owner !== config.distributorInfo.publicKey) {
     console.error('Data received from distributor has invalid key')
     return false
   }
@@ -45,19 +47,20 @@ export async function validateData(data: Data): Promise<boolean> {
   }
 
   if (data.receipt) {
+    if (config.dataLogWrite) ReceiptLogWriter.writeToLog(`${StringUtils.safeStringify(data.receipt)}\n`)
     await processReceiptData([data.receipt])
     return true
   }
-
   if (data.cycle) {
+    if (config.dataLogWrite) CycleLogWriter.writeToLog(`${StringUtils.safeStringify(data.cycle)}\n`)
     await insertOrUpdateCycle(data.cycle)
     return true
   }
-
   if (data.originalTx) {
+    if (config.dataLogWrite)
+      OriginalTxDataLogWriter.writeToLog(`${StringUtils.safeStringify(data.originalTx)}\n`)
     await processOriginalTxData([data.originalTx])
     return true
   }
-
   return false
 }

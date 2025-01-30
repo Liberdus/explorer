@@ -9,32 +9,23 @@ import { breadcrumbsList } from '../../types'
 import { Account as AccountT } from '../../../types'
 
 import styles from './Account.module.scss'
-import { fromWeiNoTrailingComma } from '../../utils/fromWeiNoTrailingComma'
+import { calculateFullValue } from '../../utils/calculateValue'
 
 const siblingCount = 3
 const limit = 10
 
 const tableColumns: IColumnProps<AccountT>[] = [
   {
-    key: 'ethAddress',
+    key: 'accountId',
     value: 'Account Address',
-    render: (val: unknown, item: AccountT) => (
+    render: (val: unknown) => (
       <AnchorLink
-        href={`/account/${item?.ethAddress}`}
+        href={`/account/${val}`}
         label={val as string}
         size="small"
-        width={400}
+        width={600}
         ellipsis
       />
-    ),
-  },
-  {
-    key: 'account.account.balance',
-    value: 'Balance',
-    render: (_: unknown, item: AccountT) => (
-      <>{`${Number(
-        fromWeiNoTrailingComma(`0x${item?.account?.account?.balance}`, 'ether')
-      ).toFixed()} SHM`}</>
     ),
   },
   {
@@ -43,9 +34,9 @@ const tableColumns: IColumnProps<AccountT>[] = [
     render: (val: unknown) => moment(val as string).fromNow(),
   },
   {
-    key: 'contractInfo',
+    key: 'accountType',
     value: 'Account Type',
-    render: (val: unknown) => (val ? 'Contract Account' : 'User Account'),
+    render: (val: unknown) => (val as string),
   },
 ]
 

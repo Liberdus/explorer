@@ -23,8 +23,8 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
             <div className={styles.logo}>Tx</div>
             <div>
               <AnchorLink
-                href={`/transaction/${item.txHash}`}
-                label={item.txHash}
+                href={`/transaction/${item.txId}`}
+                label={item.txId}
                 size="small"
                 width={180}
                 ellipsis
@@ -36,7 +36,7 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
                 <span>From</span>
                 <AnchorLink
                   href={`/account/${item.txFrom}`}
-                  label={item.txFrom}
+                  label={item.txFrom as string}
                   size="small"
                   width={180}
                   ellipsis
@@ -46,7 +46,7 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
                 <span>To</span>
                 <AnchorLink
                   href={`/account/${item.txTo}`}
-                  label={item.txTo}
+                  label={item.txTo as string}
                   size="small"
                   width={180}
                   ellipsis

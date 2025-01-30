@@ -1,27 +1,9 @@
-import axios from 'axios'
-import * as Account from '../storage/account'
-import * as Transaction from '../storage/transaction'
-import * as Cycle from '../storage/cycle'
-import * as Receipt from '../storage/receipt'
-import * as OriginalTxData from '../storage/originalTxData'
+import axios, { AxiosResponse } from 'axios'
+import * as crypto from '@shardus/crypto-utils'
+import { AccountDB, CycleDB, ReceiptDB, TransactionDB, OriginalTxDataDB } from '../storage'
 import { config, DISTRIBUTOR_URL } from '../config'
-import * as crypto from '@shardeum-foundation/lib-crypto-utils'
-import { Cycle as CycleType } from '../types/cycle'
-import { Utils as StringUtils } from '@shardeum-foundation/lib-types'
-
-export let needSyncing = false
-
-const MAX_RECEIPTS_PER_REQUEST = 100
-const MAX_ORIGINAL_TXS_PER_REQUEST = 100
-const MAX_CYCLES_PER_REQUEST = 100
-const MAX_ACCOUNTS_PER_REQUEST = 100
-
-const MAX_BETWEEN_CYCLES_PER_REQUEST = 100
-
-export const toggleNeedSyncing = (): void => {
-  needSyncing = !needSyncing
-  if (config.verbose) console.log('needSyncing', needSyncing)
-}
+import { Cycle as CycleType } from '../types'
+import { Utils as StringUtils } from '@shardus/types'
 
 export enum DataType {
   CYCLE = 'cycleinfo',
@@ -32,10 +14,23 @@ export enum DataType {
   TOTALDATA = 'totalData',
 }
 
-export const queryFromDistributor = async (type: DataType, queryParameters: any): Promise<any> => {
+interface queryFromDistributorParameters {
+  start?: number
+  end?: number
+  page?: number
+  type?: string
+  startCycle?: number
+  endCycle?: number
+}
+
+export const queryFromDistributor = async (
+  type: DataType,
+  queryParameters: queryFromDistributorParameters
+): Promise<AxiosResponse> => {
   const data = {
     ...queryParameters,
     sender: config.collectorInfo.publicKey,
+    sign: undefined,
   }
   crypto.signObj(data, config.collectorInfo.secretKey, config.collectorInfo.publicKey)
   let url
@@ -64,7 +59,7 @@ export const queryFromDistributor = async (type: DataType, queryParameters: any)
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 30000,
+      timeout: 45000,
       transformResponse: (res) => {
         return StringUtils.safeJsonParse(res)
       },
@@ -79,7 +74,7 @@ export const queryFromDistributor = async (type: DataType, queryParameters: any)
 export async function compareWithOldReceiptsData(
   lastStoredReceiptCycle = 0
 ): Promise<{ success: boolean; matchedCycle: number }> {
-  const numberOfCyclesTocompare = 10
+  const numberOfCyclesTocompare = 20
   const endCycle = lastStoredReceiptCycle
   const startCycle = endCycle - numberOfCyclesTocompare > 0 ? endCycle - numberOfCyclesTocompare : 0
   let downloadedReceiptCountByCycles: { cycle: number; receipts: number }[]
@@ -91,7 +86,7 @@ export async function compareWithOldReceiptsData(
       `Can't fetch receipts data from cycle ${startCycle} to cycle ${endCycle}  from distributor ${DISTRIBUTOR_URL}`
     )
   }
-  const oldReceiptCountByCycle = await Receipt.queryReceiptCountByCycles(startCycle, endCycle)
+  const oldReceiptCountByCycle = await ReceiptDB.queryReceiptCountByCycles(startCycle, endCycle)
   let success = false
   let matchedCycle = 0
   for (let i = 0; i < downloadedReceiptCountByCycles.length; i++) {
@@ -116,7 +111,7 @@ export async function compareWithOldReceiptsData(
 export async function compareWithOldOriginalTxsData(
   lastStoredOriginalTxDataCycle = 0
 ): Promise<{ success: boolean; matchedCycle: number }> {
-  const numberOfCyclesTocompare = 10
+  const numberOfCyclesTocompare = 20
   const endCycle = lastStoredOriginalTxDataCycle
   const startCycle = endCycle - numberOfCyclesTocompare > 0 ? endCycle - numberOfCyclesTocompare : 0
   let downloadedOriginalTxDataCountByCycles: { cycle: number; originalTxsData: number }[]
@@ -128,7 +123,7 @@ export async function compareWithOldOriginalTxsData(
       `Can't fetch originalTxsData data from cycle ${startCycle} to cycle ${endCycle}  from distributor ${DISTRIBUTOR_URL}`
     )
   }
-  const oldOriginalTxDataCountByCycle = await OriginalTxData.queryOriginalTxDataCountByCycles(
+  const oldOriginalTxDataCountByCycle = await OriginalTxDataDB.queryOriginalTxDataCountByCycles(
     startCycle,
     endCycle
   )
@@ -161,21 +156,22 @@ export const compareWithOldCyclesData = async (
 ): Promise<{ success: boolean; cycle: number }> => {
   let downloadedCycles: CycleType[]
 
-  const numberOfCyclesTocompare = 10
+  const numberOfCyclesTocompare = 20
   const response = await queryFromDistributor(DataType.CYCLE, {
     start: lastCycleCounter - numberOfCyclesTocompare,
     end: lastCycleCounter - 1,
   })
+
   if (response && response.data && response.data.cycleInfo) {
     downloadedCycles = response.data.cycleInfo
   } else {
     throw Error(
       `Can't fetch data from cycle ${
         lastCycleCounter - numberOfCyclesTocompare
-      } to cycle ${lastCycleCounter}  from archiver server`
+      } to cycle ${lastCycleCounter}  from distributor server`
     )
   }
-  const oldCycles = await Cycle.queryCycleRecordsBetween(
+  const oldCycles = await CycleDB.queryCycleRecordsBetween(
     lastCycleCounter - numberOfCyclesTocompare,
     lastCycleCounter + 1
   )
@@ -217,118 +213,87 @@ export const downloadTxsDataAndCycles = async (
   let startReceipt = fromReceipt
   let startCycle = fromCycle
   let startOriginalTxData = fromOriginalTxData
-  let endReceipt = startReceipt + MAX_RECEIPTS_PER_REQUEST
-  let endCycle = startCycle + MAX_CYCLES_PER_REQUEST
-  let endOriginalTxData = startOriginalTxData + MAX_ORIGINAL_TXS_PER_REQUEST
-  while (!completeForReceipt || !completeForCycle || !completeForOriginalTxData) {
-    if (
-      endReceipt >= totalReceiptsToSync ||
-      endCycle >= totalCyclesToSync ||
-      endOriginalTxData >= totalOriginalTxsToSync
-    ) {
-      const res = await queryFromDistributor(DataType.TOTALDATA, {})
-      if (res.data && res.data.totalCycles && res.data.totalReceipts) {
-        if (totalReceiptsToSync < res.data.totalReceipts) {
-          completeForReceipt = false
-          totalReceiptsToSync = res.data.totalReceipts
-        }
-        if (totalOriginalTxsToSync < res.data.totalOriginalTxs) {
-          completeForOriginalTxData = false
-          totalOriginalTxsToSync = res.data.totalOriginalTxs
-        }
-        if (totalCyclesToSync < res.data.totalCycles) {
-          completeForCycle = false
-          totalCyclesToSync = res.data.totalCycles
-        }
-        console.log(
-          'totalReceiptsToSync',
-          totalReceiptsToSync,
-          'totalCyclesToSync',
-          totalCyclesToSync,
-          'totalOriginalTxsToSync',
-          totalOriginalTxsToSync
-        )
+  let endReceipt = startReceipt + config.requestLimits.MAX_RECEIPTS_PER_REQUEST
+  let endCycle = startCycle + config.requestLimits.MAX_CYCLES_PER_REQUEST
+  let endOriginalTxData = startOriginalTxData + config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST
+  if (fromCycle >= totalCyclesToSync) completeForCycle = true
+  if (fromReceipt >= totalReceiptsToSync) completeForReceipt = true
+  if (fromOriginalTxData >= totalOriginalTxsToSync) completeForOriginalTxData = true
+  let totalDownloadedReceipts = fromReceipt
+  while (!completeForReceipt) {
+    console.log(`Downloading receipts from ${startReceipt} to ${endReceipt}`)
+    const response = await queryFromDistributor(DataType.RECEIPT, { start: startReceipt, end: endReceipt })
+    if (response && response.data && response.data.receipts) {
+      console.log(`Downloaded receipts`, response.data.receipts.length)
+      await ReceiptDB.processReceiptData(response.data.receipts)
+      totalDownloadedReceipts += response.data.receipts.length
+      startReceipt = endReceipt + 1
+      endReceipt += config.requestLimits.MAX_RECEIPTS_PER_REQUEST
+      if (totalDownloadedReceipts >= totalReceiptsToSync) {
+        completeForReceipt = true
+        console.log('Download completed for receipts')
       }
+    } else {
+      console.log('Receipt', 'Invalid download response', startReceipt, endReceipt)
     }
-    if (!completeForReceipt) {
-      console.log(`Downloading receipts from ${startReceipt} to ${endReceipt}`)
-      const response = await queryFromDistributor(DataType.RECEIPT, { start: startReceipt, end: endReceipt })
-      if (response && response.data && response.data.receipts) {
-        console.log(`Downloaded receipts`, response.data.receipts.length)
-        await Receipt.processReceiptData(response.data.receipts)
-        if (response.data.receipts.length < MAX_RECEIPTS_PER_REQUEST) {
-          completeForReceipt = true
-          startReceipt += response.data.receipts.length
-          endReceipt = startReceipt + MAX_RECEIPTS_PER_REQUEST
-          console.log('Download completed for receipts')
-        } else {
-          startReceipt = endReceipt + 1
-          endReceipt += MAX_RECEIPTS_PER_REQUEST
-        }
-      } else {
-        console.log('Receipt', 'Invalid download response', startReceipt, endReceipt)
+  }
+  let totalDownloadedOriginalTxsData = fromOriginalTxData
+  while (!completeForOriginalTxData) {
+    console.log(`Downloading originalTxsData from ${startOriginalTxData} to ${endOriginalTxData}`)
+    const response = await queryFromDistributor(DataType.ORIGINALTX, {
+      start: startOriginalTxData,
+      end: endOriginalTxData,
+    })
+    if (response && response.data && response.data.originalTxs) {
+      console.log(`Downloaded originalTxsData`, response.data.originalTxs.length)
+      await OriginalTxDataDB.processOriginalTxData(response.data.originalTxs)
+      totalDownloadedOriginalTxsData += response.data.originalTxs.length
+      startOriginalTxData = endOriginalTxData + 1
+      endOriginalTxData += config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST
+      if (totalDownloadedOriginalTxsData >= totalOriginalTxsToSync) {
+        completeForOriginalTxData = true
+        console.log('Download completed for originalTxsData')
       }
+    } else {
+      console.log('OriginalTxData', 'Invalid download response', startOriginalTxData, endOriginalTxData)
     }
-    if (!completeForOriginalTxData) {
-      console.log(`Downloading originalTxsData from ${startOriginalTxData} to ${endOriginalTxData}`)
-      const response = await queryFromDistributor(DataType.ORIGINALTX, {
-        start: startOriginalTxData,
-        end: endOriginalTxData,
-      })
-      if (response && response.data && response.data.originalTxs) {
-        console.log(`Downloaded originalTxsData`, response.data.originalTxs.length)
-        await OriginalTxData.processOriginalTxData(response.data.originalTxs)
-        if (response.data.originalTxs.length < MAX_ORIGINAL_TXS_PER_REQUEST) {
-          completeForOriginalTxData = true
-          startOriginalTxData += response.data.originalTxs.length
-          endOriginalTxData = startOriginalTxData + MAX_ORIGINAL_TXS_PER_REQUEST
-          console.log('Download completed for originalTxsData')
-        } else {
-          startOriginalTxData = endOriginalTxData + 1
-          endOriginalTxData += MAX_ORIGINAL_TXS_PER_REQUEST
+  }
+  let totalDownloadedCycles = fromCycle
+  while (!completeForCycle) {
+    console.log(`Downloading cycles from ${startCycle} to ${endCycle}`)
+    const response = await queryFromDistributor(DataType.CYCLE, { start: startCycle, end: endCycle })
+    if (response && response.data && response.data.cycleInfo) {
+      console.log(`Downloaded cycles`, response.data.cycleInfo.length)
+      const cycles = response.data.cycleInfo
+      let combineCycles = []
+      for (let i = 0; i < cycles.length; i++) {
+        // eslint-disable-next-line security/detect-object-injection
+        const cycle = cycles[i]
+        if (!cycle.marker || cycle.counter < 0) {
+          console.log('Invalid Cycle Received', cycle)
+          continue
         }
-      } else {
-        console.log('OriginalTxData', 'Invalid download response', startOriginalTxData, endOriginalTxData)
+        const cycleObj = {
+          counter: cycle.counter,
+          cycleRecord: cycle,
+          cycleMarker: cycle.marker,
+        }
+        combineCycles.push(cycleObj)
+        // await Cycle.insertOrUpdateCycle(cycleObj);
+        if (combineCycles.length >= config.requestLimits.MAX_CYCLES_PER_REQUEST || i === cycles.length - 1) {
+          await CycleDB.bulkInsertCycles(combineCycles)
+          combineCycles = []
+        }
       }
-    }
-    if (!completeForCycle) {
-      console.log(`Downloading cycles from ${startCycle} to ${endCycle}`)
-      const response = await queryFromDistributor(DataType.CYCLE, { start: startCycle, end: endCycle })
-      if (response && response.data && response.data.cycleInfo) {
-        console.log(`Downloaded cycles`, response.data.cycleInfo.length)
-        const cycles = response.data.cycleInfo
-        let combineCycles = []
-        for (let i = 0; i < cycles.length; i++) {
-          // eslint-disable-next-line security/detect-object-injection
-          const cycle = cycles[i]
-          if (!cycle.marker || cycle.counter < 0) {
-            console.log('Invalid Cycle Received', cycle)
-            continue
-          }
-          const cycleObj = {
-            counter: cycle.counter,
-            cycleRecord: cycle,
-            cycleMarker: cycle.marker,
-          }
-          combineCycles.push(cycleObj)
-          // await Cycle.insertOrUpdateCycle(cycleObj);
-          if (combineCycles.length >= MAX_CYCLES_PER_REQUEST || i === cycles.length - 1) {
-            await Cycle.bulkInsertCycles(combineCycles)
-            combineCycles = []
-          }
-        }
-        if (response.data.cycleInfo.length < MAX_CYCLES_PER_REQUEST) {
-          completeForCycle = true
-          startCycle += response.data.cycleInfo.length
-          endCycle = startCycle + MAX_CYCLES_PER_REQUEST
-          console.log('Download completed for cycles')
-        } else {
-          startCycle = endCycle + 1
-          endCycle += MAX_CYCLES_PER_REQUEST
-        }
-      } else {
-        console.log('Cycle', 'Invalid download response', startCycle, endCycle)
+      totalDownloadedCycles += response.data.cycleInfo.length
+      startCycle = endCycle + 1
+      endCycle += config.requestLimits.MAX_CYCLES_PER_REQUEST
+      if (totalDownloadedCycles >= totalCyclesToSync) {
+        completeForCycle = true
+        console.log('Download completed for cycles')
       }
+    } else {
+      console.log('Cycle', 'Invalid download response', startCycle, endCycle)
     }
   }
   console.log('Sync Cycle and Txs data completed!')
@@ -338,15 +303,15 @@ export const downloadAndSyncGenesisAccounts = async (): Promise<void> => {
   let completeSyncingAccounts = false
   let completeSyncTransactions = false
   let startAccount = 0
-  let endAccount = startAccount + MAX_ACCOUNTS_PER_REQUEST
+  let endAccount = startAccount + config.requestLimits.MAX_ACCOUNTS_PER_REQUEST
   let startTransaction = 0
-  let endTransaction = startTransaction + MAX_ACCOUNTS_PER_REQUEST
+  let endTransaction = startTransaction + config.requestLimits.MAX_TRANSACTIONS_PER_REQUEST
   let combineTransactions = []
 
   let totalGenesisAccounts = 0
   let totalGenesisTransactionReceipts = 0
-  const totalExistingGenesisAccounts = await Account.queryAccountCountBetweenCycles(0, 5)
-  const totalExistingGenesisTransactionReceipts = await Transaction.queryTransactionCountBetweenCycles(0, 5)
+  const totalExistingGenesisAccounts = await AccountDB.queryAccountCount(0, 5)
+  const totalExistingGenesisTransactionReceipts = await TransactionDB.queryTransactionCount(null, null, 0, 5)
   if (totalExistingGenesisAccounts > 0 && totalExistingGenesisTransactionReceipts > 0) {
     // Let's assume it has synced data for now, update to sync account count between them
     return
@@ -366,22 +331,22 @@ export const downloadAndSyncGenesisAccounts = async (): Promise<void> => {
       console.log(`Downloading accounts from ${startAccount} to ${endAccount}`)
       const response = await queryFromDistributor(DataType.ACCOUNT, { startCycle: 0, endCycle: 5, page })
       if (response && response.data && response.data.accounts) {
-        if (response.data.accounts.length < MAX_ACCOUNTS_PER_REQUEST) {
+        if (response.data.accounts.length < config.requestLimits.MAX_ACCOUNTS_PER_REQUEST) {
           completeSyncingAccounts = true
           console.log('Download completed for accounts')
         }
         console.log(`Downloaded accounts`, response.data.accounts.length)
-        const transactions = await Account.processAccountData(response.data.accounts)
+        const transactions = await AccountDB.processAccountData(response.data.accounts)
         combineTransactions = [...combineTransactions, ...transactions]
       } else {
         console.log('Genesis Account', 'Invalid download response')
       }
       startAccount = endAccount
-      endAccount += MAX_ACCOUNTS_PER_REQUEST
+      endAccount += config.requestLimits.MAX_ACCOUNTS_PER_REQUEST
       page++
       // await sleep(1000);
     }
-    await Transaction.processTransactionData(combineTransactions)
+    await TransactionDB.processTransactionData(combineTransactions)
   }
   if (totalExistingGenesisTransactionReceipts === 0) {
     const res = await queryFromDistributor(DataType.TRANSACTION, { startCycle: 0, endCycle: 5 })
@@ -397,17 +362,17 @@ export const downloadAndSyncGenesisAccounts = async (): Promise<void> => {
       console.log(`Downloading transactions from ${startTransaction} to ${endTransaction}`)
       const response = await queryFromDistributor(DataType.TRANSACTION, { startCycle: 0, endCycle: 5, page })
       if (response && response.data && response.data.transactions) {
-        if (response.data.transactions.length < MAX_ACCOUNTS_PER_REQUEST) {
+        if (response.data.transactions.length < config.requestLimits.MAX_TRANSACTIONS_PER_REQUEST) {
           completeSyncTransactions = true
           console.log('Download completed for transactions')
         }
         console.log(`Downloaded transactions`, response.data.transactions.length)
-        await Transaction.processTransactionData(response.data.transactions)
+        await TransactionDB.processTransactionData(response.data.transactions)
       } else {
         console.log('Genesis Transaction Receipt', 'Invalid download response')
       }
       startTransaction = endTransaction
-      endTransaction += MAX_ACCOUNTS_PER_REQUEST
+      endTransaction += config.requestLimits.MAX_TRANSACTIONS_PER_REQUEST
       page++
     }
   }
@@ -421,6 +386,7 @@ export async function compareReceiptsCountByCycles(
 ): Promise<{ cycle: number; receipts: number }[]> {
   const unMatchedCycle = []
   let downloadedReceiptCountByCycle: { cycle: number; receipts: number }[]
+
   const response = await queryFromDistributor(DataType.RECEIPT, { startCycle, endCycle, type: 'tally' })
   if (response && response.data && response.data.receipts) {
     downloadedReceiptCountByCycle = response.data.receipts
@@ -430,7 +396,7 @@ export async function compareReceiptsCountByCycles(
     )
     return
   }
-  const existingReceiptCountByCycle = await Receipt.queryReceiptCountByCycles(startCycle, endCycle)
+  const existingReceiptCountByCycle = await ReceiptDB.queryReceiptCountByCycles(startCycle, endCycle)
   if (config.verbose) console.log('downloadedReceiptCountByCycle', downloadedReceiptCountByCycle)
   if (config.verbose) console.log('existingReceiptCountByCycle', existingReceiptCountByCycle)
   for (const downloadedReceipt of downloadedReceiptCountByCycle) {
@@ -454,6 +420,7 @@ export async function compareOriginalTxsCountByCycles(
 ): Promise<{ cycle: number; originalTxsData: number }[]> {
   const unMatchedCycle = []
   let downloadedOriginalTxDataCountByCycle: { cycle: number; originalTxsData: number }[]
+
   const response = await queryFromDistributor(DataType.ORIGINALTX, { startCycle, endCycle, type: 'tally' })
   if (response && response.data && response.data.originalTxs) {
     downloadedOriginalTxDataCountByCycle = response.data.originalTxs
@@ -463,7 +430,7 @@ export async function compareOriginalTxsCountByCycles(
     )
     return
   }
-  const existingOriginalTxDataCountByCycle = await OriginalTxData.queryOriginalTxDataCountByCycles(
+  const existingOriginalTxDataCountByCycle = await OriginalTxDataDB.queryOriginalTxDataCountByCycles(
     startCycle,
     endCycle
   )
@@ -502,7 +469,7 @@ export async function downloadReceiptsByCycle(
         const downloadedReceipts = response.data.receipts
         if (downloadedReceipts.length > 0) {
           totalDownloadedReceipts += downloadedReceipts.length
-          await Receipt.processReceiptData(downloadedReceipts)
+          await ReceiptDB.processReceiptData(downloadedReceipts)
         } else {
           console.log(
             `Got 0 receipts when querying for page ${page} of cycle ${cycle} from distributor ${DISTRIBUTOR_URL}`
@@ -543,7 +510,7 @@ export async function downloadOriginalTxsDataByCycle(
         const downloadedOriginalTxsData = response.data.originalTxs
         if (downloadedOriginalTxsData.length > 0) {
           totalDownloadOriginalTxsData += downloadedOriginalTxsData.length
-          await OriginalTxData.processOriginalTxData(downloadedOriginalTxsData)
+          await OriginalTxDataDB.processOriginalTxData(downloadedOriginalTxsData)
         } else {
           console.log(
             `Got 0 originalTxData when querying for page ${page} of cycle ${cycle} from distributor ${DISTRIBUTOR_URL}`
@@ -572,14 +539,14 @@ export const downloadCyclcesBetweenCycles = async (
   totalCyclesToSync: number,
   saveOnlyNewData = false
 ): Promise<void> => {
-  let endCycle = startCycle + MAX_CYCLES_PER_REQUEST
+  let endCycle = startCycle + config.requestLimits.MAX_CYCLES_PER_REQUEST
   for (; startCycle <= totalCyclesToSync; ) {
     if (endCycle > totalCyclesToSync) endCycle = totalCyclesToSync
-    const response = await queryFromDistributor(DataType.CYCLE, { startCycle, endCycle })
+    const response = await queryFromDistributor(DataType.CYCLE, { start: startCycle, end: endCycle })
     if (response && response.data && response.data.cycleInfo) {
       console.log(`Downloaded cycles`, response.data.cycleInfo.length)
       const cycles = response.data.cycleInfo
-      const combineCycles = []
+      let combineCycles = []
       for (let i = 0; i < cycles.length; i++) {
         // eslint-disable-next-line security/detect-object-injection
         const cycle = cycles[i]
@@ -593,15 +560,18 @@ export const downloadCyclcesBetweenCycles = async (
           cycleMarker: cycle.marker,
         }
         if (saveOnlyNewData) {
-          const existingCycle = await Cycle.queryCycleByCounter(cycleObj.counter)
-          if (existingCycle) continue
+          const existingCycle = await CycleDB.queryCycleByCounter(cycleObj.counter)
+          if (!existingCycle) combineCycles.push(cycleObj)
         } else combineCycles.push(cycleObj)
-        combineCycles.push(cycleObj)
+        // await Cycle.insertOrUpdateCycle(cycleObj);
+        if (combineCycles.length >= config.requestLimits.MAX_CYCLES_PER_REQUEST || i === cycles.length - 1) {
+          if (combineCycles.length > 0) await CycleDB.bulkInsertCycles(combineCycles)
+          combineCycles = []
+        }
       }
-      await Cycle.bulkInsertCycles(combineCycles)
     }
     startCycle = endCycle + 1
-    endCycle += MAX_CYCLES_PER_REQUEST
+    endCycle += config.requestLimits.MAX_CYCLES_PER_REQUEST
   }
   console.log('Download completed for cycles between counter', startCycle, 'and', endCycle)
 }
@@ -611,7 +581,7 @@ export const downloadReceiptsBetweenCycles = async (
   totalCyclesToSync: number,
   saveOnlyNewData = false
 ): Promise<void> => {
-  let endCycle = startCycle + MAX_BETWEEN_CYCLES_PER_REQUEST
+  let endCycle = startCycle + config.requestLimits.MAX_BETWEEN_CYCLES_PER_REQUEST
   for (; startCycle <= totalCyclesToSync; ) {
     if (endCycle > totalCyclesToSync) endCycle = totalCyclesToSync
     console.log(`Downloading receipts from cycle ${startCycle} to cycle ${endCycle}`)
@@ -619,12 +589,12 @@ export const downloadReceiptsBetweenCycles = async (
     if (response && response.data && response.data.receipts) {
       console.log(`Download receipts Count`, response.data.receipts)
       const receiptsCount = response.data.receipts
-      for (let i = 1; i <= Math.ceil(receiptsCount / MAX_BETWEEN_CYCLES_PER_REQUEST); i++) {
+      for (let i = 1; i <= Math.ceil(receiptsCount / config.requestLimits.MAX_RECEIPTS_PER_REQUEST); i++) {
         response = await queryFromDistributor(DataType.RECEIPT, { startCycle, endCycle, page: i })
         if (response && response.data && response.data.receipts) {
           console.log(`Downloaded receipts`, response.data.receipts.length)
           const receipts = response.data.receipts
-          await Receipt.processReceiptData(receipts, saveOnlyNewData)
+          await ReceiptDB.processReceiptData(receipts, saveOnlyNewData)
         }
       }
     } else {
@@ -632,7 +602,7 @@ export const downloadReceiptsBetweenCycles = async (
         console.log('Receipt', 'Invalid download response')
     }
     startCycle = endCycle + 1
-    endCycle += MAX_BETWEEN_CYCLES_PER_REQUEST
+    endCycle += config.requestLimits.MAX_BETWEEN_CYCLES_PER_REQUEST
   }
 }
 
@@ -641,7 +611,7 @@ export const downloadOriginalTxsDataBetweenCycles = async (
   totalCyclesToSync: number,
   saveOnlyNewData = false
 ): Promise<void> => {
-  let endCycle = startCycle + MAX_BETWEEN_CYCLES_PER_REQUEST
+  let endCycle = startCycle + config.requestLimits.MAX_BETWEEN_CYCLES_PER_REQUEST
   for (; startCycle <= totalCyclesToSync; ) {
     if (endCycle > totalCyclesToSync) endCycle = totalCyclesToSync
     console.log(`Downloading originalTxsData from cycle ${startCycle} to cycle ${endCycle}`)
@@ -649,12 +619,16 @@ export const downloadOriginalTxsDataBetweenCycles = async (
     if (response && response.data && response.data.originalTxs) {
       console.log(`Download originalTxsData Count`, response.data.originalTxs)
       const originalTxsDataCount = response.data.originalTxs
-      for (let i = 1; i <= Math.ceil(originalTxsDataCount / MAX_BETWEEN_CYCLES_PER_REQUEST); i++) {
+      for (
+        let i = 1;
+        i <= Math.ceil(originalTxsDataCount / config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST);
+        i++
+      ) {
         response = await queryFromDistributor(DataType.ORIGINALTX, { startCycle, endCycle, page: i })
         if (response && response.data && response.data.originalTxs) {
           console.log(`Downloaded originalTxsData`, response.data.originalTxs.length)
           const originalTxsData = response.data.originalTxs
-          await OriginalTxData.processOriginalTxData(originalTxsData, saveOnlyNewData)
+          await OriginalTxDataDB.processOriginalTxData(originalTxsData, saveOnlyNewData)
         }
       }
     } else {
@@ -662,6 +636,6 @@ export const downloadOriginalTxsDataBetweenCycles = async (
         console.log('OriginalTxData', 'Invalid download response')
     }
     startCycle = endCycle + 1
-    endCycle += MAX_BETWEEN_CYCLES_PER_REQUEST
+    endCycle += config.requestLimits.MAX_BETWEEN_CYCLES_PER_REQUEST
   }
 }
