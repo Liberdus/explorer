@@ -14,7 +14,7 @@ type ReceiptDetailResult = {
 
 export const useReceiptDetail = (txHash: string): ReceiptDetailResult | null => {
   const { data: transactionData } = useSWR<{ transactions: Transaction[] }>(
-    `${PATHS.TRANSACTION_DETAIL}?txHash=${txHash}&type=requery`,
+    `${PATHS.TRANSACTION_DETAIL}?txId=${txHash}&type=requery`,
     fetcher
   )
 

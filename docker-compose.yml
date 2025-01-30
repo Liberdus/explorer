@@ -2,7 +2,7 @@
 version: '3'
 services:
   collector:
-    image: &image registry.gitlab.com/shardeum/shardeum-explorer:dev
+    image: &image registry.gitlab.com/liberdus/liberdus-explorer:dev
     container_name: explorer-collector
     build: .
     restart: unless-stopped

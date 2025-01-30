@@ -10,13 +10,13 @@ export interface CardDetailProps {
   totalNodes: number
   totalStandby: number
   totalTransactions: number
-  totalRewardTxs: number
-  totalStakeTxs: number
-  totalUnstakeTxs: number
+  totalTransferTxs: number
+  totalMessageTxs: number
+  totalDepositStakeTxs: number
+  totalWithdrawStakeTxs: number
   totalAccounts: number
-  totalContracts: number
-  totalStakedSHM: number
-  totalSHM: number
+  totalStakedLIB: number
+  totalLIB: number
 }
 
 export const CardDetail: React.FC<CardDetailProps> = (data) => {
@@ -68,18 +68,6 @@ export const CardDetail: React.FC<CardDetailProps> = (data) => {
           </div>
         </Link>
         <hr />
-        <Link href="/contract">
-          <div className={styles.item}>
-            <div className={styles.icon}>
-              <Icon name="contract" size="medium" color="primary" />
-            </div>
-            <div>
-              <p className={styles.title}>Total Contracts</p>
-              <p>{data?.totalContracts?.toLocaleString()}</p>
-            </div>
-          </div>
-        </Link>
-        <hr />
         <Link href="/transaction">
           <div className={styles.item}>
             <div className={styles.icon}>
@@ -88,6 +76,20 @@ export const CardDetail: React.FC<CardDetailProps> = (data) => {
             <div>
               <p className={styles.title}>Total Transactions</p>
               <p>{data?.totalTransactions?.toLocaleString()}</p>
+            </div>
+          </div>
+        </Link>
+        <hr />
+        <Link href="/transaction">
+          <div className={styles.item}>
+            <div className={styles.icon}>
+              <Icon name="contract" size="medium" color="primary" />
+            </div>
+            <div>
+              <p className={styles.title}>Total Transfer / Message Transactions</p>
+              <p>
+                {data?.totalTransferTxs?.toLocaleString()} / {data?.totalMessageTxs?.toLocaleString()}
+              </p>
             </div>
           </div>
         </Link>
@@ -101,7 +103,8 @@ export const CardDetail: React.FC<CardDetailProps> = (data) => {
             <div>
               <p className={styles.title}>Total Stake / Unstake Transactions</p>
               <p>
-                {data?.totalStakeTxs?.toLocaleString()} / {data?.totalUnstakeTxs?.toLocaleString()}
+                {data?.totalDepositStakeTxs?.toLocaleString()} /{' '}
+                {data?.totalWithdrawStakeTxs?.toLocaleString()}
               </p>
             </div>
           </div>
@@ -113,8 +116,8 @@ export const CardDetail: React.FC<CardDetailProps> = (data) => {
               <Icon name="reward" size="medium" color="primary" />
             </div>
             <div>
-              <p className={styles.title}>Total SHM</p>
-              <p>{data?.totalSHM?.toLocaleString('en-US')}</p>
+              <p className={styles.title}>Total LIB</p>
+              <p>{data?.totalLIB?.toLocaleString('en-US')}</p>
             </div>
           </div>
         </Link>
@@ -125,8 +128,8 @@ export const CardDetail: React.FC<CardDetailProps> = (data) => {
               <Icon name="reward" size="medium" color="primary" />
             </div>
             <div>
-              <p className={styles.title}>Total Staked SHM</p>
-              <p>{data?.totalStakedSHM?.toLocaleString('en-US')}</p>
+              <p className={styles.title}>Total Staked LIB</p>
+              <p>{data?.totalStakedLIB?.toLocaleString('en-US')}</p>
             </div>
           </div>
         </Link>

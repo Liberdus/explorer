@@ -1,6 +1,6 @@
 // require("dotenv").config();
 
-import * as crypto from '@shardeum-foundation/lib-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 import cron from 'node-cron'
 import * as StatsStorage from './stats'
 import * as CoinStats from './stats/coinStats'
@@ -10,16 +10,26 @@ import * as Metadata from './stats/metadata'
 import * as Storage from './storage'
 import * as Cycle from './storage/cycle'
 import * as StatsFunctions from './class/StatsFunctions'
-import { Utils as StringUtils } from '@shardeum-foundation/lib-types'
-// import { config } from './config/index'
+import { Utils as StringUtils } from '@shardus/types'
+import { config } from './config'
 
-crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+crypto.init(config.hashKey)
 crypto.setCustomStringifier(StringUtils.safeStringify, 'shardus_safeStringify')
 
-// config variables
-import { config as CONFIG } from './config'
-if (process.env.PORT) {
-  CONFIG.port.server = process.env.PORT
+
+export const addExitListeners = (): void => {
+  process.on('SIGINT', async () => {
+    console.log('Exiting on SIGINT')
+    await Storage.closeDatabase()
+    await StatsStorage.closeStatsDatabase()
+    process.exit(0)
+  })
+  process.on('SIGTERM', async () => {
+    console.log('Exiting on SIGTERM')
+    await Storage.closeDatabase()
+    await StatsStorage.closeStatsDatabase()
+    process.exit(0)
+  })
 }
 
 const measure_time = false
@@ -29,7 +39,7 @@ const start = async (): Promise<void> => {
   await Storage.initializeDB()
 
   await StatsStorage.initializeStatsDB()
-  Storage.addExitListeners()
+  addExitListeners()
   let lastCheckedCycleForValidators = -1
   let lastCheckedCycleForTxs = -1
   let lastCheckedCycleForCoinStats = -1

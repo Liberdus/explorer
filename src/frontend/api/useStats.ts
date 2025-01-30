@@ -9,8 +9,8 @@ import { TransactionStats } from '../../stats/transactionStats'
 type StatsResult = {
   validatorStats: ValidatorStats[]
   transactionStats: TransactionStats[]
-  totalSHM: number
-  totalStakedSHM: number
+  totalLIB: number
+  totalStakedLIB: number
   loading: boolean
 }
 
@@ -76,13 +76,13 @@ export const useStats = (query: {
     'transactionStats' in transactionStatsResponse.data
       ? transactionStatsResponse.data.transactionStats
       : []
-  const totalSHM =
+  const totalLIB =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
     'totalSupply' in coinStatsResponse.data
       ? Number(coinStatsResponse.data.totalSupply)
       : 0
-  const totalStakedSHM =
+  const totalStakedLIB =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
     'totalStaked' in coinStatsResponse.data
@@ -92,8 +92,8 @@ export const useStats = (query: {
   return {
     validatorStats,
     transactionStats,
-    totalSHM,
-    totalStakedSHM,
+    totalLIB,
+    totalStakedLIB,
     loading:
       validatorStatsResponse?.isValidating ||
       transactionStatsResponse?.isValidating ||

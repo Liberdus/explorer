@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useLayoutBreakpoint } from '../../utils/useLayoutBreakpoint'
 import { SearchBar } from '../SearchBar'
+import Image from 'next/image'
 
 import { Icon, Menu, MenuItem, Button, TopBarDropdown } from '../index'
 
@@ -23,15 +24,15 @@ export const Header: React.FC<Record<string, never>> = () => {
   const navLinks = [
     { key: '/', value: 'Home' },
     {
-      key: 'betanet',
-      value: 'About Betanet',
+      key: 'testnet',
+      value: 'About Testnet',
       render: () => {
         return (
           <TopBarDropdown
             label=""
             options={[
-              { key: 'https://shardeum.org/betanet', value: 'Shardeum Betanet' },
-              { key: 'https://docs.shardeum.org/docs/node/run/validator', value: 'Run a validator node' },
+              { key: 'https://test.liberdus.com', value: 'Liberdus Web Client' },
+              { key: 'https://github.com/Liberdus/validator-dashboard', value: 'Run a validator node' },
             ]}
           />
         )
@@ -78,8 +79,10 @@ export const Header: React.FC<Record<string, never>> = () => {
     <header className={styles.Header}>
       <nav className={styles.nav}>
         <Link href="/" className={styles.logoWrapper}>
-          <Icon name="logo" className={styles.logo} size="extraLarge" />
-          <div className={styles.name}>Shardeum Explorer</div>
+          {/* <Icon name="logo" className={styles.logo} size="extraLarge" /> */}
+          <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} />
+          
+          <div className={styles.name}>Liberdus Explorer</div>
         </Link>
         <ul className={styles.list}>
           {!isHomePage && <SearchBar />}

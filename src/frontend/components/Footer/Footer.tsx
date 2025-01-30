@@ -4,20 +4,21 @@ import ReactTooltip from 'react-tooltip'
 
 import { Icon, iconTypes } from '../Icon'
 import { Spacer } from '../Spacer'
+import Image from 'next/image'
 
 import styles from './Footer.module.scss'
 
 const resources = [
-  { href: 'https://shardeum.org', label: 'About Shardeum' },
-  { href: 'https://docs.shardeum.org', label: 'Shardeum Docs' },
-  { href: 'https://docs.shardeum.org/faucet/claim', label: 'Testnet SHM Claim' },
+  { href: 'https://liberdus.com', label: 'About Liberdus' },
+  { href: 'https://docs.liberdus.com', label: 'Liberdus Docs' },
+  { href: 'https://docs.liberdus.com/faucet/claim', label: 'Testnet LIB Claim' },
 ]
 
 const socials = [
-  { iconName: 'discord', title: 'Discord', href: 'https://discord.gg/shardeum' },
-  { iconName: 'twitter', title: 'Twitter', href: 'https://twitter.com/shardeum' },
-  { iconName: 'telegram', title: 'Telegram', href: 'https://telegram.me/shardeum' },
-  { iconName: 'reddit', title: 'Reddit', href: 'https://www.reddit.com/r/shardeum/' },
+  { iconName: 'discord', title: 'Discord', href: 'https://discord.gg/liberdus' },
+  { iconName: 'twitter', title: 'Twitter', href: 'https://twitter.com/liberdus' },
+  { iconName: 'telegram', title: 'Telegram', href: 'https://telegram.me/liberdus' },
+  { iconName: 'reddit', title: 'Reddit', href: 'https://www.reddit.com/r/liberdus/' },
 ]
 
 export const Footer: React.FC = () => {
@@ -26,15 +27,17 @@ export const Footer: React.FC = () => {
       <div className={styles.main}>
         <div>
           <div className={styles.logoItem}>
-            <Icon name="logo" className={styles.icon} size="large" />
+            {/* <Icon name="logo" className={styles.icon} size="large" /> */}
+            <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.icon} />
             <div className={styles.name}>
-              Powered by <span>Shardeum</span>
+              Powered by <span>Liberdus</span>
             </div>
           </div>
           <Spacer space="16" />
           <div className={styles.label}>
-            Shardeum is an EVM-based, linearly scalable smart contract platform that provides low gas fees
-            forever while maintaining true decentralization and solid security through dynamic state sharding.
+            Liberdus is a decentralized, open source, encrypted messaging and payment app. It is developed
+            using Shardus technology which uses dynamic state sharding which solves the problems of
+            scalability, decentralization and security of the blockchain.
           </div>
         </div>
         <div></div>
@@ -55,7 +58,7 @@ export const Footer: React.FC = () => {
       <hr />
       <div className={styles.social}>
         <div>
-          <span>Shardeum</span> © 2023
+          <span>Liberdus</span> © 2025
         </div>
         <div className={styles.wrapper}>
           {socials.map((social, index) => (

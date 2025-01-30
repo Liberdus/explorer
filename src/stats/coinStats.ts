@@ -1,6 +1,6 @@
 import { config } from '../config/index'
-import * as db from './sqlite3storage'
-import { extractValues, extractValuesFromArray } from './sqlite3storage'
+import * as db from '../storage/sqlite3storage'
+import { coinStatsDatabase } from '.'
 
 export interface CoinStats {
   cycle: number
@@ -13,9 +13,9 @@ export async function insertCoinStats(coinStats: CoinStats): Promise<void> {
   try {
     const fields = Object.keys(coinStats).join(', ')
     const placeholders = Object.keys(coinStats).fill('?').join(', ')
-    const values = extractValues(coinStats)
+    const values = db.extractValues(coinStats)
     const sql = 'INSERT OR REPLACE INTO coin_stats (' + fields + ') VALUES (' + placeholders + ')'
-    await db.run(sql, values)
+    await db.run(coinStatsDatabase, sql, values)
     console.log('Successfully inserted coinStats', coinStats.cycle)
   } catch (e) {
     console.log('Unable to insert coinStats or it is already stored in to database', coinStats.cycle, e)
@@ -26,12 +26,12 @@ export async function bulkInsertCoinsStats(coinStats: CoinStats[]): Promise<void
   try {
     const fields = Object.keys(coinStats[0]).join(', ')
     const placeholders = Object.keys(coinStats[0]).fill('?').join(', ')
-    const values = extractValuesFromArray(coinStats)
+    const values = db.extractValuesFromArray(coinStats)
     let sql = 'INSERT OR REPLACE INTO coin_stats (' + fields + ') VALUES (' + placeholders + ')'
     for (let i = 1; i < coinStats.length; i++) {
       sql = sql + ', (' + placeholders + ')'
     }
-    await db.run(sql, values)
+    await db.run(coinStatsDatabase, sql, values)
     const addedCycles = coinStats.map((v) => v.cycle)
     console.log('Successfully inserted CoinStats', coinStats.length, 'for cycles', addedCycles)
   } catch (e) {
@@ -43,7 +43,7 @@ export async function bulkInsertCoinsStats(coinStats: CoinStats[]): Promise<void
 export async function queryLatestCoinStats(count?: number): Promise<CoinStats[]> {
   try {
     const sql = `SELECT * FROM coin_stats ORDER BY cycle DESC LIMIT ${count ? count : 100}`
-    const coinStats: CoinStats[] = await db.all(sql)
+    const coinStats: CoinStats[] = await db.all(coinStatsDatabase, sql)
     if (config.verbose) console.log('coinStats count', coinStats)
     return coinStats
   } catch (e) {
@@ -60,7 +60,7 @@ export async function queryAggregatedCoinStats(): Promise<{
     const coinStats: {
       totalSupplyChange: number
       totalStakeChange: number
-    } = await db.get(sql)
+    } = await db.get(coinStatsDatabase, sql)
     if (config.verbose) console.log('aggregated coin stats', coinStats)
     return coinStats
   } catch (e) {

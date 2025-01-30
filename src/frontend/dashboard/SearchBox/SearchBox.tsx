@@ -18,13 +18,13 @@ export const SearchBox: React.FC<SearchBoxProps> = ({ mode }) => {
   return (
     <div className={styles.SearchBox}>
       <div className={styles.titleWrapper}>
-        <h4 className={styles.title}>The Shardeum Betanet Explorer</h4>
+        <h4 className={styles.title}>The Liberdus Testnet Explorer</h4>
         <NetworkMode mode={mode as Modes} />
       </div>
       <div className={styles.box}>
         <input
           className={styles.input}
-          placeholder="Search by Account Address / Contract Address / Transaction Hash / Cycle Number / Cycle Marker / Node ID"
+          placeholder="Search by Account Address / Transaction ID / Cycle Number / Cycle Marker / Node ID"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => {

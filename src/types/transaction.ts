@@ -1,147 +1,82 @@
-import { WrappedEVMAccount, Token } from './account'
+import { Signature } from '@shardus/crypto-utils'
 
 export interface Transaction {
   txId: string
-  cycle: number
-  blockNumber: number
-  blockHash: string
+  appReceiptId?: string // Dapp receipt id (eg. txhash for the EVM receipt in shardeum)
   timestamp: number
-  wrappedEVMAccount: WrappedEVMAccount
-  transactionType: TransactionType
-  txHash: string // appReceiptId
-  txFrom: string
-  txTo: string
-  nominee?: string
+  cycleNumber: number
+  data: any & { txId?: string; appReceiptId?: string }
   originalTxData: unknown
-  tokenTxs?: TokenTx[]
-  txStatus?: TxStatus
-  data?: unknown
-  internalTXType?: InternalTXType
+  transactionType: TransactionType
+  txFrom?: string
+  txTo?: string
 }
 
-export type TxStatus = 'Pending' | 'Expired'
+export interface BaseLiberdusTx {
+  timestamp: number
+  type: TransactionType
+  sign: Signature
+}
+
+export interface Message extends BaseLiberdusTx {
+  from: string
+  to: string
+  chatId: string
+  message: string
+}
 
 export enum TransactionType {
-  Receipt = 0, // EVM Receipt
-  NodeRewardReceipt = 1,
-  StakeReceipt = 2,
-  UnstakeReceipt = 3,
-  InternalTxReceipt = 4,
+  init_network = 'init_network',
+  network_windows = 'network_windows',
+  snapshot = 'snapshot',
+  email = 'email',
+  gossip_email_hash = 'gossip_email_hash',
+  verify = 'verify',
+  register = 'register',
+  create = 'create',
+  transfer = 'transfer',
+  distribute = 'distribute',
+  message = 'message',
+  toll = 'toll',
+  friend = 'friend',
+  remove_friend = 'remove_friend',
+  stake = 'stake',
+  remove_stake = 'remove_stake',
+  remove_stake_request = 'remove_stake_request',
+  node_reward = 'node_reward',
+  snapshot_claim = 'snapshot_claim',
+  issue = 'issue',
+  proposal = 'proposal',
+  vote = 'vote',
+  tally = 'tally',
+  apply_tally = 'apply_tally',
+  parameters = 'parameters',
+  apply_parameters = 'apply_parameters',
+  dev_issue = 'dev_issue',
+  dev_proposal = 'dev_proposal',
+  dev_vote = 'dev_vote',
+  dev_tally = 'dev_tally',
+  apply_dev_tally = 'apply_dev_tally',
+  dev_parameters = 'dev_parameters',
+  apply_dev_parameters = 'apply_dev_parameters',
+  developer_payment = 'developer_payment',
+  apply_developer_payment = 'apply_developer_payment',
+  change_config = 'change_config',
+  apply_change_config = 'apply_change_config',
+  change_network_param = 'change_network_param',
+  apply_change_network_param = 'apply_change_network_param',
+  deposit_stake = 'deposit_stake',
+  withdraw_stake = 'withdraw_stake',
+  set_cert_time = 'set_cert_time',
+  query_certificate = 'query_certificate',
+  init_reward = 'init_reward',
+  claim_reward = 'claim_reward',
+  apply_penalty = 'apply_penalty',
 }
 
-export interface ContractInfo {
-  totalSupply: number
-  decimals: string
-  name: string
-  symbol: string
+export enum TransactionSearchParams {
+  all = 'all',
+  pending = 'pending',
 }
 
-export interface TokenTx {
-  cycle: number
-  timestamp: number
-  contractAddress: string
-  contractInfo: ContractInfo
-  tokenFrom: string
-  tokenTo: string
-  tokenValue: string
-  tokenType: TokenType
-  tokenEvent: string
-  tokenOperator?: string | null
-  transactionFee: string
-
-  // references another tx
-  txId?: string
-  txHash: string
-}
-
-export enum TokenType {
-  EVM_Internal = 0,
-  ERC_20 = 1,
-  ERC_721 = 2,
-  ERC_1155 = 3,
-}
-
-export enum InternalTXType {
-  SetGlobalCodeBytes = 0,
-  InitNetwork = 1,
-  NodeReward = 2,
-  ChangeConfig = 3,
-  ApplyChangeConfig = 4,
-  SetCertTime = 5,
-  Stake = 6,
-  Unstake = 7,
-  InitRewardTimes = 8,
-  ClaimReward = 9,
-  ChangeNetworkParam = 10,
-  ApplyNetworkParam = 11,
-  Penalty = 12,
-}
-
-/**
- * InternalTx is a non EVM TX that shardeum can use for utility task such as global changes
- *
- */
-export interface InternalTxBase {
-  isInternalTx: boolean
-  internalTXType: InternalTXType
-}
-
-export interface InternalTx extends InternalTxBase {
-  timestamp: number
-  from?: string
-  to?: string
-  accountData?: WrappedEVMAccount
-  network?: string // Network Account
-  nodeId?: string // Node Account
-}
-
-export interface DecodeTxResult {
-  txs: TokenTx[]
-  accs: string[] // ethAddress[]
-  tokens: Token[]
-}
-
-export enum TransactionSearchType {
-  All = 0, // Receipt + NodeRewardReceipt + StakeReceipt + UnstakeReceipt + InternalTxReceipt
-  Receipt = 1,
-  NodeRewardReceipt = 2,
-  StakeReceipt = 3,
-  UnstakeReceipt = 4,
-  EVM_Internal = 5,
-  ERC_20 = 6,
-  ERC_721 = 7,
-  ERC_1155 = 8,
-  TokenTransfer = 9, // token txs of a contract
-  InternalTxReceipt = 10,
-  AllExceptInternalTx = 11, // Receipt + NodeRewardReceipt + StakeReceipt + UnstakeReceipt (exclude InternalTxReceipt)
-  Pending = 12, // Pending Txs (AllExceptInternalTx) from originTxsData
-  InitNetwork = 13,         // ----
-  NodeReward = 14,          //    |
-  ChangeConfig = 15,        //    |
-  ApplyChangeConfig = 16,   //    |
-  SetCertTime = 17,         //    |
-  Stake = 18,               //    | --> INTERNAL TRANSACTION TYPES
-  Unstake = 19,             //    |
-  InitRewardTimes = 20,     //    |
-  ClaimReward = 21,         //    |
-  ChangeNetworkParam = 22,  //    |
-  ApplyNetworkParam = 23,   //    |
-  Penalty = 24,             // ----    
-}
-
-export interface Log {
-  address: string
-  blockHash: string
-  blockNumber: string
-  data: string
-  logIndex: string
-  topics: string[]
-  transactionHash: string
-  transactionIndex: string
-}
-
-export enum TxMethodFilter {
-  TxFrom = 'txFrom',
-  TxTo = 'txTo',
-  Nominee = 'nominee',
-}
+export type TransactionSearchType = TransactionType | TransactionSearchParams

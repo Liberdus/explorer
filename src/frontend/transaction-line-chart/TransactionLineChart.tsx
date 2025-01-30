@@ -24,7 +24,7 @@ export const TransactionLineChart: React.FC = () => {
             centerTitle
             subTitle="Click and drag in the plot area to zoom in"
             height={height}
-            data={convertTransactionStatsToSeriesData(transactionStats)}
+            data={convertTransactionStatsToSeriesData(transactionStats, true)}
             name="Transactions"
             groupData
           />

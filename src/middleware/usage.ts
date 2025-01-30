@@ -2,7 +2,7 @@ import moment from 'moment'
 import type { FastifyError, FastifyReply, FastifyRequest, HookHandlerDoneFunction } from 'fastify'
 import crypto from 'crypto'
 
-import { config as CONFIG } from '../config'
+import { config } from '../config'
 
 interface UsageMetrics {
   enabled: boolean
@@ -29,7 +29,7 @@ const validateSecurityKey = (req: FastifyRequest, reply: FastifyReply): boolean 
     keyBuffer = Buffer.from(securityKey.join(', '))
   }
 
-  if (crypto.timingSafeEqual(Buffer.from(CONFIG.USAGE_ENDPOINTS_KEY), keyBuffer)) {
+  if (crypto.timingSafeEqual(Buffer.from(config.USAGE_ENDPOINTS_KEY), keyBuffer)) {
     return true
   }
 

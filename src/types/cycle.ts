@@ -1,7 +1,7 @@
-import { P2P, StateManager } from '@shardeum-foundation/lib-types'
+import { P2P, StateManager } from '@shardus/types'
 
 export interface Cycle {
   cycleMarker: StateManager.StateMetaDataTypes.CycleMarker
-  counter: number
+  counter: P2P.CycleCreatorTypes.CycleData['counter']
   cycleRecord: P2P.CycleCreatorTypes.CycleData
 }

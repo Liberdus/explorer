@@ -43,9 +43,12 @@ api.interceptors.response.use(
 )
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function bigIntReviver(key, value): any {
+export function bigIntReviver(key, value): any {
   if (value?.dataType === 'bi') {
-    return value.value
+    return BigInt('0x' + value.value)
+  }
+  if (typeof value === 'bigint') {
+    return { dataType: "bi", value: value.toString(16) };
   }
   return value
 }

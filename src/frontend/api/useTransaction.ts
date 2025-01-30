@@ -1,22 +1,20 @@
 import useSWR from 'swr'
 import { TransactionQuery } from '../types'
-import { OriginalTxData, Transaction, TransactionSearchType } from '../../types'
+import { OriginalTxData, Transaction } from '../../types'
 import { fetcher } from './fetcher'
 
 import { PATHS } from './paths'
 import { PagedTransaction } from '../types/transaction'
 
 export const useTransaction = (query: TransactionQuery): PagedTransaction => {
-  const { page, count, txType, totalStakeData = false } = query
+  const { page, count, txType, totalTxsDetail = false } = query
 
   const createUrl = (): string => {
     let url = `${PATHS.TRANSACTION}?page=${page}`
 
     if (count) url = `${PATHS.TRANSACTION}?count=${count}`
     if (txType) {
-      url += `&txType=${txType}`
-      if (txType === TransactionSearchType.Pending)
-        url = `${PATHS.ORIGINAL_TX}?pending=true&decode=true&page=${page}`
+      url += `&txSearchType=${txType}`
     }
     return url
   }
@@ -27,7 +25,7 @@ export const useTransaction = (query: TransactionQuery): PagedTransaction => {
   const originalTxs: OriginalTxData[] = data?.originalTxs || []
 
   const response = useSWR<PagedTransaction>(
-    totalStakeData ? `${PATHS.TRANSACTION}?totalStakeData=true` : null,
+    totalTxsDetail ? `${PATHS.TRANSACTION}?totalTxsDetail=true` : null,
     fetcher
   )
 
@@ -35,11 +33,12 @@ export const useTransaction = (query: TransactionQuery): PagedTransaction => {
     transactions,
     originalTxs,
     totalPages: data?.totalPages || 0,
-    totalTransactions: data?.totalTransactions || 0,
+    totalTransactions: response?.data?.totalTransactions || 0,
     totalOriginalTxs: data?.totalOriginalTxs || 0,
-    totalRewardTxs: response?.data?.totalRewardTxs || 0,
-    totalStakeTxs: response?.data?.totalStakeTxs || 0,
-    totalUnstakeTxs: response?.data?.totalUnstakeTxs || 0,
+    totalTransferTxs: response?.data?.totalTransferTxs || 0,
+    totalMessageTxs: response?.data?.totalMessageTxs || 0,
+    totalDepositStakeTxs: response?.data?.totalDepositStakeTxs || 0,
+    totalWithdrawStakeTxs: response?.data?.totalWithdrawStakeTxs || 0,
     loading: !data,
   }
 }

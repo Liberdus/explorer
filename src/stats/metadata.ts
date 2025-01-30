@@ -1,4 +1,5 @@
-import * as db from './sqlite3storage'
+import * as db from '../storage/sqlite3storage'
+import { metadataDatabase } from '.'
 
 export enum MetadataType {
   NodeStats = 'NodeStats',
@@ -19,7 +20,7 @@ export async function insertOrUpdateMetadata(metadata: Metadata): Promise<void> 
     const placeholders = Object.keys(metadata).fill('?').join(', ')
     const values = db.extractValues(metadata)
     const sql = 'INSERT OR REPLACE INTO metadata (' + fields + ') VALUES (' + placeholders + ')'
-    await db.run(sql, values)
+    await db.run(metadataDatabase, sql, values)
   } catch (e) {
     console.error(e)
     console.error(
@@ -31,7 +32,7 @@ export async function insertOrUpdateMetadata(metadata: Metadata): Promise<void> 
 export async function getMetadata(type: MetadataType): Promise<Metadata | null> {
   try {
     const sql = 'SELECT * FROM metadata WHERE type=? LIMIT 1'
-    const metadata: Metadata = await db.get(sql, [type])
+    const metadata: Metadata = await db.get(metadataDatabase, sql, [type])
     if (metadata) {
       return metadata
     }

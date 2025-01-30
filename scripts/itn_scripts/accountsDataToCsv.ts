@@ -4,7 +4,6 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { Account } from '../../src/types'
 import { Utils as StringUtils } from '@shardeum-foundation/lib-types'
-import { bigIntToHex } from '@ethereumjs/util'
 
 const CSV_PATH = 'csv/accounts'
 const CSV_NAME = 'accounts'

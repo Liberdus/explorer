@@ -27,8 +27,8 @@ export const useSearchHook = (): SearchHookResult => {
       router.push(`/transaction/${searchText}`)
     }
     if (searchText.length === 64) {
-      if (await isTransactionHash(searchText)) router.push(`/transaction/0x${searchText}`)
-      else if (await isNodeAccount(searchText)) router.push(`/account/${searchText}`)
+      if (await isTransactionHash(searchText)) router.push(`/transaction/${searchText}`)
+      else if (await isAccount(searchText)) router.push(`/account/${searchText}`)
       else router.push(`/cycle/${searchText}`)
     }
     // Regex to check if the search text is a cycle number
