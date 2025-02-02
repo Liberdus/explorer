@@ -33,7 +33,7 @@ export const useTransaction = (query: TransactionQuery): PagedTransaction => {
     transactions,
     originalTxs,
     totalPages: data?.totalPages || 0,
-    totalTransactions: response?.data?.totalTransactions || 0,
+    totalTransactions: data?.totalTransactions || response?.data?.totalTransactions || 0,
     totalOriginalTxs: data?.totalOriginalTxs || 0,
     totalTransferTxs: response?.data?.totalTransferTxs || 0,
     totalMessageTxs: response?.data?.totalMessageTxs || 0,

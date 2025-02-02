@@ -6,7 +6,7 @@ export interface Transaction {
   timestamp: number
   cycleNumber: number
   data: any & { txId?: string; appReceiptId?: string }
-  originalTxData: unknown
+  originalTxData: unknown & { tx: any } // eslint-disable-line @typescript-eslint/no-explicit-any
   transactionType: TransactionType
   txFrom?: string
   txTo?: string

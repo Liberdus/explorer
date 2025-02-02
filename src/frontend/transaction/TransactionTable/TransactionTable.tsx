@@ -95,9 +95,9 @@ export const TransactionTable: React.FC<ITransactionTable> = (props) => {
             render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
           })
       }
-      if (txType === TransactionType.deposit_stake || txType === TransactionType.withdraw_stake) {
+      if (txType === TransactionType.deposit_stake) {
         tHeader.push({
-          key: 'stake',
+          key: 'originalTxData.tx.stake',
           value: 'Stake Amount',
           render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
         })

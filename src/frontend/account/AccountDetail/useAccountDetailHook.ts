@@ -33,7 +33,7 @@ export const useAccountDetailHook = ({ id, txType }: detailProps): AccountDetail
     txType || TransactionType.transfer
   )
 
-  const getAddress = useCallback(async () => {
+  const getAccount = useCallback(async () => {
     const data = await api.get(`${PATHS.ACCOUNT}?accountId=${id}`)
 
     return data?.data?.accounts as Account[]
@@ -54,11 +54,11 @@ export const useAccountDetailHook = ({ id, txType }: detailProps): AccountDetail
     setAccount(undefined)
 
     async function fetchData(): Promise<void> {
-      const accounts = await getAddress()
+      const accounts = await getAccount()
 
       if (accounts && accounts.length > 0 && accounts[0].accountId) {
         setAccount(accounts[0])
-        const { totalTransactions, transactions } = await getTransaction()
+        const { totalTransactions, transactions, totalPages } = await getTransaction()
 
         setTransactions(transactions as Transaction[])
         setTotalTransactions(totalTransactions)
@@ -67,7 +67,7 @@ export const useAccountDetailHook = ({ id, txType }: detailProps): AccountDetail
     }
 
     fetchData()
-  }, [totalPages, id, getAddress, getTransaction])
+  }, [id, getAccount, getTransaction])
 
   return {
     account,

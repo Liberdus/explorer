@@ -100,6 +100,14 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
             </div>
           </div>
         )}
+        {transaction.transactionType === TransactionType.deposit_stake && (
+          <div className={styles.item}>
+            <div className={styles.title}>Stake Amount:</div>
+            <div className={styles.value}>
+              {calculateFullValue(`${transaction?.originalTxData?.tx.stake}` || '0')}
+            </div>
+          </div>
+        )}
       </div>
     )
   } else {

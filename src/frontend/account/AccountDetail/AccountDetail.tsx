@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/router'
 import moment from 'moment'
-import {  ContentLayout, CopyButton, Spacer, Pagination } from '../../components'
+import { ContentLayout, CopyButton, Spacer, Pagination } from '../../components'
 import { Tab } from '../../components/Tab'
 import { DetailCard } from '../DetailCard'
 
@@ -37,16 +37,22 @@ export const AccountDetail: React.FC = () => {
       value: 'Transfer Txns',
       content: (
         <>
-          <TransactionTable data={transactions} txType={TransactionType.transfer} />
-          <div className={styles.paginationWrapper}>
-            <Pagination
-              onPageChange={(p) => setPage(p)}
-              totalCount={totalTransactions}
-              siblingCount={siblingCount}
-              currentPage={page}
-              pageSize={pageSize}
-            />
-          </div>
+          {transactions.length > 0 ? (
+            <>
+              <TransactionTable data={transactions} txType={TransactionType.transfer} />
+              <div className={styles.paginationWrapper}>
+                <Pagination
+                  onPageChange={(p) => setPage(p)}
+                  totalCount={totalTransactions}
+                  siblingCount={siblingCount}
+                  currentPage={page}
+                  pageSize={pageSize}
+                />
+              </div>
+            </>
+          ) : (
+            <div>No Data.</div>
+          )}
         </>
       ),
     },
@@ -55,16 +61,70 @@ export const AccountDetail: React.FC = () => {
       value: 'Message Txns',
       content: (
         <>
-          <TransactionTable data={transactions} txType={TransactionType.message} />
-          <div className={styles.paginationWrapper}>
-            <Pagination
-              onPageChange={(p) => setPage(p)}
-              totalCount={totalTransactions}
-              siblingCount={siblingCount}
-              currentPage={page}
-              pageSize={pageSize}
-            />
-          </div>
+          {transactions.length > 0 ? (
+            <>
+              <TransactionTable data={transactions} txType={TransactionType.message} />
+              <div className={styles.paginationWrapper}>
+                <Pagination
+                  onPageChange={(p) => setPage(p)}
+                  totalCount={totalTransactions}
+                  siblingCount={siblingCount}
+                  currentPage={page}
+                  pageSize={pageSize}
+                />
+              </div>
+            </>
+          ) : (
+            <div>No Data.</div>
+          )}
+        </>
+      ),
+    },
+    {
+      key: TransactionType.deposit_stake,
+      value: 'Deposit Stake Txns',
+      content: (
+        <>
+          {transactions.length > 0 ? (
+            <>
+              <TransactionTable data={transactions} txType={TransactionType.deposit_stake} />
+              <div className={styles.paginationWrapper}>
+                <Pagination
+                  onPageChange={(p) => setPage(p)}
+                  totalCount={totalTransactions}
+                  siblingCount={siblingCount}
+                  currentPage={page}
+                  pageSize={pageSize}
+                />
+              </div>
+            </>
+          ) : (
+            <div>No Data.</div>
+          )}
+        </>
+      ),
+    },
+    {
+      key: TransactionType.withdraw_stake,
+      value: 'Withdraw Stake Txns',
+      content: (
+        <>
+          {transactions.length > 0 ? (
+            <>
+              <TransactionTable data={transactions} txType={TransactionType.withdraw_stake} />
+              <div className={styles.paginationWrapper}>
+                <Pagination
+                  onPageChange={(p) => setPage(p)}
+                  totalCount={totalTransactions}
+                  siblingCount={siblingCount}
+                  currentPage={page}
+                  pageSize={pageSize}
+                />
+              </div>
+            </>
+          ) : (
+            <div>No Data.</div>
+          )}
         </>
       ),
     },
@@ -73,8 +133,6 @@ export const AccountDetail: React.FC = () => {
   const breadcrumbs = [breadcrumbsList.dashboard, breadcrumbsList.account]
 
   const [activeTab, setActiveTab] = useState(tabs[0].key)
-
-  console.log('account', account, AccountType.UserAccount, account?.data?.data?.balance)
 
   return (
     <div className={styles.AccountDetail}>
@@ -130,13 +188,13 @@ export const AccountDetail: React.FC = () => {
                       },
                       {
                         key: 'StakeLock',
-                        value: account?.data?.stakeLock && calculateFullValue(`0x${account?.data?.stakeLock}`),
+                        value:
+                          account?.data?.stakeLock && calculateFullValue(`0x${account?.data?.stakeLock}`),
                       },
                     ]}
-                    titleRight={null} 
+                    titleRight={null}
                   />
-                )
-              : null} 
+                ) : null}
                 {account.accountType === AccountType.NodeAccount && (
                   <DetailCard
                     title="More Info"

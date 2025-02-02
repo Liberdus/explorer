@@ -64,19 +64,23 @@ export async function processTransactionData(transactions: Transaction[]): Promi
   const bucketSize = 1000
   let combineTransactions: Transaction[] = []
   for (const transaction of transactions) {
-    const transactionType = transaction.data.type as TransactionType // be sure to update with the correct field with the transaction type defined in the dapp
-    const txFrom = transaction.data.from // be sure to update with the correct field of the tx sender
-    const txTo = transaction.data.to // be sure to update with the correct field of the tx recipient
-    const txObj: Transaction = {
-      txId: transaction.txId || transaction.data?.txId,
+    const txObj = {
+      txId: transaction.txId,
       cycleNumber: transaction.cycleNumber,
       timestamp: transaction.timestamp,
-      appReceiptId: transaction.appReceiptId,
-      transactionType,
-      txFrom,
-      txTo,
-      data: transaction.data,
       originalTxData: transaction.originalTxData || {},
+      data: transaction.data,
+      appReceiptId: transaction.appReceiptId,
+    } as Transaction
+    if (transaction.data) {
+      txObj.transactionType = transaction.data.type as TransactionType // be sure to update with the correct field with the transaction type defined in the dapp
+      txObj.txFrom = transaction.data.from // be sure to update with the correct field of the tx sender
+      txObj.txTo = transaction.data.to // be sure to update with the correct field of the tx recipient
+    } else {
+      // Extract tx receipt from original tx data
+      txObj.transactionType = transaction.originalTxData.tx.type as TransactionType // be sure to update with the correct field with the transaction type defined in the dapp
+      txObj.txFrom = transaction.originalTxData.tx.from // be sure to update with the correct field of the tx sender
+      txObj.txTo = transaction.originalTxData.tx.to // be sure to update with the correct field of the tx recipient
     }
     combineTransactions.push(txObj)
     if (combineTransactions.length >= bucketSize) {
@@ -123,7 +127,6 @@ export async function queryTransactionCount(
       sql += `timestamp BETWEEN ? AND ?`
       values.push(beforeTimestamp, afterTimestamp)
     }
-    console.log('sql', sql, values)
     transactions = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(*)': number }
   } catch (e) {
     console.log(e)
@@ -177,7 +180,6 @@ export async function queryTransactions(
     } else {
       sql += ` ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`
     }
-    console.log(sql, values)
     transactions = (await db.all(transactionDatabase, sql, values)) as DbTransaction[]
     if (transactions.length > 0) {
       transactions.forEach((transaction: DbTransaction) => {
@@ -244,7 +246,10 @@ export async function queryTransactionCountByCycles(
     }
     sql += ` GROUP BY cycleNumber HAVING cycleNumber BETWEEN ? AND ? ORDER BY cycleNumber ASC`
     values.push(start, end)
-    transactions = (await db.all(transactionDatabase, sql, values)) as { cycleNumber: number; 'COUNT(*)': number }[]
+    transactions = (await db.all(transactionDatabase, sql, values)) as {
+      cycleNumber: number
+      'COUNT(*)': number
+    }[]
   } catch (e) {
     console.log(e)
   }
