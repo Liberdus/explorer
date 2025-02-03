@@ -77,6 +77,7 @@ export enum TransactionType {
 export enum TransactionSearchParams {
   all = 'all',
   pending = 'pending',
+  stakingTxs = 'stakingTxs',
 }
 
 export type TransactionSearchType = TransactionType | TransactionSearchParams

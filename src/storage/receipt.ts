@@ -134,18 +134,36 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
       // Extract tx receipt from original tx data
       txObj.transactionType = tx.originalTxData.tx.type as TransactionType // be sure to update with the correct field with the transaction type defined in the dapp
       txObj.txFrom = tx.originalTxData.tx.from // be sure to update with the correct field of the tx sender
+      txObj.txTo = tx.originalTxData.tx.to // be sure to update with the correct field of the tx recipient
+      if (txObj.transactionType === TransactionType.create) {
+        txObj.txFrom = tx.originalTxData.tx.from
+        txObj.txTo = tx.originalTxData.tx.from
+      }
+      if (txObj.transactionType === TransactionType.register) {
+        txObj.txFrom = tx.originalTxData.tx.from
+        txObj.txTo = tx.originalTxData.tx.aliasHash
+      }
       if (
         txObj.transactionType === TransactionType.deposit_stake ||
         txObj.transactionType === TransactionType.withdraw_stake
       ) {
         txObj.txFrom = tx.originalTxData.tx.nominator
-      }
-      txObj.txTo = tx.originalTxData.tx.to // be sure to update with the correct field of the tx recipient
-      if (
-        txObj.transactionType === TransactionType.deposit_stake ||
-        txObj.transactionType === TransactionType.withdraw_stake
-      ) {
         txObj.txTo = tx.originalTxData.tx.nominee
+      } else if (txObj.transactionType === TransactionType.init_reward) {
+        txObj.txFrom = tx.originalTxData.tx.nominee
+        txObj.txTo = tx.originalTxData.tx.nominee
+      } else if (
+        txObj.transactionType === TransactionType.set_cert_time ||
+        txObj.transactionType === TransactionType.claim_reward
+      ) {
+        txObj.txFrom = tx.originalTxData.tx.nominee
+        txObj.txTo = tx.originalTxData.tx.nominator
+      } else if (txObj.transactionType === TransactionType.apply_penalty) {
+        txObj.txFrom = tx.originalTxData.tx.reportedNodePublickKey
+        txObj.txTo = tx.originalTxData.tx.nominator
+      } else if (txObj.transactionType === TransactionType.init_network) {
+        txObj.txFrom = tx.originalTxData.tx.network
+        txObj.txTo = tx.originalTxData.tx.network
       }
       txObj.data = {}
       txObj.appReceiptId = tx.originalTxData.tx.appReceiptId

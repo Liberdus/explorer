@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import moment from 'moment'
 
-import { AnchorLink } from '../../components'
+import { AnchorLink, Chip } from '../../components'
 
 import { calculateFullValue } from '../../utils/calculateValue'
 
@@ -26,14 +26,13 @@ const tempHeader: IColumnProps<Transaction | OriginalTxData>[] = [
     key: 'txId',
     value: 'Txn ID',
     render: (val: string) => (
-      <AnchorLink
-        href={`/transaction/${val}`}
-        label={val as string}
-        size="small"
-        ellipsis
-        width={150}
-      />
+      <AnchorLink href={`/transaction/${val}`} label={val as string} size="small" ellipsis width={150} />
     ),
+  },
+  {
+    key: 'transactionType',
+    value: 'Txn Type',
+    render: (val: string) => <Chip title={val} color={'info'} size="medium" />,
   },
   {
     key: 'cycleNumber',
@@ -53,6 +52,37 @@ export const TransactionTable: React.FC<ITransactionTable> = (props) => {
 
   useEffect(() => {
     let tHeader: IColumnProps<Transaction | OriginalTxData>[] = []
+
+    if (txType === TransactionSearchParams.all) {
+      tHeader = [
+        {
+          key: 'txFrom',
+          value: 'From',
+          render: (val: string) => (
+            <AnchorLink
+              href={`/account/${val ? val : '0'.repeat(64)}`}
+              label={(val as string) || '0'.repeat(64)}
+              size="small"
+              ellipsis
+              width={150}
+            />
+          ),
+        },
+        {
+          key: 'txTo',
+          value: 'To',
+          render: (val: string) => (
+            <AnchorLink
+              href={`/account/${val ? val : '0'.repeat(64)}`}
+              label={(val as string) || '0'.repeat(64)}
+              size="small"
+              ellipsis
+              width={150}
+            />
+          ),
+        },
+      ]
+    }
 
     if (
       txType === TransactionType.transfer ||
@@ -77,23 +107,25 @@ export const TransactionTable: React.FC<ITransactionTable> = (props) => {
         },
       ]
       if (txType === TransactionType.transfer) {
-        tHeader.push({
-          key: 'originalTxData.tx.amount',
-          value: 'Value',
-          render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
-        },
-        {
-          key: 'originalTxData.tx.fee',
-          value: 'Txn Fee',
-          render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
-        })
+        tHeader.push(
+          {
+            key: 'originalTxData.tx.amount',
+            value: 'Value',
+            render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
+          },
+          {
+            key: 'originalTxData.tx.fee',
+            value: 'Txn Fee',
+            render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
+          }
+        )
       }
       if (txType === TransactionType.message) {
         tHeader.push({
-            key: 'originalTxData.tx.amount',
-            value: 'Toll',
-            render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
-          })
+          key: 'originalTxData.tx.amount',
+          value: 'Toll',
+          render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
+        })
       }
       if (txType === TransactionType.deposit_stake) {
         tHeader.push({
@@ -103,8 +135,6 @@ export const TransactionTable: React.FC<ITransactionTable> = (props) => {
         })
       }
     }
-
-    
 
     if (txType === TransactionSearchParams.pending) {
       tHeader = [

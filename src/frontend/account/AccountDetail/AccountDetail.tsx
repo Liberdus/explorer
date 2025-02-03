@@ -8,7 +8,7 @@ import { DetailCard } from '../DetailCard'
 import { useAccountDetailHook } from './useAccountDetailHook'
 
 import styles from './AccountDetail.module.scss'
-import { AccountType, TransactionSearchType } from '../../../types'
+import { AccountType, TransactionSearchParams, TransactionSearchType } from '../../../types'
 
 import { calculateFullValue } from '../../utils/calculateValue'
 
@@ -32,6 +32,30 @@ export const AccountDetail: React.FC = () => {
     })
 
   const tabs = [
+    {
+      key: TransactionSearchParams.all as TransactionSearchType,
+      value: 'All Txns',
+      content: (
+        <>
+          {transactions.length > 0 ? (
+            <>
+              <TransactionTable data={transactions} txType={TransactionSearchParams.all} />
+              <div className={styles.paginationWrapper}>
+                <Pagination
+                  onPageChange={(p) => setPage(p)}
+                  totalCount={totalTransactions}
+                  siblingCount={siblingCount}
+                  currentPage={page}
+                  pageSize={pageSize}
+                />
+              </div>
+            </>
+          ) : (
+            <div>No Data.</div>
+          )}
+        </>
+      ),
+    },
     {
       key: TransactionType.transfer as TransactionSearchType,
       value: 'Transfer Txns',

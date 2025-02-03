@@ -40,6 +40,7 @@ export const TransactionSearchList: {
   key: TransactionSearchType
   value: string
 }[] = [
+  { key: TransactionSearchParams.all, value: 'All Transactions' },
   { key: TransactionType.transfer, value: 'Transfer Txns' },
   { key: TransactionType.message, value: 'Message Txns' },
   { key: TransactionType.deposit_stake, value: 'Deposit Stake Txns' },

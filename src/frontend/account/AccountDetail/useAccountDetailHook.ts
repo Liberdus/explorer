@@ -3,6 +3,7 @@ import { api, PATHS } from '../../api'
 import {
   Account,
   Transaction,
+  TransactionSearchParams,
   TransactionSearchType,
   TransactionType,
 } from '../../../types'
@@ -30,7 +31,7 @@ export const useAccountDetailHook = ({ id, txType }: detailProps): AccountDetail
   const [totalTransactions, setTotalTransactions] = useState<number>(0)
   const [page, setPage] = useState<number>(1)
   const [transactionType, setTransactionType] = useState<TransactionSearchType>(
-    txType || TransactionType.transfer
+    txType || TransactionSearchParams.all
   )
 
   const getAccount = useCallback(async () => {

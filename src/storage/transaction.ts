@@ -128,6 +128,7 @@ export async function queryTransactionCount(
       values.push(beforeTimestamp, afterTimestamp)
     }
     transactions = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(*)': number }
+    console.log('queryTransactionCount', sql, values, transactions)
   } catch (e) {
     console.log(e)
   }
@@ -181,6 +182,7 @@ export async function queryTransactions(
       sql += ` ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`
     }
     transactions = (await db.all(transactionDatabase, sql, values)) as DbTransaction[]
+    console.log('queryTransactions', sql, values, transactions)
     if (transactions.length > 0) {
       transactions.forEach((transaction: DbTransaction) => {
         deserializeDbTransaction(transaction)
