@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, PATHS } from '../../api'
-import {
-  Account,
-  Transaction,
-  TransactionSearchParams,
-  TransactionSearchType,
-  TransactionType,
-} from '../../../types'
+import { Account, Transaction, TransactionSearchParams, TransactionSearchType } from '../../../types'
+import { isEthereumAddress, isShardusAddress, toShardusAddress } from '../../utils/transformAddress'
 
 interface detailProps {
   id: string
@@ -35,18 +30,26 @@ export const useAccountDetailHook = ({ id, txType }: detailProps): AccountDetail
   )
 
   const getAccount = useCallback(async () => {
-    const data = await api.get(`${PATHS.ACCOUNT}?accountId=${id}`)
+    if (!id) return
+    if (isEthereumAddress(id) && isShardusAddress(id)) return
+    const accountId = (isEthereumAddress(id) && toShardusAddress(id)) || id
+    const data = await api.get(`${PATHS.ACCOUNT}?accountId=${accountId}`)
 
     return data?.data?.accounts as Account[]
   }, [id])
 
   const getTransaction = useCallback(async () => {
-    const data = await api.get(`${PATHS.TRANSACTION}?accountId=${id}&page=${page}&txSearchType=${transactionType}`)
+    if (!id) return
+    if (isEthereumAddress(id) && isShardusAddress(id)) return
+    const accountId = (isEthereumAddress(id) && toShardusAddress(id)) || id
+    const data = await api.get(
+      `${PATHS.TRANSACTION}?accountId=${accountId}&page=${page}&txSearchType=${transactionType}`
+    )
 
     return {
-      transactions: data?.data?.transactions as Transaction[],
-      totalTransactions: data?.data?.totalTransactions,
-      totalPages: data?.data?.totalPages,
+      transactions: (data?.data?.transactions as Transaction[]) || [],
+      totalTransactions: data?.data?.totalTransactions || 0,
+      totalPages: data?.data?.totalPages || 1,
     }
   }, [id, page, transactionType])
 
@@ -59,16 +62,25 @@ export const useAccountDetailHook = ({ id, txType }: detailProps): AccountDetail
 
       if (accounts && accounts.length > 0 && accounts[0].accountId) {
         setAccount(accounts[0])
-        const { totalTransactions, transactions, totalPages } = await getTransaction()
-
-        setTransactions(transactions as Transaction[])
-        setTotalTransactions(totalTransactions)
-        setTotalPages(totalPages)
+        setPage(1)
       }
     }
 
     fetchData()
-  }, [id, getAccount, getTransaction])
+  }, [getAccount])
+
+  useEffect(() => {
+    async function fetchData(): Promise<void> {
+      const res = await getTransaction()
+      if (!res) return
+      const { transactions, totalTransactions, totalPages } = res
+      setTransactions(transactions as Transaction[])
+      setTotalTransactions(totalTransactions)
+      setTotalPages(totalPages)
+    }
+
+    fetchData()
+  }, [getTransaction])
 
   return {
     account,

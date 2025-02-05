@@ -8,7 +8,7 @@ import { Spacer } from '../../components'
 import { useCycle, useTransaction, useAccount, useStats } from '../../api'
 import styles from './Dashboard.module.scss'
 import { ChartDetail } from '../ChartDetail'
-import { TransactionType } from '../../../types'
+import { TransactionSearchParams } from '../../../types'
 
 import { LatestTransactions } from '../LatestTransaction'
 import { LatestCycle } from '../LatestCycle'
@@ -24,7 +24,7 @@ export const Dashboard: React.FC = () => {
     totalTransactions,
   } = useTransaction({
     count: 10,
-    txType: TransactionType.transfer,
+    txType: TransactionSearchParams.all,
     totalTxsDetail: true,
   })
 

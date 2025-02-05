@@ -1,10 +1,12 @@
 import moment from 'moment'
 import { useRouter } from 'next/router'
 import React from 'react'
-import { AnchorLink, Button } from '../../components'
+import { AnchorLink, Button, Chip } from '../../components'
 import { Transaction } from '../../../types'
 
 import styles from './LatestTransaction.module.scss'
+import { NetworkAccountId } from '../../../config'
+import { toEthereumAddress } from '../../utils/transformAddress'
 
 export interface LatestTransactionsProps {
   transactions: Transaction[]
@@ -29,14 +31,19 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
                 width={180}
                 ellipsis
               />
-              <span>{moment(item.timestamp).fromNow()}</span>
+              <div className={styles.timestampRow}>
+                <span>{moment(item.timestamp).fromNow()}</span>
+                <Chip title={item.transactionType} color={'info'} size="small" />
+              </div>
             </div>
             <div>
               <div className={styles.row}>
                 <span>From</span>
                 <AnchorLink
-                  href={`/account/${item.txFrom}`}
-                  label={item.txFrom as string}
+                  href={`/account/${item.txFrom || NetworkAccountId}`}
+                  label={
+                    (item.txFrom as string) ? toEthereumAddress(item.txFrom as string) : NetworkAccountId
+                  }
                   size="small"
                   width={180}
                   ellipsis
@@ -45,8 +52,8 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
               <div className={styles.row}>
                 <span>To</span>
                 <AnchorLink
-                  href={`/account/${item.txTo}`}
-                  label={item.txTo as string}
+                  href={`/account/${item.txTo || NetworkAccountId}`}
+                  label={(item.txTo as string) ? toEthereumAddress(item.txTo as string) : NetworkAccountId}
                   size="small"
                   width={180}
                   ellipsis

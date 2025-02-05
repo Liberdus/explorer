@@ -1,4 +1,10 @@
-import { TransactionSearchType, Transaction, OriginalTxData, TransactionSearchParams, TransactionType } from '../../types'
+import {
+  TransactionSearchType,
+  Transaction,
+  OriginalTxData,
+  TransactionSearchParams,
+  TransactionType,
+} from '../../types'
 
 export interface ReadableReceipt {
   blockHash: string
@@ -45,7 +51,7 @@ export const TransactionSearchList: {
   { key: TransactionType.message, value: 'Message Txns' },
   { key: TransactionType.deposit_stake, value: 'Deposit Stake Txns' },
   { key: TransactionType.withdraw_stake, value: 'Withdraw Stake Txns' },
-  { key: TransactionSearchParams.pending, value: 'Pending Transactions' },
+  // { key: TransactionSearchParams.pending, value: 'Pending Transactions' },
 ]
 
 export interface StakeInfo {

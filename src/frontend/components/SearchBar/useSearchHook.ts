@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router'
 import { useCallback, useState } from 'react'
-import { isTransactionHash, isNodeAccount } from '../../utils/getSearchRoute'
+import { isTransactionHash, isAccount } from '../../utils/getSearchRoute'
+import { isEthereumAddress, isShardusAddress } from '../../utils/transformAddress'
 
 type SearchHookResult = {
   search: string
@@ -18,15 +19,11 @@ export const useSearchHook = (): SearchHookResult => {
 
     const regex = /[a-z]/i
 
-    if (searchText.length === 42) {
+    if (isEthereumAddress(searchText)) {
       console.log('42')
       router.push(`/account/${searchText}`)
     }
-    if (searchText.length === 66) {
-      console.log('66')
-      router.push(`/transaction/${searchText}`)
-    }
-    if (searchText.length === 64) {
+    if (isShardusAddress(searchText)) {
       if (await isTransactionHash(searchText)) router.push(`/transaction/${searchText}`)
       else if (await isAccount(searchText)) router.push(`/account/${searchText}`)
       else router.push(`/cycle/${searchText}`)

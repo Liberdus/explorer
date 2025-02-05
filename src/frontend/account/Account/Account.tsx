@@ -9,7 +9,6 @@ import { breadcrumbsList } from '../../types'
 import { Account as AccountT } from '../../../types'
 
 import styles from './Account.module.scss'
-import { calculateFullValue } from '../../utils/calculateValue'
 
 const siblingCount = 3
 const limit = 10

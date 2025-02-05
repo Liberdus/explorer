@@ -15,6 +15,7 @@ import { calculateFullValue } from '../../utils/calculateValue'
 import { TransactionTable } from '../../transaction'
 import { TransactionType } from '../../../types'
 import { breadcrumbsList } from '../../types'
+import { toEthereumAddress } from '../../utils/transformAddress'
 
 export const AccountDetail: React.FC = () => {
   const router = useRouter()
@@ -164,9 +165,9 @@ export const AccountDetail: React.FC = () => {
         title={
           <div className={styles.header}>
             <div className={styles.title}>
-              Account ID -<span>&nbsp;&nbsp;{id}&nbsp;&nbsp;</span>
+              Account ID -<span>&nbsp;&nbsp;{id ? toEthereumAddress(id as string) : ''}&nbsp;&nbsp;</span>
             </div>
-            <CopyButton text={id as string} title="Copy address to clipboard" />
+            <CopyButton text={id ? toEthereumAddress(id as string) : ''} title="Copy address to clipboard" />
           </div>
         }
         breadcrumbItems={breadcrumbs}
@@ -181,6 +182,10 @@ export const AccountDetail: React.FC = () => {
                     title="Overview"
                     titleRight={null}
                     items={[
+                      {
+                        key: 'Account Type :',
+                        value: account.accountType,
+                      },
                       {
                         key: 'Username: ',
                         value: account?.data?.alias,
@@ -200,6 +205,10 @@ export const AccountDetail: React.FC = () => {
                     title="Overview"
                     items={[
                       {
+                        key: 'Account Type :',
+                        value: account.accountType,
+                      },
+                      {
                         key: 'Node status',
                         value:
                           account?.data?.rewardStartTime > 0 && account?.data?.rewardEndTime === 0
@@ -218,7 +227,18 @@ export const AccountDetail: React.FC = () => {
                     ]}
                     titleRight={null}
                   />
-                ) : null}
+                ) : (
+                  <DetailCard
+                    title="Overview"
+                    items={[
+                      {
+                        key: 'Account Type :',
+                        value: account.accountType,
+                      },
+                    ]}
+                    titleRight={null}
+                  />
+                )}
                 {account.accountType === AccountType.NodeAccount && (
                   <DetailCard
                     title="More Info"
@@ -259,7 +279,18 @@ export const AccountDetail: React.FC = () => {
                 }}
               />
             ) : (
-              <TransactionTable data={transactions} txType={TransactionType.transfer} />
+              <>
+                <TransactionTable data={transactions} txType={TransactionSearchParams.all} />
+                <div className={styles.paginationWrapper}>
+                  <Pagination
+                    onPageChange={(p) => setPage(p)}
+                    totalCount={totalTransactions}
+                    siblingCount={siblingCount}
+                    currentPage={page}
+                    pageSize={pageSize}
+                  />
+                </div>
+              </>
             )}
           </>
         ) : (

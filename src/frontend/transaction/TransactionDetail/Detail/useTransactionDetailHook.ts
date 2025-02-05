@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, PATHS } from '../../../api'
 import { Receipt, Transaction } from '../../../../types'
 
-interface TransactionDetailHookResult<D extends object> {
+interface TransactionDetailHookResult<> {
   transactionData: Transaction
   receiptData: Receipt
   showReceipt: boolean

@@ -18,7 +18,7 @@ export const SearchBar: React.FC<Record<string, never>> = () => {
       <input
         className={styles.input}
         type="text"
-        placeholder="Search by Address / Txn Hash / Cycle Number / Cycle Marker / Node ID"
+        placeholder="Search by Account Address / Transaction ID / Cycle Number / Cycle Marker / Node ID"
         value={search}
         onChange={(event) => setSearch(event.target.value)}
       />

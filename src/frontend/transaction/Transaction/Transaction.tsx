@@ -9,7 +9,7 @@ import { TransactionTable } from '../TransactionTable'
 import { breadcrumbsList, TransactionSearchList } from '../../types'
 
 import styles from './Transaction.module.scss'
-import { TransactionSearchParams, TransactionSearchType } from '../../../types'
+import { TransactionSearchType } from '../../../types'
 
 const breadcrumbs = [breadcrumbsList.dashboard, breadcrumbsList.transaction]
 
@@ -63,7 +63,8 @@ export const Transaction: React.FC = () => {
         ) : (transactions && transactions.length > 0) || (originalTxs && originalTxs.length > 0) ? (
           <Fragment>
             <TransactionTable
-              data={transactionType.key === TransactionSearchParams.pending ? originalTxs : transactions}
+              // data={transactionType.key === TransactionSearchParams.pending ? originalTxs : transactions}
+              data={transactions}
               txType={transactionType.key}
             />
             <div className={styles.paginationWrapper}>

@@ -14,6 +14,8 @@ import {
 } from '../../../types'
 import { Table } from '../../components/TableComp'
 import { IColumnProps } from '../../components/TableComp/Table'
+import { NetworkAccountId } from '../../../config'
+import { toEthereumAddress } from '../../utils/transformAddress'
 
 interface ITransactionTable {
   data: (Transaction | OriginalTxData)[]
@@ -43,6 +45,32 @@ const tempHeader: IColumnProps<Transaction | OriginalTxData>[] = [
     value: 'Timestamp',
     render: (val: string | TransactionType) => moment(val as string).fromNow(),
   },
+  {
+    key: 'txFrom',
+    value: 'From',
+    render: (val: string) => (
+      <AnchorLink
+        href={`/account/${val || NetworkAccountId}`}
+        label={(val as string) ? toEthereumAddress(val) : NetworkAccountId}
+        size="small"
+        ellipsis
+        width={150}
+      />
+    ),
+  },
+  {
+    key: 'txTo',
+    value: 'To',
+    render: (val: string) => (
+      <AnchorLink
+        href={`/account/${val || NetworkAccountId}`}
+        label={(val as string) ? toEthereumAddress(val) : NetworkAccountId}
+        size="small"
+        ellipsis
+        width={150}
+      />
+    ),
+  },
 ]
 
 export const TransactionTable: React.FC<ITransactionTable> = (props) => {
@@ -53,59 +81,13 @@ export const TransactionTable: React.FC<ITransactionTable> = (props) => {
   useEffect(() => {
     let tHeader: IColumnProps<Transaction | OriginalTxData>[] = []
 
-    if (txType === TransactionSearchParams.all) {
-      tHeader = [
-        {
-          key: 'txFrom',
-          value: 'From',
-          render: (val: string) => (
-            <AnchorLink
-              href={`/account/${val ? val : '0'.repeat(64)}`}
-              label={(val as string) || '0'.repeat(64)}
-              size="small"
-              ellipsis
-              width={150}
-            />
-          ),
-        },
-        {
-          key: 'txTo',
-          value: 'To',
-          render: (val: string) => (
-            <AnchorLink
-              href={`/account/${val ? val : '0'.repeat(64)}`}
-              label={(val as string) || '0'.repeat(64)}
-              size="small"
-              ellipsis
-              width={150}
-            />
-          ),
-        },
-      ]
-    }
-
     if (
       txType === TransactionType.transfer ||
       txType === TransactionType.message ||
       txType === TransactionType.deposit_stake ||
       txType === TransactionType.withdraw_stake
     ) {
-      tHeader = [
-        {
-          key: 'txFrom',
-          value: 'From',
-          render: (val: string | TransactionType) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'txTo',
-          value: 'To',
-          render: (val: string) => (
-            <AnchorLink href={`/account/${val}`} label={val} size="small" ellipsis width={150} />
-          ),
-        },
-      ]
+      tHeader = []
       if (txType === TransactionType.transfer) {
         tHeader.push(
           {
@@ -136,32 +118,24 @@ export const TransactionTable: React.FC<ITransactionTable> = (props) => {
       }
     }
 
-    if (txType === TransactionSearchParams.pending) {
-      tHeader = [
-        {
-          key: 'originalTxData.readableReceipt.from',
-          value: 'From',
-          render: (val: string) => (
-            <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
-          ),
-        },
-        {
-          key: 'originalTxData.readableReceipt.to',
-          value: 'To',
-          render: (val: string) =>
-            val ? (
-              <AnchorLink href={`/account/${val}`} label={val} size="small" ellipsis width={150} />
-            ) : (
-              'Contract Creation'
-            ),
-        },
-        {
-          key: 'originalTxData.readableReceipt.value',
-          value: 'Value',
-          render: (val: string) => calculateValue(`${val}` as string),
-        },
-      ]
-    }
+    // if (txType === TransactionSearchParams.pending) {
+    //   tHeader = [
+    //     {
+    //       key: 'originalTxData.txFrom',
+    //       value: 'From',
+    //       render: (val: string) => (
+    //         <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
+    //       ),
+    //     },
+    //     {
+    //       key: 'originalTxData.txTo',
+    //       value: 'To',
+    //       render: (val: string) => (
+    //         <AnchorLink href={`/account/${val}`} label={val as string} size="small" ellipsis width={150} />
+    //       ),
+    //     },
+    //   ]
+    // }
 
     setHeader([...tempHeader, ...tHeader])
   }, [txType])

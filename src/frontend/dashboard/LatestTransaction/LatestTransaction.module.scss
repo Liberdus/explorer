@@ -35,10 +35,16 @@
       background-color: color(bg);
     }
 
+    .timestampRow {
+      display: flex;
+      align-items: center;
+      gap: spacing(8);  // Or whatever spacing value matches your design
+    }
+
     span {
       @include fontStyle(small);
       @include singleLineEllipsis();
-      margin-right: spacing(4);
+      margin-right: spacing(8);
     }
 
     .row {

@@ -251,3 +251,5 @@ export function overrideDefaultConfig(env: NodeJS.ProcessEnv, args: string[]): v
 }
 
 export { config, DISTRIBUTOR_URL }
+
+export const NetworkAccountId = '0'.repeat(64)
