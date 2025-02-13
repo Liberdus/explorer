@@ -5,13 +5,7 @@ import { AnchorLink, Chip } from '../../components'
 
 import { calculateFullValue } from '../../utils/calculateValue'
 
-import {
-  OriginalTxData,
-  Transaction,
-  TransactionSearchParams,
-  TransactionSearchType,
-  TransactionType,
-} from '../../../types'
+import { OriginalTxData, Transaction, TransactionSearchType, TransactionType } from '../../../types'
 import { Table } from '../../components/TableComp'
 import { IColumnProps } from '../../components/TableComp/Table'
 import { NetworkAccountId } from '../../../config'

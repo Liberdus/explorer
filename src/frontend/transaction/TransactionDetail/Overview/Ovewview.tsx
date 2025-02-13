@@ -9,6 +9,7 @@ import { Transaction, TransactionType } from '../../../../types'
 import styles from './Ovewview.module.scss'
 
 import { calculateFullValue } from '../../../utils/calculateValue'
+import { toEthereumAddress } from '../../../utils/transformAddress'
 
 export function toReadableDateFromMillis(timeInMillis: number): string {
   return new Date(timeInMillis).toString()
@@ -62,7 +63,7 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
           <div className={styles.title}>From:</div>
           <div className={styles.value}>
             <Link href={`/account/${transaction?.txFrom}`} className={styles.link}>
-              {transaction?.txFrom}
+              {transaction?.txFrom ? toEthereumAddress(transaction?.txFrom) : ''}
             </Link>
           </div>
         </div>
@@ -71,7 +72,7 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
           <div className={styles.title}>To:</div>
           <div className={styles.value}>
             <Link href={`/account/${transaction?.txTo}`} className={styles.link}>
-              {transaction?.txTo}
+              {transaction?.txTo ? toEthereumAddress(transaction?.txTo) : ''}
             </Link>
           </div>
         </div>
