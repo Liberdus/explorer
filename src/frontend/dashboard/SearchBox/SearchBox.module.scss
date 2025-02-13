@@ -1,6 +1,8 @@
 @import '../../../styles/index.scss';
 
 .SearchBox {
+  display: flex;
+  flex-direction: column;
   width: 860px;
 
   @include tabletPro {
@@ -42,11 +44,15 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transform: translateY(-50%);
+    color: color(gray-300);
     background-color: color(primary);
+    border: border(gray);
+    border-radius: borderRadius(8);
+    height: 40px;
+    width: 40px;
     position: absolute;
-    right: 0;
-    bottom: 0;
-    top: 0;
-    width: 8%;
+    right: 2%;
+    top: 50%;
   }
 }

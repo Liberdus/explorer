@@ -25,6 +25,23 @@
     grid-row-gap: spacing(8);
     padding: spacing(8) spacing(16);
 
+    .column1 {
+      display: contents;
+    }
+
+    @include mobile {
+      display: block;
+      border-bottom: border(gray);
+      padding-bottom: spacing(8);
+
+      .column1 {
+        display: grid;
+        grid-template-columns: 20% 1fr;
+        grid-column-gap: spacing(8);
+        margin-bottom: 16px;
+      }
+    }
+
     .logo {
       width: 40px;
       height: 40px;
@@ -38,7 +55,7 @@
     .timestampRow {
       display: flex;
       align-items: center;
-      gap: spacing(8);  // Or whatever spacing value matches your design
+      gap: spacing(8); // Or whatever spacing value matches your design
     }
 
     span {

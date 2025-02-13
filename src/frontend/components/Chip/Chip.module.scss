@@ -11,6 +11,11 @@
   @include singleLineEllipsis();
   display: inline-block;
 
+  // if width is passed, make the chip responsive
+  @include mobile {
+    width: fit-content;
+  }
+
   &.primary {
     background-color: color(bg);
     color: color(primary);

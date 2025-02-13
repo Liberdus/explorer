@@ -8,12 +8,13 @@ const nextConfig = {
   sassOptions: {
     includePaths: [path.join(__dirname, 'styles')],
   },
+  // basePath: '/explorer', // This is needed when we serve the explorer from a subdirectory, e.g. https://test.liberdus.com/explorer
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
       use: ['@svgr/webpack'],
     })
-    config.resolve.fallback = { fs: false };
+    config.resolve.fallback = { fs: false }
 
     return config
   },

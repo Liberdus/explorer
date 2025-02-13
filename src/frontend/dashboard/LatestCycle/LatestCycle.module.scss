@@ -24,6 +24,11 @@
     align-items: center;
     grid-row-gap: spacing(8);
     padding: spacing(8) spacing(16);
+    
+    // @include mobile {
+    //   grid-template-columns: 1fr 1fr; // More flexible grid on mobile
+    //   column-gap: spacing(8); // Add some space between columns
+    // }
 
     .logo {
       width: 40px;
@@ -39,8 +44,16 @@
     span {
       @include fontStyle(small);
       @include singleLineEllipsis();
-      margin-right: spacing(4);
+      // display: block; // Make span take full width
+      // word-break: break-word; // Allow text to wrap
+      // margin-right: spacing(4);
     }
+
+    // Add styles for the AnchorLink content
+    // div {
+    //   word-break: break-word; // Allow long text to wrap
+    //   min-width: 0; // Allow content to shrink below its minimum content size
+    // }
   }
 
   .button {

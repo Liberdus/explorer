@@ -22,18 +22,20 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
       <div className={styles.content}>
         {transactions.map((item) => (
           <div key={item.txId} className={styles.item}>
-            <div className={styles.logo}>Tx</div>
-            <div>
-              <AnchorLink
-                href={`/transaction/${item.txId}`}
-                label={item.txId}
-                size="small"
-                width={180}
-                ellipsis
-              />
-              <div className={styles.timestampRow}>
-                <span>{moment(item.timestamp).fromNow()}</span>
-                <Chip title={item.transactionType} color={'info'} size="small" />
+            <div className={styles.column1}>
+              <div className={styles.logo}>Tx</div>
+              <div>
+                <AnchorLink
+                  href={`/transaction/${item.txId}`}
+                  label={item.txId}
+                  size="small"
+                  width={220}
+                  ellipsis
+                />
+                <div className={styles.timestampRow}>
+                  <span>{moment(item.timestamp).fromNow()}</span>
+                  <Chip title={item.transactionType} color={'info'} size="small" />
+                </div>
               </div>
             </div>
             <div>
@@ -45,7 +47,7 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
                     (item.txFrom as string) ? toEthereumAddress(item.txFrom as string) : NetworkAccountId
                   }
                   size="small"
-                  width={180}
+                  width={220}
                   ellipsis
                 />
               </div>
@@ -55,7 +57,7 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
                   href={`/account/${item.txTo || NetworkAccountId}`}
                   label={(item.txTo as string) ? toEthereumAddress(item.txTo as string) : NetworkAccountId}
                   size="small"
-                  width={180}
+                  width={220}
                   ellipsis
                 />
               </div>

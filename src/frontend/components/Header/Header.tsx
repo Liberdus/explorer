@@ -1,98 +1,164 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { useLayoutBreakpoint } from '../../utils/useLayoutBreakpoint'
 import { SearchBar } from '../SearchBar'
 import Image from 'next/image'
 
-import { Icon, Menu, MenuItem, Button, TopBarDropdown } from '../index'
+import { Icon } from '../index'
 
 import styles from './Header.module.scss'
+import { TransactionType } from '../../../types'
 
 export const Header: React.FC<Record<string, never>> = () => {
   const router = useRouter()
 
   const isHomePage = router.pathname === '/'
 
-  const { isTablet, isMobile } = useLayoutBreakpoint()
-
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false)
+  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
 
-  const open = (): void => setIsMenuOpen(true)
-  const close = (): void => setIsMenuOpen(false)
-
-  const navLinks = [
-    { key: '/', value: 'Home' },
+  const menuItems = [
+    { name: 'Home', href: '/', current: true },
     {
-      key: 'testnet',
-      value: 'About Testnet',
-      render: () => {
-        return (
-          <TopBarDropdown
-            label=""
-            options={[
-              { key: 'https://test.liberdus.com', value: 'Liberdus Web Client' },
-              { key: 'https://github.com/Liberdus/validator-dashboard', value: 'Run a validator node' },
-            ]}
-          />
-        )
-      },
+      name: 'Transactions',
+      href: '/transaction',
+      hasSubmenu: true,
+      submenu: [
+        { name: 'All Transactions', href: '/transaction' },
+        { name: 'Transfer Transactions', href: `/transaction?txType=${TransactionType.transfer}` },
+        { name: 'Message Transactions', href: `/transaction?txType=${TransactionType.message}` },
+      ],
+    },
+    {
+      name: 'Charts & Stats',
+      href: '#',
+      hasSubmenu: true,
+      submenu: [
+        { name: 'Validators Stats', href: '/validator_line_chart' },
+        { name: 'Transactions Stats', href: '/transaction_line_chart' },
+      ],
+    },
+    {
+      name: 'More',
+      href: '#',
+      hasSubmenu: true,
+      submenu: [
+        { name: 'About Liberdus', href: 'https://liberdus.com', external: true },
+        { name: 'Liberdus Web Client', href: 'https://test.liberdus.com', external: true },
+        {
+          name: 'Run a validator node',
+          href: 'https://github.com/Liberdus/validator-dashboard',
+          external: true,
+        },
+      ],
     },
   ]
 
-  const renderMenuButton = (): JSX.Element => {
-    if (isTablet || isMobile) {
-      return (
-        <Menu
-          anchor={
-            <Button onMouseEnter={open} onClick={open} apperance="outlined" size="medium">
-              <Icon name="menu" size="medium" color="black" />
-            </Button>
-          }
-          isMenuOpen={isMenuOpen}
-          onClose={close}
-          onOpen={open}
-          horizontalPosition="right"
-          verticalPosition="bottom"
-          top={4}
-          left={-30}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          {navLinks.map((item) => (
-            <MenuItem
-              key={item.key}
-              label={item.value}
-              isActive={item.key === router.pathname}
-              onClick={(e) => {
-                e.stopPropagation()
-                close()
-              }}
-            />
-          ))}
-        </Menu>
-      )
-    }
-    return <> </>
+  const handleMouseEnter = (itemName: string): void => {
+    setActiveSubmenu(itemName)
+  }
+
+  const handleMouseLeave = (): void => {
+    setActiveSubmenu(null)
+  }
+
+  const handleMobileSubmenuClick = (itemName: string): void => {
+    setActiveSubmenu(activeSubmenu === itemName ? null : itemName)
   }
 
   return (
     <header className={styles.Header}>
       <nav className={styles.nav}>
-        <Link href="/" className={styles.logoWrapper}>
-          {/* <Icon name="logo" className={styles.logo} size="extraLarge" /> */}
-          <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} />
-          
-          <div className={styles.name}>Liberdus Explorer</div>
-        </Link>
-        <ul className={styles.list}>
+        <div className={styles.nav_content}>
+          <Link href="/" className={styles.logoWrapper}>
+            {/* <Icon name="logo" className={styles.logo} size="extraLarge" /> */}
+            <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} />
+
+            <div className={styles.name}>Liberdus Explorer</div>
+          </Link>
           {!isHomePage && <SearchBar />}
-          {navLinks.map((item) => (
-            <li key={item.key} className={styles.list_item}>
-              {item?.render ? item?.render() : <Link href={item.key}>{item.value}</Link>}
-            </li>
-          ))}
-        </ul>
-        {renderMenuButton()}
+
+          <div className={styles.desktop_menu}>
+            {menuItems.map((item) => (
+              <div
+                key={item.name}
+                className={styles.menu_item}
+                onMouseEnter={() => item.hasSubmenu && handleMouseEnter(item.name)}
+                onMouseLeave={handleMouseLeave}
+              >
+                <a href={item.href} className={item.current ? 'active' : ''}>
+                  {item.name}
+                  {item.hasSubmenu && <Icon name="arrow_down" size="medium" color="black" />}
+                </a>
+                {item.hasSubmenu && activeSubmenu === item.name && (
+                  <div className={styles.submenu}>
+                    {item.submenu?.map((subItem) => (
+                      <>
+                        <a
+                          key={subItem.name}
+                          href={subItem.href}
+                          target={subItem.external ? '_blank' : '_self'}
+                          className={styles.submenu_item}
+                        >
+                          {subItem.name}
+                        </a>
+                        <div className={styles.divider}></div>
+                      </>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button className={styles.mobile_menu_button} onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            {isMenuOpen ? (
+              // <Icon name="menu" size="medium" color="black" />
+              <Icon name="menu" size="medium" color="black" />
+            ) : (
+              <Icon name="menu" size="medium" color="black" />
+            )}
+          </button>
+        </div>
+
+        {/* {renderMenuButton()} */}
+        {isMenuOpen && (
+          <div className={styles.mobile_menu}>
+            {menuItems.map((item) => (
+              <div key={item.name} className={styles.menu_item}>
+                <a
+                  href={item.hasSubmenu ? '#' : item.href}
+                  className={item.current ? 'active' : ''}
+                  onClick={(e) => {
+                    if (item.hasSubmenu) {
+                      e.preventDefault()
+                      handleMobileSubmenuClick(item.name)
+                    }
+                  }}
+                >
+                  <div className={styles.menuitem_content}>
+                    {item.name}
+                    {item.hasSubmenu && <Icon name="arrow_down" color="black" />}
+                  </div>
+                </a>
+                {item.hasSubmenu && activeSubmenu === item.name && (
+                  <div className={styles.mobile_submenu}>
+                    {item.submenu?.map((subItem) => (
+                      <a
+                        key={subItem.name}
+                        href={subItem.href}
+                        target={subItem.external ? '_blank' : '_self'}
+                        className={styles.submenu_item}
+                      >
+                        {subItem.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </nav>
     </header>
   )

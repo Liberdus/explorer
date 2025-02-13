@@ -1,4 +1,4 @@
-import React, { Fragment, useState } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 
 import { useTransaction } from '../../api'
@@ -21,6 +21,10 @@ export const Transaction: React.FC = () => {
   const tType = txType ? TransactionSearchList.filter((t) => t.key === txType)[0] : TransactionSearchList[0]
 
   const [transactionType, setTransactionType] = useState(tType)
+
+  useEffect(() => {
+    setTransactionType(tType)
+  }, [tType])
 
   const [currentPage, setCurrentPage] = useState(1)
   const siblingCount = 3
