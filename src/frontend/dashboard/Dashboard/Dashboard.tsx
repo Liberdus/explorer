@@ -1,13 +1,12 @@
 import React from 'react'
 import moment from 'moment'
 
-import { CardDetail } from '../CardDetail'
+import { NewCardDetail } from '../NewCardDetail'
 import { SearchBox } from '../SearchBox'
 import { Spacer } from '../../components'
 
-import { useCycle, useTransaction, useAccount, useStats } from '../../api'
+import { useCycle, useTransaction, useStats } from '../../api'
 import styles from './Dashboard.module.scss'
-import { ChartDetail } from '../ChartDetail'
 import { TransactionSearchParams } from '../../../types'
 
 import { LatestTransactions } from '../LatestTransaction'
@@ -15,25 +14,10 @@ import { LatestCycle } from '../LatestCycle'
 
 export const Dashboard: React.FC = () => {
   const { data: cycles } = useCycle({ count: 10 })
-  const {
-    transactions,
-    totalTransferTxs,
-    totalMessageTxs,
-    totalDepositStakeTxs,
-    totalWithdrawStakeTxs,
-    totalTransactions,
-  } = useTransaction({
+  const { transactions, totalTransactions } = useTransaction({
     count: 10,
     txType: TransactionSearchParams.all,
-    totalTxsDetail: true,
-  })
-
-  const { totalAccounts } = useAccount({ count: 10 })
-
-  const { validatorStats, transactionStats, totalLIB, totalStakedLIB } = useStats({
-    validatorStatsCount: 1000,
-    transactionStatsCount: 1000,
-    fetchCoinStats: true,
+    totalTxsDetail: false,
   })
 
   const cyclesList = cycles.map((row) => {
@@ -45,26 +29,33 @@ export const Dashboard: React.FC = () => {
     }
   })
 
+  const { totalLIB } = useStats({ fetchCoinStats: true })
+
+  const transactionStats = [
+    [1506988800000, 1000],
+    [1507075200000, 2000],
+    [1507161600000, 1500],
+    [1507248000000, 700],
+    [1507507200000, 4000],
+    [1507593600000, 3000],
+    [1507680000000, 2000],
+    [1507766400000, 1000],
+    [1507852800000, 1500],
+    [1508112000000, 2200],
+  ]
+
   return (
     <div className={styles.Dashboard}>
       <Spacer space="32" />
       <SearchBox mode={cycles[0]?.cycleRecord['mode']} />
       <Spacer space="48" />
-      <CardDetail
+      <NewCardDetail
         totalCycles={cyclesList[0]?.key}
-        totalNodes={cyclesList[0]?.activeNodes}
-        totalStandby={cyclesList[0]?.standbyNodes}
-        totalAccounts={totalAccounts}
         totalTransactions={totalTransactions}
-        totalTransferTxs={totalTransferTxs}
-        totalMessageTxs={totalMessageTxs}
-        totalDepositStakeTxs={totalDepositStakeTxs}
-        totalWithdrawStakeTxs={totalWithdrawStakeTxs}
         totalLIB={totalLIB}
-        totalStakedLIB={totalStakedLIB}
+        libPrice={0.082323}
+        transactionStats={transactionStats}
       />
-      <Spacer space="48" />
-      <ChartDetail validatorStats={validatorStats} transactionStats={transactionStats} />
       <Spacer space="48" />
       <div className={styles.tableGrid}>
         <LatestCycle cycles={cycles} />

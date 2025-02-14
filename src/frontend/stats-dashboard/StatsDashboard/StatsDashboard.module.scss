@@ -1,0 +1,19 @@
+@import '../../../styles/index.scss';
+
+.StatsDashboard {
+  .hero {
+    background-color: color(gray-100);
+  }
+
+  .tableGrid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    column-gap: spacing(32);
+
+    @include tabletPro {
+      grid-template-columns: minmax(300px, 1fr);
+      column-gap: spacing(8);
+      overflow-x: visible;
+    }
+  }
+}

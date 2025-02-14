@@ -2,7 +2,6 @@ import React from 'react'
 import Highcharts from 'highcharts'
 import HighchartsExporting from 'highcharts/modules/exporting'
 import HighchartsReact from 'highcharts-react-official'
-import { useRouter } from 'next/router'
 
 if (typeof Highcharts === 'object') {
   HighchartsExporting(Highcharts)
@@ -15,28 +14,21 @@ interface LineChartProps {
   data: number[][]
   height?: number
   name?: string
+  price?: number
 }
 
-export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
-  const router = useRouter()
+export const LineChart: React.FC<LineChartProps> = (props) => {
+  const { title, data, height = 150, name, price } = props
 
-  const { title, centerTitle, subTitle, data, height = 150, name } = props
-
-  const option = {
+  const options = {
     title: {
       text: title,
-      align: centerTitle ? 'center' : 'left',
+      align: 'left',
       style: {
-        fontSize: '12px',
-        fontWeight: '600',
-        color: '#495057',
+        fontSize: '14px',
+        fontWeight: '400',
+        color: '#666',
         fontFamily: 'Inter, sans-serif',
-      },
-    },
-    subtitle: {
-      text: subTitle || undefined,
-      style: {
-        fontSize: '12px',
       },
     },
     series: [
@@ -115,7 +107,7 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
       borderWidth: 0,
       borderRadius: 4,
       shadow: true,
-      // padding: 12,
+      padding: 12,
       headerFormat: '',
       pointFormatter: function () {
         const date = new Date(this.x)
@@ -126,6 +118,7 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
           <div>
             Transactions: <b>${Highcharts.numberFormat(this.y, 0)}</b>
           </div>
+          ${price ? `<div>Price: <b>$${price.toFixed(2)}</b></div>` : ''}
         </div>`
       },
       useHTML: true,
@@ -134,7 +127,7 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
       height: height,
       zoomType: 'x',
       backgroundColor: 'transparent',
-      spacing: [20, 20, 20, 20], // Increased left spacing
+      spacing: [20, 20, 20, 60], // Increased left spacing
     },
     credits: {
       enabled: false,
@@ -161,7 +154,7 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
     },
   }
 
-  return <HighchartsReact highcharts={Highcharts} options={option} />
+  return <HighchartsReact highcharts={Highcharts} options={options} />
 }
 
 export default LineChart

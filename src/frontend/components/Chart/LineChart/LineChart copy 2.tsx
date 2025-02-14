@@ -2,7 +2,6 @@ import React from 'react'
 import Highcharts from 'highcharts'
 import HighchartsExporting from 'highcharts/modules/exporting'
 import HighchartsReact from 'highcharts-react-official'
-import { useRouter } from 'next/router'
 
 if (typeof Highcharts === 'object') {
   HighchartsExporting(Highcharts)
@@ -15,28 +14,21 @@ interface LineChartProps {
   data: number[][]
   height?: number
   name?: string
+  price?: number
 }
 
-export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
-  const router = useRouter()
+export const LineChart: React.FC<LineChartProps> = (props) => {
+  const { title, data, height = 150, name, price } = props
 
-  const { title, centerTitle, subTitle, data, height = 150, name } = props
-
-  const option = {
+  const options = {
     title: {
       text: title,
-      align: centerTitle ? 'center' : 'left',
+      align: 'left',
       style: {
-        fontSize: '12px',
-        fontWeight: '600',
-        color: '#495057',
+        fontSize: '14px',
+        fontWeight: '400',
+        color: '#666',
         fontFamily: 'Inter, sans-serif',
-      },
-    },
-    subtitle: {
-      text: subTitle || undefined,
-      style: {
-        fontSize: '12px',
       },
     },
     series: [
@@ -55,11 +47,13 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
             },
           },
         },
+        // Add smooth curve settings
         spline: true,
         linecap: 'round',
         lineJoin: 'round',
         connectNulls: true,
         type: 'spline',
+        // Adjust the smoothness of the curve
         connectEnds: true,
         tension: 0.4,
       },
@@ -76,18 +70,6 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
           color: '#666',
           fontSize: '12px',
         },
-        formatter: function () {
-          const date = new Date(this.value)
-          return Highcharts.dateFormat('%b %e', Number(date))
-        },
-      },
-      tickPositioner: function () {
-        const positions = this.series[0].xData
-        return [
-          positions[0], // First date
-          positions[Math.floor(positions.length / 2)], // Middle date
-          positions[positions.length - 1], // Last date
-        ]
       },
       lineColor: 'transparent',
     },
@@ -98,7 +80,7 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
       gridLineWidth: 0,
       labels: {
         format: '{value:,.0f}k',
-        align: 'right',
+        align: 'left',
         x: 0,
         y: -3,
         style: {
@@ -108,14 +90,13 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
       },
       tickPosition: 'inside',
       tickLength: 0,
-      offset: 20, // Add spacing between labels and chart
     },
     tooltip: {
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderWidth: 0,
       borderRadius: 4,
       shadow: true,
-      // padding: 12,
+      padding: 12,
       headerFormat: '',
       pointFormatter: function () {
         const date = new Date(this.x)
@@ -126,6 +107,7 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
           <div>
             Transactions: <b>${Highcharts.numberFormat(this.y, 0)}</b>
           </div>
+          ${price ? `<div>Price: <b>$${price.toFixed(2)}</b></div>` : ''}
         </div>`
       },
       useHTML: true,
@@ -134,7 +116,7 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
       height: height,
       zoomType: 'x',
       backgroundColor: 'transparent',
-      spacing: [20, 20, 20, 20], // Increased left spacing
+      spacing: [20, 20, 20, 40],
     },
     credits: {
       enabled: false,
@@ -161,7 +143,7 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
     },
   }
 
-  return <HighchartsReact highcharts={Highcharts} options={option} />
+  return <HighchartsReact highcharts={Highcharts} options={options} />
 }
 
 export default LineChart
