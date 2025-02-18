@@ -1,6 +1,13 @@
-import { CoinStatsDB, TransactionStatsDB, ValidatorStatsDB, NodeStatsDB, MetadataDB } from '../stats'
+import {
+  CoinStatsDB,
+  TransactionStatsDB,
+  ValidatorStatsDB,
+  NodeStatsDB,
+  MetadataDB,
+  DailyTransactionStatsDB,
+} from '../stats'
 import { CycleDB, TransactionDB } from '../storage'
-import {  TransactionType } from '../types'
+import { TransactionType } from '../types'
 import { P2P } from '@shardus/types'
 import { config } from '../config/index'
 
@@ -242,8 +249,8 @@ export const recordCoinStats = async (latestCycle: number, lastStoredCycle: numb
 
           const coinStatsForCycle = {
             cycle: cycle.counter,
-            totalSupplyChange: weiBNToEth(nodeRewardAmount-  nodePenaltyAmount - transactionFee),
-            totalStakeChange: weiBNToEth(stakeAmount- unStakeAmount),
+            totalSupplyChange: weiBNToEth(nodeRewardAmount - nodePenaltyAmount - transactionFee),
+            totalStakeChange: weiBNToEth(stakeAmount - unStakeAmount),
             timestamp: cycle.cycleRecord.start,
           }
           // await CoinStats.insertCoinStats(coinStatsForCycle)
@@ -259,6 +266,71 @@ export const recordCoinStats = async (latestCycle: number, lastStoredCycle: numb
     }
     startCycle = endCycle + 1
     endCycle = endCycle + bucketSize
+  }
+}
+
+export const recordDailyTransactionsStats = async (
+  dateStartTime: number,
+  dateEndTime: number
+): Promise<void> => {
+  const one_day_in_ms = 24 * 60 * 60 * 1000
+  for (let startTimestamp = dateStartTime; startTimestamp <= dateEndTime; startTimestamp += one_day_in_ms) {
+    const endTimestamp = startTimestamp + one_day_in_ms - 1
+    const totalTxs = await TransactionDB.queryTransactionCount(
+      undefined,
+      undefined,
+      0,
+      0,
+      startTimestamp,
+      endTimestamp
+    )
+    const totalTransferTxs = await TransactionDB.queryTransactionCount(
+      TransactionType.transfer,
+      undefined,
+      0,
+      0,
+      startTimestamp,
+      endTimestamp
+    )
+    const totalMessageTxs = await TransactionDB.queryTransactionCount(
+      TransactionType.message,
+      undefined,
+      0,
+      0,
+      startTimestamp,
+      endTimestamp
+    )
+    const totalDepositStakeTxs = await TransactionDB.queryTransactionCount(
+      TransactionType.deposit_stake,
+      undefined,
+      0,
+      0,
+      startTimestamp,
+      endTimestamp
+    )
+    const totalWithdrawStakeTxs = await TransactionDB.queryTransactionCount(
+      TransactionType.withdraw_stake,
+      undefined,
+      0,
+      0,
+      startTimestamp,
+      endTimestamp
+    )
+    const dailyTransactionStats = {
+      dateStartTime: startTimestamp,
+      totalTxs,
+      totalTransferTxs,
+      totalMessageTxs,
+      totalDepositStakeTxs,
+      totalWithdrawStakeTxs,
+    }
+    await DailyTransactionStatsDB.insertDailyTransactionStats(dailyTransactionStats)
+    console.log(
+      `Stored daily transaction stats for ${new Date(
+        startTimestamp
+      )}, startTimestamp ${startTimestamp} endTimestamp ${endTimestamp}`,
+      dailyTransactionStats
+    )
   }
 }
 

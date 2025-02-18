@@ -43,6 +43,7 @@ export interface Config {
   COLLECTOR_STATS_DATA: {
     validatorStatsDB: string
     transactionStatsDB: string
+    dailyTransactionStatsDB: string
     coinStatsDB: string
     nodeStatsDB: string
     metadataDB: string
@@ -88,6 +89,7 @@ export interface Config {
     MAX_BETWEEN_CYCLES_PER_REQUEST: number
     MAX_ACCOUNT_HISTORY_STATES_PER_REQUEST: number
   }
+  dexScreenerAPI: string // Dex Screener API URL for Liberdus token
 }
 
 let config: Config = {
@@ -126,6 +128,7 @@ let config: Config = {
   COLLECTOR_STATS_DATA: {
     validatorStatsDB: 'validatorStats.sqlite3',
     transactionStatsDB: 'transactionStats.sqlite3',
+    dailyTransactionStatsDB: 'dailyTransactionStats.sqlite3',
     coinStatsDB: 'coinStats.sqlite3',
     nodeStatsDB: 'nodeStats.sqlite3',
     metadataDB: 'metadata.sqlite3',
@@ -170,6 +173,8 @@ let config: Config = {
     MAX_BETWEEN_CYCLES_PER_REQUEST: 100,
     MAX_ACCOUNT_HISTORY_STATES_PER_REQUEST: 100,
   },
+  dexScreenerAPI:
+    'https://api.dexscreener.com/latest/dex/search?q=0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76',
 }
 
 let DISTRIBUTOR_URL = `http://${config.distributorInfo.ip}:${config.distributorInfo.port}`

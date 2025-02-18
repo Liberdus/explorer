@@ -68,9 +68,6 @@ export async function queryLatestTransactionStats(count: number): Promise<Transa
     const sql = `SELECT * FROM transactions ORDER BY cycle DESC LIMIT ${count ? count : 100}`
     const transactionsStats: TransactionStats[] = await db.all(transactionStatsDatabase, sql)
     if (config.verbose) console.log('transactionStats count', transactionsStats)
-    if (transactionsStats.length > 0) {
-      transactionsStats.sort((a, b) => (a.timestamp > b.timestamp ? 1 : -1))
-    }
     return transactionsStats
   } catch (e) {
     console.log(e)
@@ -82,12 +79,12 @@ export async function queryTransactionStatsBetween(
   endCycle: number
 ): Promise<TransactionStats[]> {
   try {
-    const sql = `SELECT * FROM transactions WHERE cycle BETWEEN ? AND ? ORDER BY cycle DESC LIMIT 100`
-    const transactionsStats: TransactionStats[] = await db.all(transactionStatsDatabase, sql, [startCycle, endCycle])
+    const sql = `SELECT * FROM transactions WHERE cycle BETWEEN ? AND ? ORDER BY cycle ASC`
+    const transactionsStats: TransactionStats[] = await db.all(transactionStatsDatabase, sql, [
+      startCycle,
+      endCycle,
+    ])
     if (config.verbose) console.log('transactionStats between', transactionsStats)
-    if (transactionsStats.length > 0) {
-      transactionsStats.sort((a, b) => (a.timestamp > b.timestamp ? 1 : -1))
-    }
     return transactionsStats
   } catch (e) {
     console.log(e)

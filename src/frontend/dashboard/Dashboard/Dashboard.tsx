@@ -11,6 +11,7 @@ import { TransactionSearchParams } from '../../../types'
 
 import { LatestTransactions } from '../LatestTransaction'
 import { LatestCycle } from '../LatestCycle'
+import { useDexTokenPrice } from '../../api/useDexTokenPrice'
 
 export const Dashboard: React.FC = () => {
   const { data: cycles } = useCycle({ count: 10 })
@@ -19,7 +20,12 @@ export const Dashboard: React.FC = () => {
     txType: TransactionSearchParams.all,
     totalTxsDetail: false,
   })
+  const { transactionStats } = useStats({
+    last14DaysTxsReport: true,
+    transactionResponseType: 'array',
+  })
 
+  const { tokenPrice, marketCap } = useDexTokenPrice()
   const cyclesList = cycles.map((row) => {
     return {
       key: row?.cycleRecord?.counter ?? -1,
@@ -29,21 +35,6 @@ export const Dashboard: React.FC = () => {
     }
   })
 
-  const { totalLIB } = useStats({ fetchCoinStats: true })
-
-  const transactionStats = [
-    [1506988800000, 1000],
-    [1507075200000, 2000],
-    [1507161600000, 1500],
-    [1507248000000, 700],
-    [1507507200000, 4000],
-    [1507593600000, 3000],
-    [1507680000000, 2000],
-    [1507766400000, 1000],
-    [1507852800000, 1500],
-    [1508112000000, 2200],
-  ]
-
   return (
     <div className={styles.Dashboard}>
       <Spacer space="32" />
@@ -52,8 +43,8 @@ export const Dashboard: React.FC = () => {
       <NewCardDetail
         totalCycles={cyclesList[0]?.key}
         totalTransactions={totalTransactions}
-        totalLIB={totalLIB}
-        libPrice={0.082323}
+        tokenPrice={tokenPrice}
+        marketCap={marketCap}
         transactionStats={transactionStats}
       />
       <Spacer space="48" />

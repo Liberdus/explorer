@@ -10,7 +10,13 @@ import * as usage from './middleware/usage'
 import * as Storage from './storage'
 import { AccountDB, CycleDB, ReceiptDB, TransactionDB, OriginalTxDataDB } from './storage'
 import * as StatsStorage from './stats'
-import { ValidatorStatsDB, TransactionStatsDB, CoinStatsDB, NodeStatsDB } from './stats'
+import {
+  ValidatorStatsDB,
+  TransactionStatsDB,
+  DailyTransactionStatsDB,
+  CoinStatsDB,
+  NodeStatsDB,
+} from './stats'
 import {
   Account,
   AccountSearchType,
@@ -36,6 +42,7 @@ import { Utils as StringUtils } from '@shardus/types'
 import { healthCheckRouter } from './routes/healthCheck'
 import { ValidatorStats } from './stats/validatorStats'
 import { TransactionStats } from './stats/transactionStats'
+import { DailyTransactionStats } from './stats/dailyTransactionStats'
 
 if (config.env == envEnum.DEV) {
   //default debug mode
@@ -374,8 +381,8 @@ const start = async (): Promise<void> => {
       endCycle: string
       accountId: string
       txId: string
-      beforeTimestamp: string
-      afterTimestamp: string
+      startTimestamp: string
+      endTimestamp: string
       requery: string
       totalTxsDetail: string
     }
@@ -390,8 +397,8 @@ const start = async (): Promise<void> => {
       startCycle: 's?',
       endCycle: 's?',
       txId: 's?',
-      beforeTimestamp: 's?',
-      afterTimestamp: 's?',
+      startTimestamp: 's?',
+      endTimestamp: 's?',
       requery: 's?',
       totalTxsDetail: 's?',
     })
@@ -410,8 +417,8 @@ const start = async (): Promise<void> => {
       !query.startCycle &&
       !query.endCycle &&
       !query.txId &&
-      !query.beforeTimestamp &&
-      !query.afterTimestamp &&
+      !query.startTimestamp &&
+      !query.endTimestamp &&
       !query.requery &&
       !query.totalTxsDetail
     ) {
@@ -965,6 +972,9 @@ const start = async (): Promise<void> => {
       startCycle: string
       endCycle: string
       responseType: string
+      last14DaysTxsReport: string
+      startTimestamp: string
+      endTimestamp: string
     }
   }>
 
@@ -974,6 +984,9 @@ const start = async (): Promise<void> => {
       startCycle: 's?',
       endCycle: 's?',
       responseType: 's?',
+      last14DaysTxsReport: 's?',
+      startTimestamp: 's?',
+      endTimestamp: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -981,14 +994,22 @@ const start = async (): Promise<void> => {
     }
     const query = _request.query
     // Check at least one of the query parameters is present
-    if (!query.count && !query.startCycle && !query.endCycle && !query.responseType) {
+    if (
+      !query.count &&
+      !query.startCycle &&
+      !query.endCycle &&
+      !query.responseType &&
+      !query.last14DaysTxsReport &&
+      !query.startTimestamp &&
+      !query.endTimestamp
+    ) {
       reply.send({
         success: false,
         reason: 'Not specified which transaction stats to query',
       })
       return
     }
-    let transactionStats: TransactionStats[] = []
+    let transactionStats: TransactionStats[] | DailyTransactionStats[] = []
     if (query.count) {
       let count: number = parseInt(query.count)
       if (count <= 0 || Number.isNaN(count)) {
@@ -1031,25 +1052,44 @@ const start = async (): Promise<void> => {
         }
       }
       transactionStats = await TransactionStatsDB.queryTransactionStatsBetween(startCycle, endCycle)
-    } else {
-      reply.send({
-        success: false,
-        error: 'not specified which transactions stats to show',
-      })
-      return
+    } else if (query.last14DaysTxsReport) {
+      if (query.last14DaysTxsReport !== 'true') {
+        reply.send({
+          success: false,
+          error: 'Invalid last14DaysTxsReport',
+        })
+        return
+      }
+      transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(14)
     }
+    console.log(query.responseType)
     if (query.responseType && query.responseType === 'array') {
       const temp_array = []
-      transactionStats.forEach((item) =>
-        temp_array.push([
-          item.timestamp * 1000,
-          item.totalTxs,
-          item.totalInternalTxs,
-          item.totalStakeTxs,
-          item.totalUnstakeTxs,
-          item.cycle,
-        ])
-      )
+
+      if (query.last14DaysTxsReport) {
+        ;(transactionStats as DailyTransactionStats[]).forEach((item: DailyTransactionStats) =>
+          temp_array.push([
+            item.dateStartTime,
+            item.totalTxs,
+            item.totalTransferTxs,
+            item.totalMessageTxs,
+            item.totalDepositStakeTxs,
+            item.totalWithdrawStakeTxs,
+          ])
+        )
+      } else {
+        ;(transactionStats as TransactionStats[]).forEach((item) =>
+          temp_array.push([
+            item.timestamp * 1000,
+            item.totalTxs,
+            item.totalInternalTxs,
+            item.totalStakeTxs,
+            item.totalUnstakeTxs,
+            item.cycle,
+          ])
+        )
+      }
+      console.log('temp_array', temp_array)
       transactionStats = temp_array
     }
     const res = {

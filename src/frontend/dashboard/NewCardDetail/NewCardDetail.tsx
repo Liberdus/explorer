@@ -4,13 +4,14 @@ import React from 'react'
 import { Icon, LineChart } from '../../components'
 
 import styles from './NewCardDetail.module.scss'
+import { TransactionStats } from '../../../stats/transactionStats'
 
 export interface NewCardDetailProps {
-  libPrice: number
-  totalLIB: number
+  tokenPrice: number
+  marketCap: number
   totalCycles: number
   totalTransactions: number
-  transactionStats: number[][]
+  transactionStats: TransactionStats[]
 }
 
 export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
@@ -24,7 +25,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
             </div>
             <div>
               <p className={styles.title}>LIB PRICE</p>
-              <p>{data?.libPrice?.toLocaleString('en-US')}</p>
+              <p>{data?.tokenPrice?.toLocaleString('en-US')}</p>
             </div>
           </div>
         </Link>
@@ -35,7 +36,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
           </div>
           <div>
             <p className={styles.title}>MARKET CAP</p>
-            <p>{data?.totalLIB?.toLocaleString('en-US')}</p>
+            <p>{data?.marketCap?.toLocaleString('en-US')}</p>
           </div>
         </div>
       </div>
@@ -65,7 +66,10 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
         </Link>
       </div>
       <div className={styles.column}>
-        <LineChart title="TRANSACTION HISTORY IN 14 DAYS" data={data?.transactionStats} />
+        <LineChart
+          title="TRANSACTION HISTORY IN 14 DAYS"
+          data={data?.transactionStats as unknown as number[][]}
+        />
       </div>
     </div>
   )

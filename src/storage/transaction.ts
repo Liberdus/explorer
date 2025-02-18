@@ -96,8 +96,8 @@ export async function queryTransactionCount(
   accountId?: string,
   startCycleNumber?: number,
   endCycleNumber?: number,
-  beforeTimestamp?: number,
-  afterTimestamp?: number
+  startTimestamp?: number,
+  endTimestamp?: number
 ): Promise<number> {
   let transactions: { 'COUNT(*)': number } = { 'COUNT(*)': 0 }
   try {
@@ -122,13 +122,13 @@ export async function queryTransactionCount(
       sql += `cycleNumber BETWEEN ? AND ?`
       values.push(startCycleNumber, endCycleNumber)
     }
-    if (beforeTimestamp || afterTimestamp) {
+    if (startTimestamp || endTimestamp) {
       sql = db.updateSqlStatementClause(sql, values)
       sql += `timestamp BETWEEN ? AND ?`
-      values.push(beforeTimestamp, afterTimestamp)
+      values.push(startTimestamp, endTimestamp)
     }
     transactions = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(*)': number }
-    console.log('queryTransactionCount', sql, values, transactions)
+    // console.log('queryTransactionCount', sql, values, transactions)
   } catch (e) {
     console.log(e)
   }
@@ -144,8 +144,8 @@ export async function queryTransactions(
   accountId?: string,
   startCycleNumber?: number,
   endCycleNumber?: number,
-  beforeTimestamp?: number,
-  afterTimestamp?: number
+  startTimestamp?: number,
+  endTimestamp?: number
 ): Promise<DbTransaction[]> {
   let transactions: DbTransaction[] = []
   try {
@@ -171,10 +171,10 @@ export async function queryTransactions(
       sql += `cycleNumber BETWEEN ? AND ?`
       values.push(startCycleNumber, endCycleNumber)
     }
-    if (beforeTimestamp || afterTimestamp) {
+    if (startTimestamp || endTimestamp) {
       sql = db.updateSqlStatementClause(sql, values)
       sql += `timestamp BETWEEN ? AND ?`
-      values.push(beforeTimestamp, afterTimestamp)
+      values.push(startTimestamp, endTimestamp)
     }
     if (startCycleNumber || endCycleNumber) {
       sql += ` ORDER BY cycleNumber ASC, timestamp ASC LIMIT ${limit} OFFSET ${skip}`
@@ -182,7 +182,7 @@ export async function queryTransactions(
       sql += ` ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`
     }
     transactions = (await db.all(transactionDatabase, sql, values)) as DbTransaction[]
-    console.log('queryTransactions', sql, values, transactions)
+    // console.log('queryTransactions', sql, values, transactions)
     if (transactions.length > 0) {
       transactions.forEach((transaction: DbTransaction) => {
         deserializeDbTransaction(transaction)
