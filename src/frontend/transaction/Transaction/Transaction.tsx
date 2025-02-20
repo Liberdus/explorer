@@ -11,7 +11,7 @@ import { breadcrumbsList, TransactionSearchList } from '../../types'
 import styles from './Transaction.module.scss'
 import { TransactionSearchType } from '../../../types'
 
-const breadcrumbs = [breadcrumbsList.dashboard, breadcrumbsList.transaction]
+const breadcrumbs = [breadcrumbsList.dashboard]
 
 export const Transaction: React.FC = () => {
   const router = useRouter()

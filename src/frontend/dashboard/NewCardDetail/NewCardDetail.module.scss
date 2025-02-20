@@ -1,6 +1,6 @@
 @import '../../../styles/index.scss';
 
-.CardDetail {
+.NewCardDetail {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -35,13 +35,18 @@
   }
 
   .icon {
-    $size: 40px;
+    $size: 32px;
     @extend %center;
     width: $size;
     height: $size;
-    background-color: color(bg);
-    border-radius: borderRadius(8);
+    // background-color: color(bg);
+    // border-radius: borderRadius(8);
     margin-right: spacing(12);
+    cursor: pointer;
+  }
+
+  .logo {
+    margin-right: spacing(14);
     cursor: pointer;
   }
 

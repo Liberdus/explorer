@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import React from 'react'
+import Image from 'next/image'
 
 import { Icon, LineChart } from '../../components'
 
@@ -16,27 +17,28 @@ export interface NewCardDetailProps {
 
 export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
   return (
-    <div className={styles.CardDetail}>
+    <div className={styles.NewCardDetail}>
       <div className={styles.column}>
         <Link href="/cycle">
           <div className={styles.item}>
-            <div className={styles.icon}>
+            {/* <div className={styles.icon}>
               <Icon name="cycle" size="medium" color="black" />
-            </div>
+            </div> */}
+            <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} />
             <div>
               <p className={styles.title}>LIB PRICE</p>
-              <p>{data?.tokenPrice?.toLocaleString('en-US')}</p>
+              <p>${data?.tokenPrice?.toLocaleString('en-US')}</p>
             </div>
           </div>
         </Link>
         <hr className={styles.hr} />
         <div className={styles.item}>
           <div className={styles.icon}>
-            <Icon name="standby" size="medium" color="black" />
+            <Icon name="earth" size="large" color="black" />
           </div>
           <div>
             <p className={styles.title}>MARKET CAP</p>
-            <p>{data?.marketCap?.toLocaleString('en-US')}</p>
+            <p>${data?.marketCap?.toLocaleString('en-US')}</p>
           </div>
         </div>
       </div>
@@ -44,7 +46,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
         <Link href="/transaction">
           <div className={styles.item}>
             <div className={styles.icon}>
-              <Icon name="transaction" size="medium" color="black" />
+              <Icon name="server" size="large" />
             </div>
             <div>
               <p className={styles.title}>TOTAL TRANSACTIONS</p>
@@ -56,7 +58,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
         <Link href="/transaction">
           <div className={styles.item}>
             <div className={styles.icon}>
-              <Icon name="reward" size="medium" color="black" />
+              <Icon name="gauge" size="large" />
             </div>
             <div>
               <p className={styles.title}>TOTAL CYCLES</p>

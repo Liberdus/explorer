@@ -34,6 +34,9 @@ import RightArrow from './svgs/right_arrow.svg'
 import Nft from './svgs/nft.svg'
 import Discord from './svgs/discord.svg'
 import Telegram from './svgs/telegram.svg'
+import Earth from './svgs/earth.svg'
+import Server from './svgs/server.svg'
+import Gauge from './svgs/gauge.svg'
 
 export const iconTypes = {
   logo: Logo,
@@ -67,6 +70,9 @@ export const iconTypes = {
   log: Log,
   right_arrow: RightArrow,
   nft: Nft,
+  earth: Earth,
+  server: Server,
+  gauge: Gauge,
 }
 
 export interface IconProps {
