@@ -1,0 +1,41 @@
+@import '../../../styles/index.scss';
+
+.notification {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: spacing(8);
+  z-index: 1000;
+  color: color(white);
+  text-align: center;
+  box-shadow: shadow(shadow2);
+  animation: slideDown 0.3s ease-out;
+
+  &.error {
+    background-color: color(danger);
+  }
+
+  &.success {
+    background-color: color(success);
+  }
+
+  &.warning {
+    background-color: color(warning);
+  }
+
+  &.info {
+    background-color: color(info);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

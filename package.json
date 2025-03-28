@@ -32,6 +32,7 @@
     "@fastify/rate-limit": "8.0.3",
     "@fastify/websocket": "8.2.0",
     "@shardus/crypto-utils": "git+https://github.com/shardeum/lib-crypto-utils#v4.1.4",
+    "@shardus/crypto-web": "git+https://github.com/shardus/lib-crypto-web.git",
     "@shardus/types": "git+https://github.com/shardeum/lib-types#v1.2.13",
     "@svgr/webpack": "8.0.1",
     "@types/node": "18.19.1",

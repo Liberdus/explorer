@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { Icon } from '../../components'
+import { Icon, Notification } from '../../components'
 
 import { useSearchHook } from '../../components/SearchBar/useSearchHook'
 
@@ -13,7 +13,7 @@ interface SearchBoxProps {
 }
 
 export const SearchBox: React.FC<SearchBoxProps> = ({ mode }) => {
-  const { search, setSearch, onSearch } = useSearchHook()
+  const { search, setSearch, onSearch, searchError } = useSearchHook()
 
   return (
     <div className={styles.SearchBox}>
@@ -24,7 +24,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({ mode }) => {
       <div className={styles.box}>
         <input
           className={styles.input}
-          placeholder="Search by Account Address / Transaction ID / Cycle Number / Cycle Marker / Node ID"
+          placeholder="Search by Username / Account Address / Transaction ID / Cycle Number / Cycle Marker / Node ID"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => {
@@ -37,6 +37,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({ mode }) => {
           <Icon name="search" size="medium" color="white" />
         </div>
       </div>
+      {searchError && <Notification message={searchError} type="error" />}
     </div>
   )
 }

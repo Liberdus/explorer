@@ -7,6 +7,11 @@ import { fetcher } from '../frontend/api'
 import { Layout } from '../frontend/components'
 import React from 'react'
 
+import { initialize } from '@shardus/crypto-web'
+import { config } from '../config'
+
+initialize(config.hashKey)
+
 export default function App({ Component, pageProps }: AppProps): JSX.Element {
   return (
     <SWRConfig

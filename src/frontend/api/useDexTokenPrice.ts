@@ -15,7 +15,6 @@ export const useDexTokenPrice = (): TokenPriceResult => {
     config.dexScreenerAPI,
     fetcher
   )
-  console.log(data)
 
   return {
     tokenPrice: data?.pairs[0]?.priceUsd || 0,
