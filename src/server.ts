@@ -434,6 +434,8 @@ const start = async (): Promise<void> => {
     let txSearchType: TransactionSearchType
     let startCycle = 0
     let endCycle = 0
+    let startTimestamp = 0
+    let endTimestamp = 0
     let page = 1
     let accountId = ''
     const res: TransactionResponse = {
@@ -556,6 +558,21 @@ const start = async (): Promise<void> => {
         }
       }
     }
+    if (query.startTimestamp) {
+      startTimestamp = parseInt(query.startTimestamp)
+      if (startTimestamp < 0 || Number.isNaN(startTimestamp)) {
+        reply.send({ success: false, error: 'Invalid start timestamp' })
+        return
+      }
+      endTimestamp = startTimestamp
+      if (query.endTimestamp) {
+        endTimestamp = parseInt(query.endTimestamp)
+        if (endTimestamp < 0 || Number.isNaN(endTimestamp) || endTimestamp < startTimestamp) {
+          reply.send({ success: false, error: 'Invalid end timestamp' })
+          return
+        }
+      }
+    }
     if (query.page) {
       page = parseInt(query.page)
       if (page < 1 || Number.isNaN(page)) {
@@ -568,7 +585,9 @@ const start = async (): Promise<void> => {
         txSearchType,
         accountId,
         startCycle,
-        endCycle
+        endCycle,
+        startTimestamp,
+        endTimestamp
       )
       res.totalTransactions = totalTransactions
     }
@@ -587,7 +606,9 @@ const start = async (): Promise<void> => {
         txSearchType,
         accountId,
         startCycle,
-        endCycle
+        endCycle,
+        startTimestamp,
+        endTimestamp
       )
     }
     reply.send(res)
@@ -620,7 +641,7 @@ const start = async (): Promise<void> => {
     /* prettier-ignore */ if (config.verbose) console.log('Request', _request.query);
     const query = _request.query
     // Check at least one of the query parameters is present
-    if (!query.count && !query.txId && !query.startCycle && !query.endCycle && !query.tally) {
+    if (!query.count && !query.page && !query.txId && !query.startCycle && !query.endCycle && !query.tally) {
       reply.send({
         success: false,
         reason: 'Not specified which receipt to query',

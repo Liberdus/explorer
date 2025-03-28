@@ -176,7 +176,7 @@ export async function queryTransactions(
       sql += `timestamp BETWEEN ? AND ?`
       values.push(startTimestamp, endTimestamp)
     }
-    if (startCycleNumber || endCycleNumber) {
+    if (startCycleNumber || endCycleNumber || startTimestamp || endTimestamp) {
       sql += ` ORDER BY cycleNumber ASC, timestamp ASC LIMIT ${limit} OFFSET ${skip}`
     } else {
       sql += ` ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`

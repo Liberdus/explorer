@@ -9,6 +9,7 @@ const nextConfig = {
     includePaths: [path.join(__dirname, 'styles')],
   },
   // basePath: '/explorer', // This is needed when we serve the explorer from a subdirectory, e.g. https://test.liberdus.com/explorer
+  // trailingSlash: true, // This ensures routes like /explorer/transaction load correctly
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
