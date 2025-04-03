@@ -10,6 +10,7 @@ import { CycleDB, TransactionDB } from '../storage'
 import { TransactionType } from '../types'
 import { P2P } from '@shardus/types'
 import { config } from '../config/index'
+import { TransactionStats } from '../stats/transactionStats'
 
 interface NodeState {
   state: string
@@ -77,109 +78,200 @@ export const recordTransactionsStats = async (
     if (endCycle > latestCycle) endCycle = latestCycle
     const cycles = await CycleDB.queryCycleRecordsBetween(startCycle, endCycle)
     if (cycles.length > 0) {
-      const transactions = await TransactionDB.queryTransactionCountByCycles(startCycle, endCycle)
-      const stakeTransactions = await TransactionDB.queryTransactionCountByCycles(
-        startCycle,
-        endCycle,
-        TransactionType.deposit_stake
-      )
-      const unstakeTransactions = await TransactionDB.queryTransactionCountByCycles(
-        startCycle,
-        endCycle,
-        TransactionType.withdraw_stake
-      )
-
-      // const internalTransactions = await TransactionDB.queryTransactionCountByCycles(
-      //   startCycle,
-      //   endCycle,
-      //   TransactionSearchType.InternalTxReceipt
-      // )
-      // const granularInternalTransactions = await TransactionDB.queryInternalTransactionCountByCycles(
-      //   startCycle,
-      //   endCycle
-      // )
       for (const cycle of cycles) {
-        const txsCycle = transactions.filter((a: { cycle: number }) => a.cycle === cycle.counter)
-        // const internalTxsCycle = internalTransactions.filter(
-        //   (a: { cycle: number }) => a.cycle === cycle.counter
-        // )
-        const stakeTxsCycle = stakeTransactions.filter((a: { cycle: number }) => a.cycle === cycle.counter)
-        const unstakeTxsCycle = unstakeTransactions.filter(
-          (a: { cycle: number }) => a.cycle === cycle.counter
-        )
-
-        const granularInternalTxCounts = {
-          totalSetGlobalCodeBytesTxs: 0,
+        // Fetch transactions
+        const transactions = await TransactionDB.queryTransactionsForCycle(cycle.counter)
+        const transactionStats: TransactionStats = {
+          timestamp: cycle.cycleRecord.start,
+          cycle: cycle.counter,
+          totalTxs: transactions.length,
           totalInitNetworkTxs: 0,
+          totalNetworkWindowsTxs: 0,
+          totalSnapshotTxs: 0,
+          totalEmailTxs: 0,
+          totalGossipEmailHashTxs: 0,
+          totalVerifyTxs: 0,
+          totalRegisterTxs: 0,
+          totalCreateTxs: 0,
+          totalTransferTxs: 0,
+          totalDistributeTxs: 0,
+          totalMessageTxs: 0,
+          totalTollTxs: 0,
+          totalFriendTxs: 0,
+          totalRemoveFriendTxs: 0,
+          totalStakeTxs: 0,
+          totalRemoveStakeTxs: 0,
+          totalRemoveStakeRequestTxs: 0,
           totalNodeRewardTxs: 0,
+          totalSnapshotClaimTxs: 0,
+          totalIssueTxs: 0,
+          totalProposalTxs: 0,
+          totalVoteTxs: 0,
+          totalTallyTxs: 0,
+          totalApplyTallyTxs: 0,
+          totalParametersTxs: 0,
+          totalApplyParametersTxs: 0,
+          totalDevIssueTxs: 0,
+          totalDevProposalTxs: 0,
+          totalDevVoteTxs: 0,
+          totalDevTallyTxs: 0,
+          totalApplyDevTallyTxs: 0,
+          totalDevParametersTxs: 0,
+          totalApplyDevParametersTxs: 0,
+          totalDeveloperPaymentTxs: 0,
+          totalApplyDeveloperPaymentTxs: 0,
           totalChangeConfigTxs: 0,
           totalApplyChangeConfigTxs: 0,
-          totalSetCertTimeTxs: 0,
-          totalStakeTxs: 0,
-          totalUnstakeTxs: 0,
-          totalInitRewardTimesTxs: 0,
-          totalClaimRewardTxs: 0,
           totalChangeNetworkParamTxs: 0,
-          totalApplyNetworkParamTxs: 0,
-          totalPenaltyTxs: 0,
+          totalApplyChangeNetworkParamTxs: 0,
+          totalDepositStakeTxs: 0,
+          totalWithdrawStakeTxs: 0,
+          totalSetCertTimeTxs: 0,
+          totalInitRewardTxs: 0,
+          totalClaimRewardTxs: 0,
+          totalApplyPenaltyTxs: 0,
         }
 
-        // granularInternalTransactions
-        //   .filter(({ cycle: c }) => c === cycle.counter)
-        //   .forEach(({ internalTXType, count }) => {
-        //     switch (internalTXType) {
-        //       case InternalTXType.SetGlobalCodeBytes:
-        //         granularInternalTxCounts.totalSetGlobalCodeBytesTxs += count
-        //         break
-        //       case InternalTXType.InitNetwork:
-        //         granularInternalTxCounts.totalInitNetworkTxs += count
-        //         break
-        //       case InternalTXType.NodeReward:
-        //         granularInternalTxCounts.totalNodeRewardTxs += count
-        //         break
-        //       case InternalTXType.ChangeConfig:
-        //         granularInternalTxCounts.totalChangeConfigTxs += count
-        //         break
-        //       case InternalTXType.ApplyChangeConfig:
-        //         granularInternalTxCounts.totalApplyChangeConfigTxs += count
-        //         break
-        //       case InternalTXType.SetCertTime:
-        //         granularInternalTxCounts.totalSetCertTimeTxs += count
-        //         break
-        //       case InternalTXType.Stake:
-        //         granularInternalTxCounts.totalStakeTxs += count
-        //         break
-        //       case InternalTXType.Unstake:
-        //         granularInternalTxCounts.totalUnstakeTxs += count
-        //         break
-        //       case InternalTXType.InitRewardTimes:
-        //         granularInternalTxCounts.totalInitRewardTimesTxs += count
-        //         break
-        //       case InternalTXType.ClaimReward:
-        //         granularInternalTxCounts.totalClaimRewardTxs += count
-        //         break
-        //       case InternalTXType.ChangeNetworkParam:
-        //         granularInternalTxCounts.totalChangeNetworkParamTxs += count
-        //         break
-        //       case InternalTXType.ApplyNetworkParam:
-        //         granularInternalTxCounts.totalApplyNetworkParamTxs += count
-        //         break
-        //       case InternalTXType.Penalty:
-        //         granularInternalTxCounts.totalPenaltyTxs += count
-        //         break
-        //     }
-        //   })
-
-        combineTransactionStats.push({
-          cycle: cycle.counter,
-          totalTxs: txsCycle.length > 0 ? txsCycle[0].transactions : 0,
-          // totalInternalTxs: internalTxsCycle.length > 0 ? internalTxsCycle[0].transactions : 0,
-          totalInternalTxs: 0,
-          totalStakeTxs: stakeTxsCycle.length > 0 ? stakeTxsCycle[0].transactions : 0,
-          totalUnstakeTxs: unstakeTxsCycle.length > 0 ? unstakeTxsCycle[0].transactions : 0,
-          ...granularInternalTxCounts,
-          timestamp: cycle.cycleRecord.start,
+        transactions.forEach(({ transactionType }) => {
+          switch (transactionType) {
+            case TransactionType.init_network:
+              transactionStats.totalInitNetworkTxs++
+              break
+            case TransactionType.network_windows:
+              transactionStats.totalNetworkWindowsTxs++
+              break
+            case TransactionType.snapshot:
+              transactionStats.totalSnapshotTxs++
+              break
+            case TransactionType.email:
+              transactionStats.totalEmailTxs++
+              break
+            case TransactionType.gossip_email_hash:
+              transactionStats.totalGossipEmailHashTxs++
+              break
+            case TransactionType.verify:
+              transactionStats.totalVerifyTxs++
+              break
+            case TransactionType.register:
+              transactionStats.totalRegisterTxs++
+              break
+            case TransactionType.create:
+              transactionStats.totalCreateTxs++
+              break
+            case TransactionType.transfer:
+              transactionStats.totalTransferTxs++
+              break
+            case TransactionType.distribute:
+              transactionStats.totalDistributeTxs++
+              break
+            case TransactionType.message:
+              transactionStats.totalMessageTxs++
+              break
+            case TransactionType.toll:
+              transactionStats.totalTollTxs++
+              break
+            case TransactionType.friend:
+              transactionStats.totalFriendTxs++
+              break
+            case TransactionType.remove_friend:
+              transactionStats.totalRemoveFriendTxs++
+              break
+            case TransactionType.stake:
+              transactionStats.totalStakeTxs++
+              break
+            case TransactionType.remove_stake:
+              transactionStats.totalRemoveStakeTxs++
+              break
+            case TransactionType.remove_stake_request:
+              transactionStats.totalRemoveStakeRequestTxs++
+              break
+            case TransactionType.node_reward:
+              transactionStats.totalNodeRewardTxs++
+              break
+            case TransactionType.snapshot_claim:
+              transactionStats.totalSnapshotClaimTxs++
+              break
+            case TransactionType.issue:
+              transactionStats.totalIssueTxs++
+              break
+            case TransactionType.proposal:
+              transactionStats.totalProposalTxs++
+              break
+            case TransactionType.vote:
+              transactionStats.totalVoteTxs++
+              break
+            case TransactionType.tally:
+              transactionStats.totalTallyTxs++
+              break
+            case TransactionType.apply_tally:
+              transactionStats.totalApplyTallyTxs++
+              break
+            case TransactionType.parameters:
+              transactionStats.totalParametersTxs++
+              break
+            case TransactionType.apply_parameters:
+              transactionStats.totalApplyParametersTxs++
+              break
+            case TransactionType.dev_issue:
+              transactionStats.totalDevIssueTxs++
+              break
+            case TransactionType.dev_proposal:
+              transactionStats.totalDevProposalTxs++
+              break
+            case TransactionType.dev_vote:
+              transactionStats.totalDevVoteTxs++
+              break
+            case TransactionType.dev_tally:
+              transactionStats.totalDevTallyTxs++
+              break
+            case TransactionType.apply_dev_tally:
+              transactionStats.totalApplyDevTallyTxs++
+              break
+            case TransactionType.dev_parameters:
+              transactionStats.totalDevParametersTxs++
+              break
+            case TransactionType.apply_dev_parameters:
+              transactionStats.totalApplyDevParametersTxs++
+              break
+            case TransactionType.developer_payment:
+              transactionStats.totalDeveloperPaymentTxs++
+              break
+            case TransactionType.apply_developer_payment:
+              transactionStats.totalApplyDeveloperPaymentTxs++
+              break
+            case TransactionType.change_config:
+              transactionStats.totalChangeConfigTxs++
+              break
+            case TransactionType.apply_change_config:
+              transactionStats.totalApplyChangeConfigTxs++
+              break
+            case TransactionType.change_network_param:
+              transactionStats.totalChangeNetworkParamTxs++
+              break
+            case TransactionType.apply_change_network_param:
+              transactionStats.totalApplyChangeNetworkParamTxs++
+              break
+            case TransactionType.deposit_stake:
+              transactionStats.totalDepositStakeTxs++
+              break
+            case TransactionType.withdraw_stake:
+              transactionStats.totalWithdrawStakeTxs++
+              break
+            case TransactionType.set_cert_time:
+              transactionStats.totalSetCertTimeTxs++
+              break
+            case TransactionType.init_reward:
+              transactionStats.totalInitRewardTxs++
+              break
+            case TransactionType.claim_reward:
+              transactionStats.totalClaimRewardTxs++
+              break
+            case TransactionType.apply_penalty:
+              transactionStats.totalApplyPenaltyTxs++
+              break
+          }
         })
+        combineTransactionStats.push(transactionStats)
       }
       /* prettier-ignore */ if (config.verbose)  console.log('combineTransactionStats', combineTransactionStats)
       await TransactionStatsDB.bulkInsertTransactionsStats(combineTransactionStats)
@@ -206,31 +298,31 @@ export const recordCoinStats = async (latestCycle: number, lastStoredCycle: numb
         const transactions = await TransactionDB.queryTransactionsForCycle(cycle.counter)
 
         // Filter transactions
-        const stakeTransactions = transactions.filter(
+        const depositStakeTransactions = transactions.filter(
           (a) => a.transactionType === TransactionType.deposit_stake
         )
-        const unstakeTransactions = transactions.filter(
+        const withdrawStakeTransactions = transactions.filter(
           (a) => a.transactionType === TransactionType.withdraw_stake
         )
 
         try {
           // Calculate total staked amount in cycle
-          const stakeAmount: bigint = stakeTransactions.reduce((sum, current) => {
+          const stakeAmount: bigint = depositStakeTransactions.reduce((sum, current) => {
             const stakeAmount = (current.originalTxData as any).tx.stake || BigInt(0)
             return sum + stakeAmount
           }, BigInt(0))
           // Calculate total unstaked amount in cycle
-          const unStakeAmount: bigint = unstakeTransactions.reduce((sum, current) => {
+          const unStakeAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
             const unStakeAmount = (current.originalTxData as any).tx.unstake || BigInt(0)
             return sum + unStakeAmount
           }, BigInt(0))
           // Calculate total node rewards in cycle
-          const nodeRewardAmount: bigint = unstakeTransactions.reduce((sum, current) => {
+          const nodeRewardAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
             const nodeRewardAmount = (current.originalTxData as any).tx.nodeReward || BigInt(0)
             return sum + nodeRewardAmount
           }, BigInt(0))
           // Calculate total reward penalties in cycle
-          const nodePenaltyAmount: bigint = unstakeTransactions.reduce((sum, current) => {
+          const nodePenaltyAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
             const nodePenaltyAmount = (current.originalTxData as any).tx.penalty || BigInt(0)
             return sum + nodePenaltyAmount
           }, BigInt(0))
@@ -239,8 +331,6 @@ export const recordCoinStats = async (latestCycle: number, lastStoredCycle: numb
             const transactionFee = (current.originalTxData as any).transactionFee || BigInt(0)
             return sum + transactionFee
           }, BigInt(0))
-
-          console.log
 
           const weiBNToEth = (bn: bigint): number => {
             const result = Number(bn) / 1e18

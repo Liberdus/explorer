@@ -5,22 +5,54 @@ import { transactionStatsDatabase } from '.'
 
 export interface TransactionStats {
   timestamp: number
+  cycle: number
   totalTxs: number
-  totalInternalTxs: number
-  totalStakeTxs: number
-  totalUnstakeTxs: number
-  totalSetGlobalCodeBytesTxs: number
   totalInitNetworkTxs: number
+  totalNetworkWindowsTxs: number
+  totalSnapshotTxs: number
+  totalEmailTxs: number
+  totalGossipEmailHashTxs: number
+  totalVerifyTxs: number
+  totalRegisterTxs: number
+  totalCreateTxs: number
+  totalTransferTxs: number
+  totalDistributeTxs: number
+  totalMessageTxs: number
+  totalTollTxs: number
+  totalFriendTxs: number
+  totalRemoveFriendTxs: number
+  totalStakeTxs: number
+  totalRemoveStakeTxs: number
+  totalRemoveStakeRequestTxs: number
   totalNodeRewardTxs: number
+  totalSnapshotClaimTxs: number
+  totalIssueTxs: number
+  totalProposalTxs: number
+  totalVoteTxs: number
+  totalTallyTxs: number
+  totalApplyTallyTxs: number
+  totalParametersTxs: number
+  totalApplyParametersTxs: number
+  totalDevIssueTxs: number
+  totalDevProposalTxs: number
+  totalDevVoteTxs: number
+  totalDevTallyTxs: number
+  totalApplyDevTallyTxs: number
+  totalDevParametersTxs: number
+  totalApplyDevParametersTxs: number
+  totalDeveloperPaymentTxs: number
+  totalApplyDeveloperPaymentTxs: number
   totalChangeConfigTxs: number
   totalApplyChangeConfigTxs: number
-  totalSetCertTimeTxs: number
-  totalInitRewardTimesTxs: number
-  totalClaimRewardTxs: number
   totalChangeNetworkParamTxs: number
-  totalApplyNetworkParamTxs: number
-  totalPenaltyTxs: number
-  cycle: number
+  totalApplyChangeNetworkParamTxs: number
+  totalDepositStakeTxs: number
+  totalWithdrawStakeTxs: number
+  totalSetCertTimeTxs: number
+  // totalQueryCertificateTxs: number // This is not an actual transaction in the network
+  totalInitRewardTxs: number
+  totalClaimRewardTxs: number
+  totalApplyPenaltyTxs: number
 }
 
 export async function insertTransactionStats(transactionStats: TransactionStats): Promise<void> {

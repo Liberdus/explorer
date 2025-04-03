@@ -99,12 +99,11 @@ const start = async (): Promise<void> => {
 
     if (latestCycleCounter > lastCheckedCycleForValidators) {
       if (latestCycleCounter - lastCheckedCycleForValidators === 1)
-        await StatsFunctions.insertValidatorStats(latestCycleRecord[0].cycleRecord)
+        await StatsFunctions.insertValidatorStats(latestCycleRecord.cycleRecord)
       else StatsFunctions.recordOldValidatorsStats(latestCycleCounter, lastCheckedCycleForValidators)
       lastCheckedCycleForValidators = latestCycleCounter
     }
 
-    // /* prettier-ignore */ if (config.verbose)  console.log(latestCycleCounter - waitCycleForTxs, lastCheckedCycleForTxs)
     if (latestCycleCounter - waitCycleForStats > lastCheckedCycleForTxs) {
       StatsFunctions.recordTransactionsStats(latestCycleCounter - waitCycleForStats, lastCheckedCycleForTxs)
       lastCheckedCycleForTxs = latestCycleCounter - waitCycleForStats

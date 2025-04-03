@@ -1083,7 +1083,6 @@ const start = async (): Promise<void> => {
       }
       transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(14)
     }
-    console.log(query.responseType)
     if (query.responseType && query.responseType === 'array') {
       const temp_array = []
 
@@ -1099,18 +1098,59 @@ const start = async (): Promise<void> => {
           ])
         )
       } else {
-        ;(transactionStats as TransactionStats[]).forEach((item) =>
+        ;(transactionStats as TransactionStats[]).forEach((item: TransactionStats) =>
           temp_array.push([
-            item.timestamp * 1000,
-            item.totalTxs,
-            item.totalInternalTxs,
-            item.totalStakeTxs,
-            item.totalUnstakeTxs,
+            item.timestamp,
             item.cycle,
+            item.totalTxs,
+            item.totalInitNetworkTxs,
+            item.totalNetworkWindowsTxs,
+            item.totalSnapshotTxs,
+            item.totalEmailTxs,
+            item.totalGossipEmailHashTxs,
+            item.totalVerifyTxs,
+            item.totalRegisterTxs,
+            item.totalCreateTxs,
+            item.totalTransferTxs,
+            item.totalDistributeTxs,
+            item.totalMessageTxs,
+            item.totalTollTxs,
+            item.totalFriendTxs,
+            item.totalRemoveFriendTxs,
+            item.totalStakeTxs,
+            item.totalRemoveStakeTxs,
+            item.totalRemoveStakeRequestTxs,
+            item.totalNodeRewardTxs,
+            item.totalSnapshotClaimTxs,
+            item.totalIssueTxs,
+            item.totalProposalTxs,
+            item.totalVoteTxs,
+            item.totalTallyTxs,
+            item.totalApplyTallyTxs,
+            item.totalParametersTxs,
+            item.totalApplyParametersTxs,
+            item.totalDevIssueTxs,
+            item.totalDevProposalTxs,
+            item.totalDevVoteTxs,
+            item.totalDevTallyTxs,
+            item.totalApplyDevTallyTxs,
+            item.totalDevParametersTxs,
+            item.totalApplyDevParametersTxs,
+            item.totalDeveloperPaymentTxs,
+            item.totalApplyDeveloperPaymentTxs,
+            item.totalChangeConfigTxs,
+            item.totalApplyChangeConfigTxs,
+            item.totalChangeNetworkParamTxs,
+            item.totalApplyChangeNetworkParamTxs,
+            item.totalDepositStakeTxs,
+            item.totalWithdrawStakeTxs,
+            item.totalSetCertTimeTxs,
+            item.totalInitRewardTxs,
+            item.totalClaimRewardTxs,
+            item.totalApplyPenaltyTxs,
           ])
         )
       }
-      console.log('temp_array', temp_array)
       transactionStats = temp_array
     }
     const res = {

@@ -186,6 +186,7 @@ export const StackedLineStockChart: React.FC<StackedLineChartProps> = (props: St
       spacingTop: 20,
       height: height,
       zoomType: 'x',
+      // type: 'spline',
     },
     credits: {
       enabled: false,

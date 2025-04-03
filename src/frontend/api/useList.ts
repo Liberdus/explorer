@@ -49,7 +49,7 @@ export const useList = (param: useListParam): ListResult => {
       })
       if (lists.status === 200) setResponseData(lists.data?.data)
     } catch (error) {
-      console.log(error)
+      console.error('fetchData error', error)
       setError(error)
     }
   }
