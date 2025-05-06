@@ -27,21 +27,25 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
           <div className={styles.title}>Transaction ID:</div>
           <div className={styles.value}>{transaction?.txId}</div>
         </div>
-        {/* <div className={styles.item}>
+        <div className={styles.item}>
           <div className={styles.title}>Transaction Status:</div>
           <div className={styles.value}>
             <Chip
-              title={
-                transaction?.txStatus === 'Pending'
-                  ? 'Pending ............. ( Please wait for a bit.)'
-                  : 'Expired ............. ( Please submit the transaction again.)'
-              }
+              title={transaction?.data?.success === true ? 'Success' : 'Failed'}
               size="medium"
-              color={transaction?.txStatus === 'Pending' ? 'gray' : 'error'}
+              color={transaction?.data?.success === true ? 'success' : 'error'}
               className={styles.chip}
             />
           </div>
-        </div> */}
+        </div>
+        {transaction?.data?.reason && (
+          <div className={styles.item}>
+            <div className={styles.title}>Reason:</div>
+            <div className={styles.value} style={{ fontStyle: 'italic', fontWeight: 600 }}>
+              {transaction?.data?.reason}
+            </div>
+          </div>
+        )}
         <div className={styles.item}>
           <div className={styles.title}>Method:</div>
           <div className={styles.value}>
@@ -85,12 +89,6 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
                 {calculateFullValue(`${transaction?.originalTxData?.tx.amount}`)} LIB
               </div>
             </div>
-            <div className={styles.item}>
-              <div className={styles.title}>Transaction Fee:</div>
-              <div className={styles.value}>
-                {calculateFullValue(`${transaction?.originalTxData?.tx.fee}` || '0')}
-              </div>
-            </div>
           </>
         )}
         {transaction.transactionType === TransactionType.message && (
@@ -109,6 +107,12 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
             </div>
           </div>
         )}
+        <div className={styles.item}>
+          <div className={styles.title}>Transaction Fee:</div>
+          <div className={styles.value}>
+            {calculateFullValue(`${transaction?.data?.transactionFee}` || '0.0')}
+          </div>
+        </div>
       </div>
     )
   } else {

@@ -1,4 +1,3 @@
-
 import web3 from 'web3'
 export const calculateValue = (value: string | bigint): string => {
   console.log('calculateValue', value)
@@ -10,6 +9,7 @@ export const calculateValue = (value: string | bigint): string => {
 }
 
 export const calculateFullValue = (value: string | bigint): string => {
+  if (value === '0') return '0'
   try {
     return web3.utils.fromWei(value, 'ether')
   } catch (e) {

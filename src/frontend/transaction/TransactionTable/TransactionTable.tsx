@@ -28,7 +28,13 @@ const tempHeader: IColumnProps<Transaction | OriginalTxData>[] = [
   {
     key: 'transactionType',
     value: 'Txn Type',
-    render: (val: string) => <Chip title={val} color={'info'} size="medium" />,
+    render: (val: string, item: Transaction | OriginalTxData) => (
+      <Chip
+        title={val}
+        color={'data' in item ? (item?.data?.success ? 'success' : 'error') : 'info'}
+        size="medium"
+      />
+    ),
   },
   {
     key: 'cycleNumber',
@@ -83,18 +89,11 @@ export const TransactionTable: React.FC<ITransactionTable> = (props) => {
     ) {
       tHeader = []
       if (txType === TransactionType.transfer) {
-        tHeader.push(
-          {
-            key: 'originalTxData.tx.amount',
-            value: 'Value',
-            render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
-          },
-          {
-            key: 'originalTxData.tx.fee',
-            value: 'Txn Fee',
-            render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
-          }
-        )
+        tHeader.push({
+          key: 'originalTxData.tx.amount',
+          value: 'Value',
+          render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
+        })
       }
       if (txType === TransactionType.message) {
         tHeader.push({
@@ -130,6 +129,11 @@ export const TransactionTable: React.FC<ITransactionTable> = (props) => {
     //     },
     //   ]
     // }
+    tHeader.push({
+      key: 'data.transactionFee',
+      value: 'Txn Fee',
+      render: (val: string | TransactionType) => calculateFullValue(`${val}` as string),
+    })
 
     setHeader([...tempHeader, ...tHeader])
   }, [txType])

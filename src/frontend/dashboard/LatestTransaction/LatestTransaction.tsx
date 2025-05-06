@@ -34,7 +34,11 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
                 />
                 <div className={styles.timestampRow}>
                   <span>{moment(item.timestamp).fromNow()}</span>
-                  <Chip title={item.transactionType} color={'info'} size="small" />
+                  <Chip
+                    title={item.transactionType}
+                    color={item.data?.success === true ? 'success' : 'error'}
+                    size="small"
+                  />
                 </div>
               </div>
             </div>
