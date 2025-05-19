@@ -569,7 +569,7 @@ const start = async (): Promise<void> => {
         reply.send({ success: false, error: 'Invalid after timestamp' })
         return
       }
-      if (afterTimestamp < beforeTimestamp) {
+      if (afterTimestamp > 0 && afterTimestamp < beforeTimestamp) {
         reply.send({ success: false, error: 'Invalid timestamp range' })
         return
       }
