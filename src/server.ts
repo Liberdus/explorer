@@ -381,8 +381,8 @@ const start = async (): Promise<void> => {
       endCycle: string
       accountId: string
       txId: string
-      startTimestamp: string
-      endTimestamp: string
+      beforeTimestamp: string
+      afterTimestamp: string
       requery: string
       totalTxsDetail: string
     }
@@ -397,8 +397,8 @@ const start = async (): Promise<void> => {
       startCycle: 's?',
       endCycle: 's?',
       txId: 's?',
-      startTimestamp: 's?',
-      endTimestamp: 's?',
+      beforeTimestamp: 's?',
+      afterTimestamp: 's?',
       requery: 's?',
       totalTxsDetail: 's?',
     })
@@ -417,8 +417,8 @@ const start = async (): Promise<void> => {
       !query.startCycle &&
       !query.endCycle &&
       !query.txId &&
-      !query.startTimestamp &&
-      !query.endTimestamp &&
+      !query.beforeTimestamp &&
+      !query.afterTimestamp &&
       !query.requery &&
       !query.totalTxsDetail
     ) {
@@ -434,8 +434,8 @@ const start = async (): Promise<void> => {
     let txSearchType: TransactionSearchType
     let startCycle = 0
     let endCycle = 0
-    let startTimestamp = 0
-    let endTimestamp = 0
+    let beforeTimestamp = 0
+    let afterTimestamp = 0
     let page = 1
     let accountId = ''
     const res: TransactionResponse = {
@@ -558,19 +558,20 @@ const start = async (): Promise<void> => {
         }
       }
     }
-    if (query.startTimestamp) {
-      startTimestamp = parseInt(query.startTimestamp)
-      if (startTimestamp < 0 || Number.isNaN(startTimestamp)) {
-        reply.send({ success: false, error: 'Invalid start timestamp' })
+    if (query.beforeTimestamp || query.afterTimestamp) {
+      if (query.beforeTimestamp) beforeTimestamp = parseInt(query.beforeTimestamp)
+      if (beforeTimestamp < 0 || Number.isNaN(beforeTimestamp)) {
+        reply.send({ success: false, error: 'Invalid before timestamp' })
         return
       }
-      endTimestamp = startTimestamp
-      if (query.endTimestamp) {
-        endTimestamp = parseInt(query.endTimestamp)
-        if (endTimestamp < 0 || Number.isNaN(endTimestamp) || endTimestamp < startTimestamp) {
-          reply.send({ success: false, error: 'Invalid end timestamp' })
-          return
-        }
+      if (query.afterTimestamp) afterTimestamp = parseInt(query.afterTimestamp)
+      if (afterTimestamp < 0 || Number.isNaN(afterTimestamp)) {
+        reply.send({ success: false, error: 'Invalid after timestamp' })
+        return
+      }
+      if (afterTimestamp < beforeTimestamp) {
+        reply.send({ success: false, error: 'Invalid timestamp range' })
+        return
       }
     }
     if (query.page) {
@@ -586,8 +587,8 @@ const start = async (): Promise<void> => {
         accountId,
         startCycle,
         endCycle,
-        startTimestamp,
-        endTimestamp
+        beforeTimestamp,
+        afterTimestamp
       )
       res.totalTransactions = totalTransactions
     }
@@ -607,8 +608,8 @@ const start = async (): Promise<void> => {
         accountId,
         startCycle,
         endCycle,
-        startTimestamp,
-        endTimestamp
+        beforeTimestamp,
+        afterTimestamp
       )
     }
     reply.send(res)
@@ -994,8 +995,6 @@ const start = async (): Promise<void> => {
       endCycle: string
       responseType: string
       last14DaysTxsReport: string
-      startTimestamp: string
-      endTimestamp: string
     }
   }>
 
@@ -1006,8 +1005,6 @@ const start = async (): Promise<void> => {
       endCycle: 's?',
       responseType: 's?',
       last14DaysTxsReport: 's?',
-      startTimestamp: 's?',
-      endTimestamp: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -1020,9 +1017,7 @@ const start = async (): Promise<void> => {
       !query.startCycle &&
       !query.endCycle &&
       !query.responseType &&
-      !query.last14DaysTxsReport &&
-      !query.startTimestamp &&
-      !query.endTimestamp
+      !query.last14DaysTxsReport
     ) {
       reply.send({
         success: false,

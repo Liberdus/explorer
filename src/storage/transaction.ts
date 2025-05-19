@@ -96,8 +96,8 @@ export async function queryTransactionCount(
   accountId?: string,
   startCycleNumber?: number,
   endCycleNumber?: number,
-  startTimestamp?: number,
-  endTimestamp?: number
+  beforeTimestamp?: number,
+  afterTimestamp?: number
 ): Promise<number> {
   let transactions: { 'COUNT(*)': number } = { 'COUNT(*)': 0 }
   try {
@@ -122,10 +122,15 @@ export async function queryTransactionCount(
       sql += `cycleNumber BETWEEN ? AND ?`
       values.push(startCycleNumber, endCycleNumber)
     }
-    if (startTimestamp || endTimestamp) {
+    if (beforeTimestamp > 0) {
       sql = db.updateSqlStatementClause(sql, values)
-      sql += `timestamp BETWEEN ? AND ?`
-      values.push(startTimestamp, endTimestamp)
+      sql += `timestamp<?`
+      values.push(beforeTimestamp)
+    }
+    if (afterTimestamp > 0) {
+      sql = db.updateSqlStatementClause(sql, values)
+      sql += `timestamp>?`
+      values.push(afterTimestamp)
     }
     transactions = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(*)': number }
     // console.log('queryTransactionCount', sql, values, transactions)
@@ -144,8 +149,8 @@ export async function queryTransactions(
   accountId?: string,
   startCycleNumber?: number,
   endCycleNumber?: number,
-  startTimestamp?: number,
-  endTimestamp?: number
+  beforeTimestamp?: number,
+  afterTimestamp?: number
 ): Promise<DbTransaction[]> {
   let transactions: DbTransaction[] = []
   try {
@@ -171,12 +176,21 @@ export async function queryTransactions(
       sql += `cycleNumber BETWEEN ? AND ?`
       values.push(startCycleNumber, endCycleNumber)
     }
-    if (startTimestamp || endTimestamp) {
+    if (beforeTimestamp > 0) {
       sql = db.updateSqlStatementClause(sql, values)
-      sql += `timestamp BETWEEN ? AND ?`
-      values.push(startTimestamp, endTimestamp)
+      sql += `timestamp<?`
+      values.push(beforeTimestamp)
     }
-    if (startCycleNumber || endCycleNumber || startTimestamp || endTimestamp) {
+    if (afterTimestamp > 0) {
+      sql = db.updateSqlStatementClause(sql, values)
+      sql += `timestamp>?`
+      values.push(afterTimestamp)
+    }
+    if (beforeTimestamp > 0) {
+      sql += ` ORDER BY timestamp DESC LIMIT ${limit} OFFSET ${skip}`
+    } else if (afterTimestamp > 0) {
+      sql += ` ORDER BY timestamp ASC LIMIT ${limit} OFFSET ${skip}`
+    } else if (startCycleNumber || endCycleNumber) {
       sql += ` ORDER BY cycleNumber ASC, timestamp ASC LIMIT ${limit} OFFSET ${skip}`
     } else {
       sql += ` ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`
