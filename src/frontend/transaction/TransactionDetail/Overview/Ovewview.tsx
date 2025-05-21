@@ -85,9 +85,7 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
           <>
             <div className={styles.item}>
               <div className={styles.title}>Value:</div>
-              <div className={styles.value}>
-                {calculateFullValue(`${transaction?.originalTxData?.tx.amount}`)} LIB
-              </div>
+              <div className={styles.value}>{calculateFullValue(`${transaction?.data?.amount}`)} LIB</div>
             </div>
           </>
         )}
@@ -95,18 +93,95 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
           <div className={styles.item}>
             <div className={styles.title}>Toll Fee:</div>
             <div className={styles.value}>
-              {calculateFullValue(`${transaction?.originalTxData?.tx.amount}` || '0')}
+              {calculateFullValue(`${transaction?.data?.additionalInfo?.tollFee}` || '0')}
             </div>
           </div>
         )}
         {transaction.transactionType === TransactionType.deposit_stake && (
+          <>
+            <div className={styles.item}>
+              <div className={styles.title}>Stake Amount:</div>
+              <div className={styles.value}>
+                {calculateFullValue(`${transaction?.data?.additionalInfo?.stake}` || '0')}
+              </div>
+            </div>
+            <div className={styles.item}>
+              <div className={styles.title}>Total Stake Amount:</div>
+              <div className={styles.value}>
+                {calculateFullValue(`${transaction?.data?.additionalInfo?.totalStake}` || '0')}
+              </div>
+            </div>
+          </>
+        )}
+        {transaction.transactionType === TransactionType.withdraw_stake &&
+          transaction?.data?.additionalInfo && (
+            <>
+              <div className={styles.item}>
+                <div className={styles.title}>Stake Amount:</div>
+                <div className={styles.value}>
+                  {calculateFullValue(`${transaction?.data?.additionalInfo?.stake}` || '0')}
+                </div>
+              </div>
+              <div className={styles.item}>
+                <div className={styles.title}>Reward:</div>
+                <div className={styles.value}>
+                  {calculateFullValue(`${transaction?.data?.additionalInfo?.reward}` || '0')}
+                </div>
+              </div>
+              <div className={styles.item}>
+                <div className={styles.title}>Penalty:</div>
+                <div className={styles.value}>
+                  {calculateFullValue(`${transaction?.data?.additionalInfo?.penalty}` || '0')}
+                </div>
+              </div>
+              <div className={styles.item}>
+                <div className={styles.title}>Total Unstake Amount:</div>
+                <div className={styles.value}>
+                  {calculateFullValue(`${transaction?.data?.additionalInfo?.totalUnstakeAmount}` || '0')}
+                </div>
+              </div>
+            </>
+          )}
+        {transaction.transactionType === TransactionType.set_cert_time &&
+          transaction?.data?.additionalInfo && (
+            <div className={styles.item}>
+              <div className={styles.title}>Cert Time:</div>
+              <div className={styles.value}>
+                {toReadableDateFromMillis(transaction?.data?.additionalInfo?.certTime)}
+              </div>
+            </div>
+          )}
+        {transaction.transactionType === TransactionType.init_reward && transaction?.data?.additionalInfo && (
           <div className={styles.item}>
-            <div className={styles.title}>Stake Amount:</div>
+            <div className={styles.title}>Node Start Time:</div>
             <div className={styles.value}>
-              {calculateFullValue(`${transaction?.originalTxData?.tx.stake}` || '0')}
+              {toReadableDateFromMillis(transaction?.data?.additionalInfo?.nodeStartTime * 1000)}
             </div>
           </div>
         )}
+        {transaction.transactionType === TransactionType.claim_reward &&
+          transaction?.data?.additionalInfo && (
+            <>
+              <div className={styles.item}>
+                <div className={styles.title}>Node Start Time:</div>
+                <div className={styles.value}>
+                  {toReadableDateFromMillis(transaction?.data?.additionalInfo?.nodeStartTime * 1000)}
+                </div>
+              </div>
+              <div className={styles.item}>
+                <div className={styles.title}>Node End Time:</div>
+                <div className={styles.value}>
+                  {toReadableDateFromMillis(transaction?.data?.additionalInfo?.nodeEndTime * 1000)}
+                </div>
+              </div>
+              <div className={styles.item}>
+                <div className={styles.title}>Reward Amount:</div>
+                <div className={styles.value}>
+                  {calculateFullValue(`${transaction?.data?.additionalInfo?.rewardedAmount}` || '0')}
+                </div>
+              </div>
+            </>
+          )}
         <div className={styles.item}>
           <div className={styles.title}>Transaction Fee:</div>
           <div className={styles.value}>

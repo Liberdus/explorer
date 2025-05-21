@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/router'
 import moment from 'moment'
 import { ContentLayout, CopyButton, Spacer, Pagination } from '../../components'
@@ -217,12 +218,15 @@ export const AccountDetail: React.FC = () => {
                       },
                       {
                         key: 'Nominator',
-                        value: account?.data?.nominator && account?.data?.nominator,
+                        value: account?.data?.nominator && (
+                          <Link href={`/account/${account?.data?.nominator}`} className={styles.link}>
+                            {toEthereumAddress(account?.data?.nominator)}
+                          </Link>
+                        ),
                       },
                       {
                         key: 'StakeLock',
-                        value:
-                          account?.data?.stakeLock && calculateFullValue(`0x${account?.data?.stakeLock}`),
+                        value: account?.data?.stakeLock && calculateFullValue(`${account?.data?.stakeLock}`),
                       },
                     ]}
                     titleRight={null}
@@ -257,11 +261,11 @@ export const AccountDetail: React.FC = () => {
                       },
                       {
                         key: 'Reward',
-                        value: account?.data?.reward && calculateFullValue(`0x${account?.data?.reward}`),
+                        value: account?.data?.reward && calculateFullValue(`${account?.data?.reward}`),
                       },
                       {
                         key: 'Penalty',
-                        value: account?.data?.penalty && calculateFullValue(`0x${account?.data?.penalty}`),
+                        value: account?.data?.penalty && calculateFullValue(`${account?.data?.penalty}`),
                       },
                     ]}
                   />
