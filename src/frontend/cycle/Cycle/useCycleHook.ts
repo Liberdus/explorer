@@ -25,8 +25,10 @@ export const useCycleHook = (): CycleHookResult => {
     const counter = cycle?.cycleRecord?.counter
 
     const to = counter - (page - 1) * limit
-
-    const from = to - limit + 1
+    let from = to - limit + 1
+    if (from < 0) {
+      from = 0
+    }
 
     return { counter, to, from }
   }, [page])
@@ -37,7 +39,7 @@ export const useCycleHook = (): CycleHookResult => {
 
       const data = await api.get(`${PATHS.CYCLE}?start=${from}&end=${to}`)
 
-      setCycles((data?.data?.cycles as Cycle[]) || [])
+      setCycles((data?.data?.cycles?.sort((a, b) => (a.counter > b.counter ? 1 : -1)) as Cycle[]) || [])
       setTotalCycle(counter)
     }
 
