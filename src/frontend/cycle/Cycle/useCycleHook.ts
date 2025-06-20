@@ -39,7 +39,7 @@ export const useCycleHook = (): CycleHookResult => {
 
       const data = await api.get(`${PATHS.CYCLE}?start=${from}&end=${to}`)
 
-      setCycles((data?.data?.cycles?.sort((a, b) => (a.counter > b.counter ? 1 : -1)) as Cycle[]) || [])
+      setCycles((data?.data?.cycles?.sort((a, b) => (a.counter < b.counter ? 1 : -1)) as Cycle[]) || [])
       setTotalCycle(counter)
     }
 

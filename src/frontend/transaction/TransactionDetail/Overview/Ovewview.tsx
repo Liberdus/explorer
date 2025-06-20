@@ -149,7 +149,7 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
             <div className={styles.item}>
               <div className={styles.title}>Cert Time:</div>
               <div className={styles.value}>
-                {toReadableDateFromMillis(transaction?.data?.additionalInfo?.certTime)}
+                {toReadableDateFromMillis(transaction?.data?.additionalInfo?.certExp)}
               </div>
             </div>
           )}
