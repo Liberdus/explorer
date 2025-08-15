@@ -8,6 +8,7 @@ import * as DailyTransactionStatsDB from './dailyTransactionStats'
 import * as CoinStatsDB from './coinStats'
 import * as NodeStatsDB from './nodeStats'
 import * as MetadataDB from './metadata'
+import * as TotalAccountBalanceDB from '../stats/totalAccountBalance'
 
 export let validatorStatsDatabase: Database
 export let transactionStatsDatabase: Database
@@ -15,6 +16,7 @@ export let dailyTransactionStatsDatabase: Database
 export let coinStatsDatabase: Database
 export let nodeStatsDatabase: Database
 export let metadataDatabase: Database
+export let totalAccountBalanceDatabase: Database
 
 export const initializeStatsDB = async (): Promise<void> => {
   createDirectories(config.COLLECTOR_STATS_DB_DIR_PATH)
@@ -42,6 +44,11 @@ export const initializeStatsDB = async (): Promise<void> => {
     `${config.COLLECTOR_STATS_DB_DIR_PATH}/${config.COLLECTOR_STATS_DATA.metadataDB}`,
     'Metadata'
   )
+  totalAccountBalanceDatabase = await createDB(
+    `${config.COLLECTOR_DB_DIR_PATH}/totalAccountBalances.sqlite3`,
+    'TotalAccountBalance'
+  )
+
   await runCreate(
     validatorStatsDatabase,
     'CREATE TABLE if not exists `validators` (`cycle` NUMBER NOT NULL UNIQUE PRIMARY KEY, `active` NUMBER NOT NULL, `activated` NUMBER NOT NULL, `syncing` NUMBER NOT NULL, `joined` NUMBER NOT NULL, `removed` NUMBER NOT NULL, `apoped` NUMBER NOT NULL, `timestamp` BIGINT NOT NULL)'
@@ -161,6 +168,24 @@ export const initializeStatsDB = async (): Promise<void> => {
       cycleNumber NUMBER NOT NULL
     )`
   )
+
+  await runCreate(
+    totalAccountBalanceDatabase,
+    `CREATE TABLE if not exists total_account_balances (
+      cycleNumber NUMBER NOT NULL UNIQUE PRIMARY KEY,
+      timestamp BIGINT NOT NULL,
+      totalBalances TEXT NOT NULL,
+      calculatedSupply TEXT NOT NULL,
+      difference TEXT NOT NULL,
+      differencePercentage REAL NOT NULL,
+      isWithinTolerance INTEGER NOT NULL,
+      accountsProcessed INTEGER NOT NULL
+    )`
+  )
+  await runCreate(
+    totalAccountBalanceDatabase,
+    'CREATE INDEX if not exists `total_account_balances_idx` ON `total_account_balances` (`cycleNumber` DESC, `timestamp` DESC)'
+  )
 }
 
 export const closeStatsDatabase = async (): Promise<void> => {
@@ -171,7 +196,17 @@ export const closeStatsDatabase = async (): Promise<void> => {
   promises.push(close(coinStatsDatabase, 'CoinStats'))
   promises.push(close(nodeStatsDatabase, 'NodeStats'))
   promises.push(close(metadataDatabase, 'Metadata'))
+  promises.push(close(totalAccountBalanceDatabase, 'TotalAccountBalance'))
+
   await Promise.all(promises)
 }
 
-export { ValidatorStatsDB, TransactionStatsDB, DailyTransactionStatsDB, CoinStatsDB, NodeStatsDB, MetadataDB }
+export {
+  ValidatorStatsDB,
+  TransactionStatsDB,
+  DailyTransactionStatsDB,
+  CoinStatsDB,
+  NodeStatsDB,
+  MetadataDB,
+  TotalAccountBalanceDB,
+}
