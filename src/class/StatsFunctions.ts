@@ -5,18 +5,23 @@ import {
   NodeStatsDB,
   MetadataDB,
   DailyTransactionStatsDB,
+  TotalAccountBalanceDB,
 } from '../stats'
-import { CycleDB, TransactionDB } from '../storage'
-import { TransactionType } from '../types'
+import { AccountDB, CycleDB, TransactionDB } from '../storage'
+import { TransactionType, AccountType } from '../types'
 import { P2P } from '@shardus/types'
 import { config } from '../config/index'
 import { TransactionStats } from '../stats/transactionStats'
+import { TotalAccountBalance } from '../stats/totalAccountBalance'
 
 interface NodeState {
   state: string
   id?: string
   nominator?: string
 }
+
+const TOLERANCE_PERCENTAGE = 0.1 // 0.1% tolerance
+const GENESIS_SUPPLY = BigInt(config.genesisLIBSupply) * BigInt(10 ** 18) // Convert to wei
 
 export const insertValidatorStats = async (cycleRecord: P2P.CycleCreatorTypes.CycleRecord): Promise<void> => {
   const validatorsInfo: ValidatorStatsDB.ValidatorStats = {
@@ -284,7 +289,11 @@ export const recordTransactionsStats = async (
   }
 }
 
-export const recordCoinStats = async (latestCycle: number, lastStoredCycle: number): Promise<void> => {
+export const recordCoinStats = async (
+  latestCycle: number,
+  lastStoredCycle: number,
+  recordAccountBalance = false
+): Promise<void> => {
   const bucketSize = 50
   let startCycle = lastStoredCycle + 1
   let endCycle = startCycle + bucketSize
@@ -357,6 +366,7 @@ export const recordCoinStats = async (latestCycle: number, lastStoredCycle: numb
     startCycle = endCycle + 1
     endCycle = endCycle + bucketSize
   }
+  if (recordAccountBalance) await recordTotalAccountBalances(latestCycle)
 }
 
 export const recordDailyTransactionsStats = async (
@@ -421,6 +431,101 @@ export const recordDailyTransactionsStats = async (
       )}, startTimestamp ${startTimestamp} endTimestamp ${endTimestamp}`,
       dailyTransactionStats
     )
+  }
+}
+
+export const recordTotalAccountBalances = async (cycleNumber: number): Promise<TotalAccountBalance> => {
+  try {
+    console.log('Record total account balances', cycleNumber)
+
+    // Fetch cycle record of the last cycle
+    const cycleRecord = await CycleDB.queryCycleByCounter(cycleNumber)
+    if (!cycleRecord) {
+      throw new Error(`No cycle record found for cycle ${cycleNumber}`)
+    }
+
+    // Calculate the sum of all user account balances
+    let totalBalance = BigInt(0)
+    const totalUserAccounts = await AccountDB.queryAccountCount(undefined, undefined, AccountType.UserAccount)
+
+    const accounts = await AccountDB.queryAccounts(
+      0,
+      totalUserAccounts,
+      undefined,
+      undefined,
+      AccountType.UserAccount
+    )
+
+    for (const account of accounts) {
+      totalBalance += BigInt(account.data.balance) * BigInt(10 ** 18)
+    }
+
+    // Get the total supply calculated from transactions
+    const coinStats = await CoinStatsDB.queryAggregatedCoinStats()
+    const calculatedSupply = BigInt(coinStats.totalSupplyChange + config.genesisLIBSupply) * BigInt(10 ** 18)
+
+    // Calculate difference and percentage
+    const difference =
+      totalBalance > calculatedSupply ? totalBalance - calculatedSupply : calculatedSupply - totalBalance
+
+    const differencePercentage =
+      calculatedSupply > 0 ? Number((difference * BigInt(10000)) / calculatedSupply) / 100 : 0
+
+    const isWithinTolerance = differencePercentage <= TOLERANCE_PERCENTAGE
+
+    const result: TotalAccountBalance = {
+      cycleNumber,
+      timestamp: cycleRecord.cycleRecord.start,
+      totalBalance: totalBalance.toString(),
+      calculatedSupply: calculatedSupply.toString(),
+      difference: difference.toString(),
+      differencePercentage,
+      isWithinTolerance,
+      accountsProcessed: accounts.length,
+    }
+
+    // /**
+    //  * Format balance from wei to LIB for display
+    //  */
+    // const formatBalance = (balance: bigint): string => {
+    //   const lib = balance / BigInt(10 ** 18)
+    //   const wei = balance % BigInt(10 ** 18)
+    //   return wei > 0 ? `${lib}.${wei.toString().padStart(18, '0').replace(/0+$/, '')}` : lib.toString()
+    // }
+
+    // /**
+    //  * Log verification results with appropriate level based on tolerance
+    //  */
+    // const logVerificationResult = (result: TotalAccountBalance): void => {
+    //   const logLevel = result.isWithinTolerance ? 'info' : 'warn'
+    //   const status = result.isWithinTolerance ? 'PASS' : 'FAIL'
+
+    //   const logMessage = [
+    //     `Total Account Balance Check [${status}] - Cycle: ${result.cycleNumber}`,
+    //     `Account Balances: ${formatBalance(result.totalBalance)} LIB`,
+    //     `Calculated Supply: ${formatBalance(result.calculatedSupply)} LIB`,
+    //     `Difference: ${formatBalance(result.difference)} LIB (${result.differencePercentage.toFixed(4)}%)`,
+    //     `Accounts Processed: ${result.accountsProcessed}`,
+    //     `Tolerance: ${TOLERANCE_PERCENTAGE}%`,
+    //   ].join(' | ')
+
+    //   if (logLevel === 'warn') {
+    //     console.warn('⚠️ ', logMessage)
+    //   } else {
+    //     console.log('✅', logMessage)
+    //   }
+    // }
+
+    // // // Log the results
+    // logVerificationResult(result)
+
+    // Store the verification result in the database
+    await TotalAccountBalanceDB.insertTotalAccountBalance(result)
+
+    return result
+  } catch (error) {
+    console.error('Total account balance verification failed:', error)
+    throw error
   }
 }
 
