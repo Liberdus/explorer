@@ -45,7 +45,7 @@ export const initializeStatsDB = async (): Promise<void> => {
     'Metadata'
   )
   totalAccountBalanceDatabase = await createDB(
-    `${config.COLLECTOR_DB_DIR_PATH}/totalAccountBalances.sqlite3`,
+    `${config.COLLECTOR_STATS_DB_DIR_PATH}/${config.COLLECTOR_STATS_DATA.totalAccountBalanceDB}`,
     'TotalAccountBalance'
   )
 
@@ -174,7 +174,7 @@ export const initializeStatsDB = async (): Promise<void> => {
     `CREATE TABLE if not exists total_account_balances (
       cycleNumber NUMBER NOT NULL UNIQUE PRIMARY KEY,
       timestamp BIGINT NOT NULL,
-      totalBalances TEXT NOT NULL,
+      totalBalance TEXT NOT NULL,
       calculatedSupply TEXT NOT NULL,
       difference TEXT NOT NULL,
       differencePercentage REAL NOT NULL,
@@ -197,7 +197,6 @@ export const closeStatsDatabase = async (): Promise<void> => {
   promises.push(close(nodeStatsDatabase, 'NodeStats'))
   promises.push(close(metadataDatabase, 'Metadata'))
   promises.push(close(totalAccountBalanceDatabase, 'TotalAccountBalance'))
-
   await Promise.all(promises)
 }
 

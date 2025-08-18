@@ -47,6 +47,7 @@ export interface Config {
     coinStatsDB: string
     nodeStatsDB: string
     metadataDB: string
+    totalAccountBalanceDB: string
   }
   port: {
     collector: string
@@ -132,6 +133,7 @@ let config: Config = {
     coinStatsDB: 'coinStats.sqlite3',
     nodeStatsDB: 'nodeStats.sqlite3',
     metadataDB: 'metadata.sqlite3',
+    totalAccountBalanceDB: 'totalAccountBalance.sqlite3',
   },
   port: {
     collector: process.env.COLLECTORPORT || '4444',
