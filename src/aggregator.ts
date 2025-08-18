@@ -86,15 +86,7 @@ const start = async (): Promise<void> => {
 
   if (measure_time) start_time = process.hrtime()
 
-  // Cron job to run every minute
-  cron.schedule('* * * * *', async () => {
-    console.log('Running cron task....')
-    if (measure_time && start_time) {
-      const end_time = process.hrtime(start_time)
-      console.log('End Time', end_time)
-      start_time = process.hrtime()
-    }
-
+  const runStats = async (): Promise<void> => {
     const latestCycleRecord = (await CycleDB.queryLatestCycleRecords(1))[0]
     if (!latestCycleRecord) {
       console.log('No cycle record found')
@@ -157,7 +149,30 @@ const start = async (): Promise<void> => {
         lastCheckedDateStartTime = dateEndTimestamp + 1
       }
     }
-  })
+  }
+
+  // Cron job to run every minute
+  const job = cron.schedule(
+    '* * * * *',
+    async () => {
+      console.log('Running cron task....')
+      if (measure_time && start_time) {
+        const end_time = process.hrtime(start_time)
+        console.log('End Time', end_time)
+        start_time = process.hrtime()
+      }
+      runStats()
+    },
+    {
+      scheduled: false,
+    }
+  )
+
+  // Run once immediately
+  runStats()
+
+  // Then start cron
+  job.start()
 }
 
 start()

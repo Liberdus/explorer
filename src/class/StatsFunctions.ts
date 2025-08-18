@@ -20,8 +20,40 @@ interface NodeState {
   nominator?: string
 }
 
+const GENESIS_ACCOUNT_BALANCES = [
+  '20000000000000000000000000',
+  '7983891000000000000000000',
+  '7983891000000000000000000',
+  '7983891000000000000000000',
+]
+
+const GENESIS_SUPPLY = GENESIS_ACCOUNT_BALANCES.reduce((a, b) => a + BigInt(b), BigInt(0))
+
+const weiBNToEth = (bn: bigint): number => {
+  return Number(bn) / 1e18
+}
+
+const ethToWeiBN = (eth: number): bigint => {
+  return BigInt(eth * 1e18)
+}
+
+const DEFAULT_ACCOUNT_BALANCE = ethToWeiBN(50)
 const TOLERANCE_PERCENTAGE = 0.1 // 0.1% tolerance
-const GENESIS_SUPPLY = BigInt(config.genesisLIBSupply) * BigInt(10 ** 18) // Convert to wei
+
+// // ----- Safe bigint → ETH (string) -----
+// const weiBNToEth = (bn: bigint): string => {
+//   const ETH_DECIMALS = BigInt(18)
+//   const divisor = BigInt(10) ** ETH_DECIMALS
+//   const whole = bn / divisor
+//   const fraction = bn % divisor
+//   return `${whole}.${fraction.toString().padStart(18, '0')}`.replace(/\.?0+$/, '')
+// }
+
+// // ----- Safe ETH (string) → bigint -----
+// const ethToWeiBN = (eth: string): bigint => {
+//   const [whole, fraction = ''] = eth.split('.')
+//   return BigInt(whole + fraction.padEnd(18, '0'))
+// }
 
 export const insertValidatorStats = async (cycleRecord: P2P.CycleCreatorTypes.CycleRecord): Promise<void> => {
   const validatorsInfo: ValidatorStatsDB.ValidatorStats = {
@@ -308,48 +340,61 @@ export const recordCoinStats = async (
 
         // Filter transactions
         const depositStakeTransactions = transactions.filter(
-          (a) => a.transactionType === TransactionType.deposit_stake
+          (a) => a.transactionType === TransactionType.deposit_stake && a.data.success === true
         )
         const withdrawStakeTransactions = transactions.filter(
-          (a) => a.transactionType === TransactionType.withdraw_stake
+          (a) => a.transactionType === TransactionType.withdraw_stake && a.data.success === true
+        )
+
+        const createTransactions = transactions.filter(
+          (a) => a.transactionType === TransactionType.create && a.data.success === true
+        )
+
+        const registerTransactions = transactions.filter(
+          (a) => a.transactionType === TransactionType.register && a.data.success === true
         )
 
         try {
           // Calculate total staked amount in cycle
           const stakeAmount: bigint = depositStakeTransactions.reduce((sum, current) => {
-            const stakeAmount = (current.originalTxData as any).tx.stake || BigInt(0)
+            const stakeAmount = (current.data as any)?.additionalInfo?.stake || BigInt(0)
             return sum + stakeAmount
           }, BigInt(0))
           // Calculate total unstaked amount in cycle
           const unStakeAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
-            const unStakeAmount = (current.originalTxData as any).tx.unstake || BigInt(0)
+            const unStakeAmount = (current.data as any)?.additionalInfo?.stake || BigInt(0)
             return sum + unStakeAmount
           }, BigInt(0))
           // Calculate total node rewards in cycle
           const nodeRewardAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
-            const nodeRewardAmount = (current.originalTxData as any).tx.nodeReward || BigInt(0)
+            const nodeRewardAmount = (current.data as any)?.additionalInfo?.reward || BigInt(0)
             return sum + nodeRewardAmount
           }, BigInt(0))
-          // Calculate total reward penalties in cycle
+          // Calculate total node penalties in cycle
           const nodePenaltyAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
-            const nodePenaltyAmount = (current.originalTxData as any).tx.penalty || BigInt(0)
+            const nodePenaltyAmount = (current.data as any)?.additionalInfo?.penalty || BigInt(0)
             return sum + nodePenaltyAmount
           }, BigInt(0))
           // Calculate total gas burnt in cycle
           const transactionFee: bigint = transactions.reduce((sum, current) => {
-            const transactionFee = (current.originalTxData as any).transactionFee || BigInt(0)
+            const transactionFee = (current.data as any).transactionFee || BigInt(0)
             return sum + transactionFee
           }, BigInt(0))
 
-          const weiBNToEth = (bn: bigint): number => {
-            const result = Number(bn) / 1e18
-            return result
-          }
+          // Calculate the total amount of tokens created in cycle
+          const createAmount: bigint = createTransactions.reduce((sum, current) => {
+            const createAmount = (current.originalTxData as any).tx.amount || BigInt(0)
+            return sum + createAmount
+          }, BigInt(0))
+
+          const registerAmount = BigInt(registerTransactions.length) * DEFAULT_ACCOUNT_BALANCE
 
           const coinStatsForCycle = {
             cycle: cycle.counter,
-            totalSupplyChange: weiBNToEth(nodeRewardAmount - nodePenaltyAmount - transactionFee),
-            totalStakeChange: weiBNToEth(stakeAmount - unStakeAmount),
+            totalSupplyChange: weiBNToEth(
+              registerAmount + createAmount + nodeRewardAmount - transactionFee - nodePenaltyAmount
+            ),
+            totalStakeChange: weiBNToEth(stakeAmount - unStakeAmount - nodePenaltyAmount),
             timestamp: cycle.cycleRecord.start,
           }
           // await CoinStats.insertCoinStats(coinStatsForCycle)
@@ -457,12 +502,56 @@ export const recordTotalAccountBalances = async (cycleNumber: number): Promise<T
     )
 
     for (const account of accounts) {
-      totalBalance += BigInt(account.data.balance) * BigInt(10 ** 18)
+      totalBalance += account.data.data.balance
+      if (account.data?.operatorAccountInfo?.stake) totalBalance += account.data?.operatorAccountInfo?.stake
     }
+
+    // Calculate the sum of the toll amount of all chat accounts
+    let totalToll = BigInt(0)
+    const totalChatAccounts = await AccountDB.queryAccountCount(undefined, undefined, AccountType.ChatAccount)
+
+    const chatAccounts = await AccountDB.queryAccounts(
+      0,
+      totalChatAccounts,
+      undefined,
+      undefined,
+      AccountType.ChatAccount
+    )
+
+    for (const account of chatAccounts) {
+      totalToll +=
+        account.data.toll.payOnRead[0] +
+        account.data.toll.payOnRead[1] +
+        account.data.toll.payOnReply[0] +
+        account.data.toll.payOnReply[1]
+    }
+
+    // Add the total toll amount to the total balance
+    totalBalance = totalBalance + totalToll
+
+    // console.log('totalBalance', totalBalance, weiBNToEth(totalBalance))
 
     // Get the total supply calculated from transactions
     const coinStats = await CoinStatsDB.queryAggregatedCoinStats()
-    const calculatedSupply = BigInt(coinStats.totalSupplyChange + config.genesisLIBSupply) * BigInt(10 ** 18)
+    // console.log('coinStats', coinStats)
+
+    // const calculatedSupply = ethToWeiBN(coinStats.totalSupplyChange + config.genesisLIBSupply)
+    let calculatedSupply = ethToWeiBN(coinStats.totalSupplyChange) + GENESIS_SUPPLY
+
+    // console.log('calculatedSupply', calculatedSupply, totalBalance > calculatedSupply)
+
+    const totalRegisterTxs = await TransactionDB.queryTransactionCount(TransactionType.register)
+
+    const registerTxs = await TransactionDB.queryTransactions(0, totalRegisterTxs, TransactionType.register)
+
+    const successRegisterTxs = registerTxs.filter(
+      (a) => a.transactionType === TransactionType.register && a.data.success === true
+    )
+
+    calculatedSupply +=
+      DEFAULT_ACCOUNT_BALANCE *
+      BigInt(totalUserAccounts - successRegisterTxs.length - GENESIS_ACCOUNT_BALANCES.length)
+    // console.log('calculatedSupply', calculatedSupply, totalBalance > calculatedSupply)
 
     // Calculate difference and percentage
     const difference =
@@ -473,51 +562,31 @@ export const recordTotalAccountBalances = async (cycleNumber: number): Promise<T
 
     const isWithinTolerance = differencePercentage <= TOLERANCE_PERCENTAGE
 
+    // console.log('difference', difference, weiBNToEth(difference), differencePercentage, isWithinTolerance)
+
     const result: TotalAccountBalance = {
       cycleNumber,
       timestamp: cycleRecord.cycleRecord.start,
-      totalBalance: totalBalance.toString(),
-      calculatedSupply: calculatedSupply.toString(),
-      difference: difference.toString(),
+      totalBalance: weiBNToEth(totalBalance).toString(),
+      calculatedSupply: weiBNToEth(calculatedSupply).toString(),
+      difference: weiBNToEth(difference).toString(),
       differencePercentage,
       isWithinTolerance,
       accountsProcessed: accounts.length,
     }
 
-    // /**
-    //  * Format balance from wei to LIB for display
-    //  */
-    // const formatBalance = (balance: bigint): string => {
-    //   const lib = balance / BigInt(10 ** 18)
-    //   const wei = balance % BigInt(10 ** 18)
-    //   return wei > 0 ? `${lib}.${wei.toString().padStart(18, '0').replace(/0+$/, '')}` : lib.toString()
-    // }
-
-    // /**
-    //  * Log verification results with appropriate level based on tolerance
-    //  */
-    // const logVerificationResult = (result: TotalAccountBalance): void => {
-    //   const logLevel = result.isWithinTolerance ? 'info' : 'warn'
-    //   const status = result.isWithinTolerance ? 'PASS' : 'FAIL'
-
-    //   const logMessage = [
-    //     `Total Account Balance Check [${status}] - Cycle: ${result.cycleNumber}`,
-    //     `Account Balances: ${formatBalance(result.totalBalance)} LIB`,
-    //     `Calculated Supply: ${formatBalance(result.calculatedSupply)} LIB`,
-    //     `Difference: ${formatBalance(result.difference)} LIB (${result.differencePercentage.toFixed(4)}%)`,
-    //     `Accounts Processed: ${result.accountsProcessed}`,
-    //     `Tolerance: ${TOLERANCE_PERCENTAGE}%`,
-    //   ].join(' | ')
-
-    //   if (logLevel === 'warn') {
-    //     console.warn('⚠️ ', logMessage)
-    //   } else {
-    //     console.log('✅', logMessage)
-    //   }
-    // }
-
-    // // // Log the results
-    // logVerificationResult(result)
+    // if it's not within tolerance, log the result
+    if (!result.isWithinTolerance) {
+      console.error(
+        'Total account balance verification failed:',
+        `Cycle: ${result.cycleNumber}`,
+        `Account Balances: ${result.totalBalance} LIB`,
+        `Calculated Supply: ${result.calculatedSupply} LIB`,
+        `Difference: ${result.difference} LIB (${result.differencePercentage.toFixed(4)}%)`,
+        `Accounts Processed: ${result.accountsProcessed}`,
+        `Tolerance: ${TOLERANCE_PERCENTAGE}%`
+      )
+    }
 
     // Store the verification result in the database
     await TotalAccountBalanceDB.insertTotalAccountBalance(result)
