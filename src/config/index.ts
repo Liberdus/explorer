@@ -152,7 +152,7 @@ let config: Config = {
   apiUrl: '',
   verbose: false,
   fastifyDebugLog: false,
-  genesisLIBSupply: 100000000,
+  genesisLIBSupply: 43951673,
   rateLimit: 100,
   patchData: false,
   GTM_Id: '',

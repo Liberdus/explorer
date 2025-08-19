@@ -419,47 +419,48 @@ export const recordDailyTransactionsStats = async (
   dateEndTime: number
 ): Promise<void> => {
   const one_day_in_ms = 24 * 60 * 60 * 1000
-  for (let startTimestamp = dateStartTime; startTimestamp <= dateEndTime; startTimestamp += one_day_in_ms) {
-    const endTimestamp = startTimestamp + one_day_in_ms - 1
+  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
+    const beforeTimestamp = startTimestamp + one_day_in_ms + 1 // we want to include the endTimestamp
+    const afterTimestamp = startTimestamp
     const totalTxs = await TransactionDB.queryTransactionCount(
       undefined,
       undefined,
       0,
       0,
-      startTimestamp,
-      endTimestamp
+      beforeTimestamp,
+      afterTimestamp
     )
     const totalTransferTxs = await TransactionDB.queryTransactionCount(
       TransactionType.transfer,
       undefined,
       0,
       0,
-      startTimestamp,
-      endTimestamp
+      beforeTimestamp,
+      afterTimestamp
     )
     const totalMessageTxs = await TransactionDB.queryTransactionCount(
       TransactionType.message,
       undefined,
       0,
       0,
-      startTimestamp,
-      endTimestamp
+      beforeTimestamp,
+      afterTimestamp
     )
     const totalDepositStakeTxs = await TransactionDB.queryTransactionCount(
       TransactionType.deposit_stake,
       undefined,
       0,
       0,
-      startTimestamp,
-      endTimestamp
+      beforeTimestamp,
+      afterTimestamp
     )
     const totalWithdrawStakeTxs = await TransactionDB.queryTransactionCount(
       TransactionType.withdraw_stake,
       undefined,
       0,
       0,
-      startTimestamp,
-      endTimestamp
+      beforeTimestamp,
+      afterTimestamp
     )
     const dailyTransactionStats = {
       dateStartTime: startTimestamp,
@@ -473,7 +474,7 @@ export const recordDailyTransactionsStats = async (
     console.log(
       `Stored daily transaction stats for ${new Date(
         startTimestamp
-      )}, startTimestamp ${startTimestamp} endTimestamp ${endTimestamp}`,
+      )}, startTimestamp ${startTimestamp} endTimestamp ${beforeTimestamp}`,
       dailyTransactionStats
     )
   }
