@@ -6,6 +6,9 @@ import { Icon, LineChart } from '../../components'
 
 import styles from './NewCardDetail.module.scss'
 import { TransactionStats } from '../../../stats/transactionStats'
+import { config } from '../../../config'
+import { NetworkParameters } from '../../../types'
+import { getBaseTxFeeUSD, getBaseTxFeeLIB } from '../../utils/calculateValue'
 
 export interface NewCardDetailProps {
   tokenPrice: number
@@ -13,13 +16,15 @@ export interface NewCardDetailProps {
   totalCycles: number
   totalTransactions: number
   transactionStats: TransactionStats[]
+  totalLIB: number
+  networkParameters: NetworkParameters
 }
 
 export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
   return (
     <div className={styles.NewCardDetail}>
       <div className={styles.column}>
-        <Link href="/cycle">
+        <a href={config.dexScreenerLink} target="_blank" rel="noreferrer">
           <div className={styles.item}>
             {/* <div className={styles.icon}>
               <Icon name="cycle" size="medium" color="black" />
@@ -30,32 +35,49 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
               <p>${data?.tokenPrice?.toLocaleString('en-US')}</p>
             </div>
           </div>
-        </Link>
+        </a>
         <hr className={styles.hr} />
         <div className={styles.item}>
           <div className={styles.icon}>
             <Icon name="earth" size="large" color="black" />
           </div>
           <div>
-            <p className={styles.title}>MARKET CAP</p>
-            <p>${data?.marketCap?.toLocaleString('en-US')}</p>
+            {/* <p className={styles.title}>MARKET CAP</p>
+            <p>${data?.marketCap?.toLocaleString('en-US')}</p> */}
+            <p className={styles.title}> TOTAL SUPPLY ( MARKET CAP ) </p>
+            <p>
+              {data?.totalLIB?.toLocaleString('en-US')} LIB
+              <span style={{ opacity: 0.7 }}> (${(data?.tokenPrice * data?.totalLIB).toFixed(2)})</span>
+            </p>
           </div>
         </div>
       </div>
       <div className={styles.column}>
-        <Link href="/transaction">
-          <div className={styles.item}>
-            <div className={styles.icon}>
-              <Icon name="server" size="large" />
+        <div className={styles.cardRow}>
+          <Link href="/transaction">
+            <div className={styles.item}>
+              <div className={styles.icon}>
+                <Icon name="server" size="large" />
+              </div>
+              <div>
+                <p className={styles.title}>TOTAL TRANSACTIONS</p>
+                <p>{data?.totalTransactions?.toLocaleString('en-US')}</p>
+              </div>
             </div>
+          </Link>
+          <div className={styles.item} style={{ textAlign: 'right' }}>
             <div>
-              <p className={styles.title}>TOTAL TRANSACTIONS</p>
-              <p>{data?.totalTransactions?.toLocaleString('en-US')}</p>
+              <p className={styles.title}>BASE TX FEE</p>
+              <p>
+                ${getBaseTxFeeUSD(data?.networkParameters)}
+                {' ~ '}
+                {getBaseTxFeeLIB(data?.networkParameters)} LIB
+              </p>
             </div>
           </div>
-        </Link>
+        </div>
         <hr className={styles.hr} />
-        <Link href="/transaction">
+        <Link href="/cycle">
           <div className={styles.item}>
             <div className={styles.icon}>
               <Icon name="gauge" size="large" />

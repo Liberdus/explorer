@@ -1,4 +1,5 @@
 import web3 from 'web3'
+import { NetworkParameters } from '../../types'
 export const calculateValue = (value: string | bigint): string => {
   console.log('calculateValue', value)
   try {
@@ -50,4 +51,17 @@ export const roundTokenValue = (value: string): string => {
   }
   if (decimals < 18) return value
   return Number(value).toFixed(18)
+}
+
+export const getBaseTxFeeLIB = (parameters: NetworkParameters): string => {
+  if (!parameters) return '0'
+  const { transactionFee, stabilityScaleDiv, stabilityScaleMul } = parameters
+  const txFeeLIB = (transactionFee * BigInt(stabilityScaleDiv)) / BigInt(stabilityScaleMul)
+  return calculateValue(txFeeLIB)
+}
+
+export const getBaseTxFeeUSD = (parameters: NetworkParameters): string => {
+  if (!parameters) return '0'
+  const { transactionFee } = parameters
+  return calculateValue(transactionFee)
 }

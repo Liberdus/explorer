@@ -9,6 +9,22 @@
   box-shadow: shadow(shadow1);
   padding: spacing(16) 0;
 
+  .cardRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    @include tablet {
+      flex-direction: column;
+      gap: spacing(16);
+    }
+
+    @include mobile {
+      flex-direction: column;
+      gap: spacing(16);
+    }
+  }
+
   .hr {
     border-top: 1px solid color(gray-300);
   }
