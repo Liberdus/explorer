@@ -12,6 +12,8 @@ import { TransactionSearchParams } from '../../../types'
 import { LatestTransactions } from '../LatestTransaction'
 import { LatestCycle } from '../LatestCycle'
 import { useDexTokenPrice } from '../../api/useDexTokenPrice'
+import useAccountDetail from '../../api/useAccountDetail'
+import { config } from '../../../config'
 
 export const Dashboard: React.FC = () => {
   const { data: cycles } = useCycle({ count: 10 })
@@ -20,10 +22,13 @@ export const Dashboard: React.FC = () => {
     txType: TransactionSearchParams.all,
     totalTxsDetail: false,
   })
-  const { transactionStats } = useStats({
+  const { transactionStats, totalLIB } = useStats({
     last14DaysTxsReport: true,
     transactionResponseType: 'array',
+    fetchCoinStats: true,
   })
+
+  const { account: networkAccount } = useAccountDetail(config.networkAccountId)
 
   const { tokenPrice, marketCap } = useDexTokenPrice()
   const cyclesList = cycles.map((row) => {
@@ -46,6 +51,8 @@ export const Dashboard: React.FC = () => {
         tokenPrice={tokenPrice}
         marketCap={marketCap}
         transactionStats={transactionStats}
+        totalLIB={totalLIB}
+        networkParameters={networkAccount?.data?.current}
       />
       <Spacer space="48" />
       <div className={styles.tableGrid}>

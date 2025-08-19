@@ -91,6 +91,8 @@ export interface Config {
     MAX_ACCOUNT_HISTORY_STATES_PER_REQUEST: number
   }
   dexScreenerAPI: string // Dex Screener API URL for Liberdus token
+  dexScreenerLink: string // Dex Screener Link for Liberdus token
+  networkAccountId: string
 }
 
 let config: Config = {
@@ -177,6 +179,8 @@ let config: Config = {
   },
   dexScreenerAPI:
     'https://api.dexscreener.com/latest/dex/search?q=0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76',
+  dexScreenerLink: 'https://dexscreener.com/polygon/0x041e48a5b11c29fdbd92498eb05573c52728398c',
+  networkAccountId: '0'.repeat(64),
 }
 
 let DISTRIBUTOR_URL = `http://${config.distributorInfo.ip}:${config.distributorInfo.port}`
