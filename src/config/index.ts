@@ -89,6 +89,7 @@ export interface Config {
     MAX_TRANSACTIONS_PER_REQUEST: number
     MAX_BETWEEN_CYCLES_PER_REQUEST: number
     MAX_ACCOUNT_HISTORY_STATES_PER_REQUEST: number
+    MAX_STATS_PER_REQUEST: number
   }
   dexScreenerAPI: string // Dex Screener API URL for Liberdus token
   dexScreenerLink: string // Dex Screener Link for Liberdus token
@@ -176,6 +177,7 @@ let config: Config = {
     MAX_TRANSACTIONS_PER_REQUEST: 100,
     MAX_BETWEEN_CYCLES_PER_REQUEST: 100,
     MAX_ACCOUNT_HISTORY_STATES_PER_REQUEST: 100,
+    MAX_STATS_PER_REQUEST: 1000000,
   },
   dexScreenerAPI:
     'https://api.dexscreener.com/latest/dex/search?q=0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76',

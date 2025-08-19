@@ -923,12 +923,18 @@ const start = async (): Promise<void> => {
     }
     let validatorStats: ValidatorStats[] = []
     if (query.count) {
-      let count: number = parseInt(query.count)
+      const count: number = parseInt(query.count)
       if (count <= 0 || Number.isNaN(count)) {
         reply.send({ success: false, error: 'Invalid count' })
         return
       }
-      if (count > 100000) count = 100000 // set to show max 100000 cycles for TEMP
+      if (count > config.requestLimits.MAX_STATS_PER_REQUEST) {
+        reply.send({
+          success: false,
+          error: `Max stats size is ${config.requestLimits.MAX_STATS_PER_REQUEST}`,
+        })
+        return
+      }
 
       // Cache enabled only for query string => ?count=1000&responseType=array
       if (query.responseType === 'array' && count === 1000) {
@@ -969,14 +975,14 @@ const start = async (): Promise<void> => {
       const temp_array = []
       validatorStats.forEach((item) =>
         temp_array.push([
-          item.timestamp * 1000,
+          item.cycle,
+          item.timestamp,
           item.active,
           item.activated,
           item.syncing,
           item.joined,
           item.removed,
           item.apoped,
-          item.cycle,
         ])
       )
       validatorStats = temp_array
@@ -1027,12 +1033,18 @@ const start = async (): Promise<void> => {
     }
     let transactionStats: TransactionStats[] | DailyTransactionStats[] = []
     if (query.count) {
-      let count: number = parseInt(query.count)
+      const count: number = parseInt(query.count)
       if (count <= 0 || Number.isNaN(count)) {
         reply.send({ success: false, error: 'Invalid count' })
         return
       }
-      if (count > 100000) count = 100000 // set to show max 100000 cycles for TEMP
+      if (count > config.requestLimits.MAX_STATS_PER_REQUEST) {
+        reply.send({
+          success: false,
+          error: `Max stats size is ${config.requestLimits.MAX_STATS_PER_REQUEST}`,
+        })
+        return
+      }
 
       // Cache enabled only for query string => ?count=1000&responseType=array
       if (query.responseType === 'array' && count === 1000) {
@@ -1095,8 +1107,8 @@ const start = async (): Promise<void> => {
       } else {
         ;(transactionStats as TransactionStats[]).forEach((item: TransactionStats) =>
           temp_array.push([
-            item.timestamp,
             item.cycle,
+            item.timestamp,
             item.totalTxs,
             item.totalInitNetworkTxs,
             item.totalNetworkWindowsTxs,

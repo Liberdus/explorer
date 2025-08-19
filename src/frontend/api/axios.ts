@@ -4,7 +4,7 @@ import { PATHS } from './paths'
 
 const api = axios.create({
   baseURL: PATHS.BASE_URL,
-  timeout: 10000,
+  timeout: 30000,
 })
 
 api.interceptors.request.use(
@@ -48,7 +48,7 @@ export function bigIntReviver(key, value): any {
     return BigInt('0x' + value.value)
   }
   if (typeof value === 'bigint') {
-    return { dataType: "bi", value: value.toString(16) };
+    return { dataType: 'bi', value: value.toString(16) }
   }
   return value
 }
