@@ -40,9 +40,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
           <div className={styles.item} style={{ textAlign: 'right' }}>
             <div>
               <p className={styles.title}>MARKET CAP</p>
-              <p>
-                <span style={{ opacity: 0.7 }}> (${(data?.tokenPrice * data?.totalLIB).toFixed(2)})</span>
-              </p>
+              <p>${(data?.tokenPrice * data?.totalLIB).toFixed(2)}</p>
             </div>
           </div>
         </div>
