@@ -16,8 +16,9 @@ interface SeriesData {
 }
 
 export function convertTransactionStatsToSeriesData(
-  transactionStats: TransactionStats[],
-  isDeveloperMode: boolean
+  transactionStats: TransactionStats[] | number[][],
+  isDeveloperMode: boolean,
+  transactionResponseType?: string
 ): SeriesData[] {
   let seriesData: SeriesData[] = [
     { name: 'Total Txs', data: [], zIndex: 10, tooltip: 'Count of all transactions', visible: true },
@@ -81,8 +82,18 @@ export function convertTransactionStatsToSeriesData(
   ]
 
   transactionStats
-    .sort((a, b) => a.timestamp - b.timestamp)
-    .forEach((stat) => {
+    .sort((a, b) => (transactionResponseType === 'array' ? a[0] - b[0] : a.timestamp - b.timestamp))
+    .forEach((transactionStat) => {
+      if (transactionResponseType === 'array') {
+        const stat = transactionStat as number[]
+        const cycle = stat[0]
+        const timestampMillis = stat[1] * 1000
+        for (let i = 2; i < stat.length; i++) {
+          seriesData[i - 2].data.push({ x: timestampMillis, y: stat[i], cycle: cycle })
+        }
+        return
+      }
+      const stat = transactionStat as TransactionStats
       const timestampMillis = stat.timestamp * 1000
       seriesData[0].data.push({ x: timestampMillis, y: stat.totalTxs, cycle: stat.cycle })
       seriesData[1].data.push({ x: timestampMillis, y: stat.totalInitNetworkTxs, cycle: stat.cycle })
@@ -149,7 +160,10 @@ export function convertTransactionStatsToSeriesData(
   return seriesData
 }
 
-export function convertValidatorStatsToSeriesData(validatorStats: ValidatorStats[]): SeriesData[] {
+export function convertValidatorStatsToSeriesData(
+  validatorStats: ValidatorStats[] | number[][],
+  validatorResponseType?: string
+): SeriesData[] {
   const seriesData: SeriesData[] = [
     { name: 'Active', data: [], zIndex: 5, tooltip: 'Count of all currently active validators' },
     {
@@ -160,20 +174,36 @@ export function convertValidatorStatsToSeriesData(validatorStats: ValidatorStats
     },
     { name: 'Syncing', data: [], zIndex: 3, tooltip: 'Count of all validators that are currently syncing' },
     {
-      name: 'Removed',
+      name: 'Joined',
       data: [],
       zIndex: 2,
+      tooltip: 'Count of all validators that have joined in a cycle',
+    },
+    {
+      name: 'Removed',
+      data: [],
+      zIndex: 1,
       tooltip: 'Count of all validators that have been removed in a cycle',
     },
     {
       name: 'Apoped',
       data: [],
-      zIndex: 1,
+      zIndex: 0,
       tooltip: 'Count of all validators that have been apoped in a cycle',
     },
   ]
 
-  validatorStats.forEach((stat) => {
+  validatorStats.forEach((validatorStat) => {
+    if (validatorResponseType === 'array') {
+      const stat = validatorStat as number[]
+      const cycle = stat[0]
+      const timestampMillis = stat[1] * 1000
+      for (let i = 2; i < stat.length; i++) {
+        seriesData[i - 2].data.push({ x: timestampMillis, y: stat[i], cycle: cycle })
+      }
+      return
+    }
+    const stat = validatorStat as ValidatorStats
     const timestampMillis = stat.timestamp * 1000
 
     seriesData[0].data.push({ x: timestampMillis, y: stat.active, cycle: stat.cycle })

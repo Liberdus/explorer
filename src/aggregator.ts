@@ -83,6 +83,7 @@ const start = async (): Promise<void> => {
   let lastCheckedCycleForNodeStats = await MetadataDB.getLastStoredCycleNumber(
     MetadataDB.MetadataType.NodeStats
   )
+  let nodeStatsInProgress = false
 
   if (measure_time) start_time = process.hrtime()
 
@@ -125,13 +126,6 @@ const start = async (): Promise<void> => {
     )
     lastCheckedCycleForCoinStats = latestCycleCounter
 
-    // ----- Node Stats -----
-    if (latestCycleCounter > lastCheckedCycleForNodeStats) {
-      await StatsFunctions.recordNodeStats(latestCycleCounter, lastCheckedCycleForNodeStats)
-      lastCheckedCycleForNodeStats = latestCycleCounter
-      StatsFunctions.insertOrUpdateMetadata(MetadataDB.MetadataType.NodeStats, lastCheckedCycleForNodeStats)
-    }
-
     // ----- Daily Transactions Stats -----
     const currentTimestamp = Date.now()
     const timeSinceLastChecked = currentTimestamp - lastCheckedDateStartTime
@@ -148,6 +142,15 @@ const start = async (): Promise<void> => {
         // Reset counter and update date/boundaries
         lastCheckedDateStartTime = dateEndTimestamp
       }
+    }
+
+    // ----- Node Stats -----
+    if (!nodeStatsInProgress && latestCycleCounter > lastCheckedCycleForNodeStats) {
+      nodeStatsInProgress = true
+      await StatsFunctions.recordNodeStats(latestCycleCounter, lastCheckedCycleForNodeStats)
+      lastCheckedCycleForNodeStats = latestCycleCounter
+      nodeStatsInProgress = false
+      StatsFunctions.insertOrUpdateMetadata(MetadataDB.MetadataType.NodeStats, lastCheckedCycleForNodeStats)
     }
   }
 

@@ -661,7 +661,7 @@ export function updateNodeStats(
 export const recordNodeStats = async (latestCycle: number, lastStoredCycle: number): Promise<void> => {
   try {
     const statesToIgnore = ['activatedPublicKeys', 'standbyRefresh', 'lost', 'refuted']
-    const bucketSize = 100
+    const bucketSize = 1000
     let startCycle = lastStoredCycle + 1
     let endCycle = startCycle + bucketSize
     while (startCycle <= latestCycle) {

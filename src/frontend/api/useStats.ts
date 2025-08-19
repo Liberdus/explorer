@@ -7,8 +7,8 @@ import { ValidatorStats } from '../../stats/validatorStats'
 import { TransactionStats } from '../../stats/transactionStats'
 
 type StatsResult = {
-  validatorStats: ValidatorStats[]
-  transactionStats: TransactionStats[]
+  validatorStats: ValidatorStats[] | number[][]
+  transactionStats: TransactionStats[] | number[][]
   totalLIB: number
   totalStakedLIB: number
   loading: boolean

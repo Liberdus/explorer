@@ -5,14 +5,17 @@ import { ContentLayout, StackedLineStockChart } from '../components'
 import styles from './ValidatorLineChart.module.scss'
 import { useStats } from '../api'
 import { convertValidatorStatsToSeriesData } from '../utils/transformChartData'
-
+import { config } from './../../config'
 export const ValidatorLineChart: React.FC = () => {
   const [refreshEnabled, setRefreshDisabled] = useState(true)
   const height = 600
 
+  const validatorResponseType = 'array'
+
   const { validatorStats, loading } = useStats({
-    validatorStatsCount: 10000000,
+    validatorStatsCount: config.requestLimits.MAX_STATS_PER_REQUEST,
     refreshEnabled,
+    validatorResponseType,
   })
 
   const toggleNoRefresh = (): void => setRefreshDisabled((prev) => !prev)
@@ -40,7 +43,7 @@ export const ValidatorLineChart: React.FC = () => {
             centerTitle
             subTitle="Click and drag in the plot area to zoom in"
             height={height}
-            data={convertValidatorStatsToSeriesData(validatorStats)}
+            data={convertValidatorStatsToSeriesData(validatorStats, validatorResponseType)}
             name="Validators"
             groupData={false}
           />
