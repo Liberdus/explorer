@@ -24,31 +24,44 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
   return (
     <div className={styles.NewCardDetail}>
       <div className={styles.column}>
-        <a href={config.dexScreenerLink} target="_blank" rel="noreferrer">
-          <div className={styles.item}>
-            {/* <div className={styles.icon}>
+        <div className={styles.cardRow}>
+          <Link href={config.dexScreenerLink} target="_blank" rel="noreferrer">
+            <div className={styles.item}>
+              {/* <div className={styles.icon}>
               <Icon name="cycle" size="medium" color="black" />
             </div> */}
-            <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} />
+              <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} />
+              <div>
+                <p className={styles.title}>LIB PRICE</p>
+                <p>${data?.tokenPrice?.toLocaleString('en-US')}</p>
+              </div>
+            </div>
+          </Link>
+          <div className={styles.item} style={{ textAlign: 'right' }}>
             <div>
-              <p className={styles.title}>LIB PRICE</p>
-              <p>${data?.tokenPrice?.toLocaleString('en-US')}</p>
+              <p className={styles.title}>MARKET CAP</p>
+              <p>
+                <span style={{ opacity: 0.7 }}> (${(data?.tokenPrice * data?.totalLIB).toFixed(2)})</span>
+              </p>
             </div>
           </div>
-        </a>
+        </div>
         <hr className={styles.hr} />
-        <div className={styles.item}>
-          <div className={styles.icon}>
-            <Icon name="earth" size="large" color="black" />
+        <div className={styles.cardRow}>
+          <div className={styles.item}>
+            <div className={styles.icon}>
+              <Icon name="earth" size="large" color="black" />
+            </div>
+            <div>
+              <p className={styles.title}> TOTAL SUPPLY </p>
+              <p>{data?.totalLIB?.toLocaleString('en-US')} LIB</p>
+            </div>
           </div>
-          <div>
-            {/* <p className={styles.title}>MARKET CAP</p>
-            <p>${data?.marketCap?.toLocaleString('en-US')}</p> */}
-            <p className={styles.title}> TOTAL SUPPLY ( MARKET CAP ) </p>
-            <p>
-              {data?.totalLIB?.toLocaleString('en-US')} LIB
-              <span style={{ opacity: 0.7 }}> (${(data?.tokenPrice * data?.totalLIB).toFixed(2)})</span>
-            </p>
+          <div className={styles.item} style={{ textAlign: 'right' }}>
+            <div>
+              <p className={styles.title}>MAX SUPPLY</p>
+              <p>210,000,000 LIB </p>
+            </div>
           </div>
         </div>
       </div>
