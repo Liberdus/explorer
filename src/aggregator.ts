@@ -143,10 +143,10 @@ const start = async (): Promise<void> => {
       const extra_safety_margin = slidingWindowOffset * cycleDuration * 1000 // extra safety margin
       if (timeSinceLastChecked > one_day_in_ms + extra_safety_margin) {
         // calculate end timestamp for the day
-        const dateEndTimestamp = currentTimestamp - (timeSinceLastChecked % one_day_in_ms) - 1
+        const dateEndTimestamp = currentTimestamp - (timeSinceLastChecked % one_day_in_ms)
         StatsFunctions.recordDailyTransactionsStats(lastCheckedDateStartTime, dateEndTimestamp)
         // Reset counter and update date/boundaries
-        lastCheckedDateStartTime = dateEndTimestamp + 1
+        lastCheckedDateStartTime = dateEndTimestamp
       }
     }
   }
