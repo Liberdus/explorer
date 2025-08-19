@@ -13,7 +13,8 @@ import { LatestTransactions } from '../LatestTransaction'
 import { LatestCycle } from '../LatestCycle'
 import { useDexTokenPrice } from '../../api/useDexTokenPrice'
 import useAccountDetail from '../../api/useAccountDetail'
-import { config } from '../../../config'
+import { NetworkAccountId } from '../../../config'
+import { TransactionStats } from '../../../stats/transactionStats'
 
 export const Dashboard: React.FC = () => {
   const { data: cycles } = useCycle({ count: 10 })
@@ -28,7 +29,7 @@ export const Dashboard: React.FC = () => {
     fetchCoinStats: true,
   })
 
-  const { account: networkAccount } = useAccountDetail(config.networkAccountId)
+  const { account: networkAccount } = useAccountDetail(NetworkAccountId)
 
   const { tokenPrice, marketCap } = useDexTokenPrice()
   const cyclesList = cycles.map((row) => {
@@ -50,7 +51,7 @@ export const Dashboard: React.FC = () => {
         totalTransactions={totalTransactions}
         tokenPrice={tokenPrice}
         marketCap={marketCap}
-        transactionStats={transactionStats}
+        transactionStats={transactionStats as TransactionStats[]}
         totalLIB={totalLIB}
         networkParameters={networkAccount?.data?.current}
       />
