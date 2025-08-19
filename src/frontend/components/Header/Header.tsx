@@ -45,10 +45,10 @@ export const Header: React.FC<Record<string, never>> = () => {
       hasSubmenu: true,
       submenu: [
         { name: 'About Liberdus', href: 'https://liberdus.com', external: true },
-        { name: 'Liberdus Web Client', href: 'https://test.liberdus.com', external: true },
+        { name: 'Liberdus Web Client', href: 'https://liberdus.com/download', external: true },
         {
           name: 'Run a validator node',
-          href: 'https://github.com/Liberdus/validator-dashboard',
+          href: 'https://liberdus.com/node',
           external: true,
         },
       ],
