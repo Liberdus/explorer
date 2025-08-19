@@ -7,6 +7,7 @@ import { useSearchHook } from '../../components/SearchBar/useSearchHook'
 import styles from './SearchBox.module.scss'
 import NetworkMode from '../NetworkMode/NetworkMode'
 import { Modes } from '../../types/modes'
+import { NetworkName } from '../../../config'
 
 interface SearchBoxProps {
   mode: string | undefined
@@ -18,7 +19,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({ mode }) => {
   return (
     <div className={styles.SearchBox}>
       <div className={styles.titleWrapper}>
-        <h4 className={styles.title}>The Liberdus Testnet Explorer</h4>
+        <h4 className={styles.title}>{NetworkName}</h4>
         <NetworkMode mode={mode as Modes} />
       </div>
       <div className={styles.box}>

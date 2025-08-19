@@ -27,15 +27,18 @@ export const useSearchHook = (): SearchHookResult => {
     try {
       if (isEthereumAddress(searchText)) {
         router.push(`/account/${searchText}`)
+        return
       }
       if (isShardusAddress(searchText)) {
         if (await isTransactionHash(searchText)) router.push(`/transaction/${searchText}`)
         else if (await isAccount(searchText)) router.push(`/account/${searchText}`)
         else router.push(`/cycle/${searchText}`)
+        return
       }
       // Regex to check if the search text is a cycle number
       if (!regex.test(searchText)) {
         router.push(`/cycle/${searchText}`)
+        return
       }
       if (searchText.length >= 3) {
         const usernameHash = hash(searchText) as string
@@ -44,8 +47,7 @@ export const useSearchHook = (): SearchHookResult => {
         // Set error for no account found
         else setSearchError(`No account found for username: ${searchText}`)
       }
-      // Set error for no data found
-      else setSearchError('No data found for search: ' + searchText)
+      setSearchError('No data found for search: ' + searchText)
     } catch (error) {
       // Set error for unexpected issues
       setSearchError('An error occurred during search')
