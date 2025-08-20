@@ -20,8 +20,8 @@
     }
 
     @include mobile {
-      flex-direction: column;
-      gap: spacing(16);
+      flex-direction: row;
+      gap: spacing(0);
     }
   }
 
@@ -41,7 +41,21 @@
     }
 
     @include mobile {
-      width: 90%;
+      width: 100%;
+      position: relative;
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: spacing(-2);
+        left: spacing(32); // space from the left
+        right: spacing(32); // space from the right
+        height: 1px;
+        background-color: color(gray-300);
+      }
+
+      p:not(.title) {
+        @include fontStyle(small);
+      }
     }
   }
 

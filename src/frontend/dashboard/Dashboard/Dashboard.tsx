@@ -1,5 +1,4 @@
 import React from 'react'
-import moment from 'moment'
 
 import { NewCardDetail } from '../NewCardDetail'
 import { SearchBox } from '../SearchBox'
@@ -32,14 +31,6 @@ export const Dashboard: React.FC = () => {
   const { account: networkAccount } = useAccountDetail(NetworkAccountId)
 
   const { tokenPrice, marketCap } = useDexTokenPrice()
-  const cyclesList = cycles.map((row) => {
-    return {
-      key: row?.cycleRecord?.counter ?? -1,
-      value: moment(row?.cycleRecord?.start * 1000).calendar(),
-      activeNodes: row?.cycleRecord?.active || 0,
-      standbyNodes: row?.cycleRecord?.standby || 0,
-    }
-  })
 
   return (
     <div className={styles.Dashboard}>
@@ -47,7 +38,8 @@ export const Dashboard: React.FC = () => {
       <SearchBox mode={cycles[0]?.cycleRecord['mode']} />
       <Spacer space="48" />
       <NewCardDetail
-        totalCycles={cyclesList[0]?.key}
+        totalCycles={cycles[0]?.cycleRecord['counter'] ?? 0}
+        totalActiveNodes={cycles[0]?.cycleRecord['active'] ?? 0}
         totalTransactions={totalTransactions}
         tokenPrice={tokenPrice}
         marketCap={marketCap}
