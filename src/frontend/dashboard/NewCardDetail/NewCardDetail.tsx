@@ -14,6 +14,7 @@ export interface NewCardDetailProps {
   tokenPrice: number
   marketCap: number
   totalCycles: number
+  totalActiveNodes: number
   totalTransactions: number
   transactionStats: TransactionStats[]
   totalLIB: number
@@ -52,7 +53,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
             </div>
             <div>
               <p className={styles.title}> TOTAL SUPPLY </p>
-              <p>{data?.totalLIB?.toLocaleString('en-US')} LIB</p>
+              <p>{data?.totalLIB?.toLocaleString('en-US', { maximumFractionDigits: 2 })} LIB</p>
             </div>
           </div>
           <div className={styles.item} style={{ textAlign: 'right' }}>
@@ -71,7 +72,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
                 <Icon name="server" size="large" />
               </div>
               <div>
-                <p className={styles.title}>TOTAL TRANSACTIONS</p>
+                <p className={styles.title}>TRANSACTIONS</p>
                 <p>{data?.totalTransactions?.toLocaleString('en-US')}</p>
               </div>
             </div>
@@ -80,25 +81,31 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
             <div>
               <p className={styles.title}>BASE TX FEE</p>
               <p>
-                ${getBaseTxFeeUSD(data?.networkParameters)}
-                {' ~ '}
-                {getBaseTxFeeLIB(data?.networkParameters)} LIB
+                ${getBaseTxFeeUSD(data?.networkParameters)} ~ {getBaseTxFeeLIB(data?.networkParameters)} LIB
               </p>
             </div>
           </div>
         </div>
         <hr className={styles.hr} />
-        <Link href="/cycle">
-          <div className={styles.item}>
-            <div className={styles.icon}>
-              <Icon name="gauge" size="large" />
+        <div className={styles.cardRow}>
+          <Link href="/cycle">
+            <div className={styles.item}>
+              <div className={styles.icon}>
+                <Icon name="gauge" size="large" />
+              </div>
+              <div>
+                <p className={styles.title}>CYCLES</p>
+                <p>{data?.totalCycles?.toLocaleString('en-US')}</p>
+              </div>
             </div>
+          </Link>
+          <div className={styles.item} style={{ textAlign: 'right' }}>
             <div>
-              <p className={styles.title}>TOTAL CYCLES</p>
-              <p>{data?.totalCycles?.toLocaleString('en-US')}</p>
+              <p className={styles.title}>ACTIVE VALIDATORS</p>
+              <p>{data?.totalActiveNodes?.toLocaleString('en-US')}</p>
             </div>
           </div>
-        </Link>
+        </div>
       </div>
       <div className={styles.column}>
         <LineChart
