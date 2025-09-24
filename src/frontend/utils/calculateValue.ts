@@ -1,7 +1,6 @@
 import web3 from 'web3'
 import { NetworkParameters } from '../../types'
 export const calculateValue = (value: string | bigint): string => {
-  console.log('calculateValue', value)
   try {
     return round(web3.utils.fromWei(value, 'ether'))
   } catch (e) {

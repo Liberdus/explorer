@@ -3,9 +3,7 @@ import { config } from '../config'
 import * as db from '../storage/sqlite3storage'
 import { transactionStatsDatabase } from '.'
 
-export interface TransactionStats {
-  timestamp: number
-  cycle: number
+export interface BaseTxStats {
   totalTxs: number
   totalInitNetworkTxs: number
   totalNetworkWindowsTxs: number
@@ -53,6 +51,11 @@ export interface TransactionStats {
   totalInitRewardTxs: number
   totalClaimRewardTxs: number
   totalApplyPenaltyTxs: number
+}
+
+export interface TransactionStats extends BaseTxStats {
+  timestamp: number
+  cycle: number
 }
 
 export async function insertTransactionStats(transactionStats: TransactionStats): Promise<void> {

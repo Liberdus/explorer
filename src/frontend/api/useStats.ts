@@ -18,6 +18,7 @@ export const useStats = (query: {
   validatorStatsCount?: number
   transactionStatsCount?: number
   last14DaysTxsReport?: boolean
+  allDailyTxsReport?: boolean
   fetchCoinStats?: boolean
   transactionResponseType?: string | undefined
   validatorResponseType?: string | undefined
@@ -27,6 +28,7 @@ export const useStats = (query: {
     validatorStatsCount,
     transactionStatsCount,
     last14DaysTxsReport,
+    allDailyTxsReport,
     fetchCoinStats,
     transactionResponseType,
     validatorResponseType,
@@ -41,6 +43,8 @@ export const useStats = (query: {
     ? `${PATHS.STATS_TRANSACTION}?count=${transactionStatsCount}&responseType=${transactionResponseType}`
     : last14DaysTxsReport
     ? `${PATHS.STATS_TRANSACTION}?last14DaysTxsReport=true&responseType=${transactionResponseType}`
+    : allDailyTxsReport
+    ? `${PATHS.STATS_TRANSACTION}?allDailyTxsReport=true&responseType=${transactionResponseType}`
     : null
   const coinStatsQuery = fetchCoinStats ? `${PATHS.STATS_COIN}` : null
 

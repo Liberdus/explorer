@@ -1011,6 +1011,7 @@ const start = async (): Promise<void> => {
       endCycle: string
       responseType: string
       last14DaysTxsReport: string
+      allDailyTxsReport: string
     }
   }>
 
@@ -1021,6 +1022,7 @@ const start = async (): Promise<void> => {
       endCycle: 's?',
       responseType: 's?',
       last14DaysTxsReport: 's?',
+      allDailyTxsReport: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -1033,7 +1035,8 @@ const start = async (): Promise<void> => {
       !query.startCycle &&
       !query.endCycle &&
       !query.responseType &&
-      !query.last14DaysTxsReport
+      !query.last14DaysTxsReport &&
+      !query.allDailyTxsReport
     ) {
       reply.send({
         success: false,
@@ -1099,11 +1102,21 @@ const start = async (): Promise<void> => {
         return
       }
       transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(14)
+    } else if (query.allDailyTxsReport) {
+      if (query.allDailyTxsReport !== 'true') {
+        reply.send({
+          success: false,
+          error: 'Invalid allDailyTxsReport',
+        })
+        return
+      }
+      // Fetch all available daily transaction stats (use a large number as limit)
+      transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(10000)
     }
     if (query.responseType && query.responseType === 'array') {
       const temp_array = []
 
-      if (query.last14DaysTxsReport) {
+      if (query.last14DaysTxsReport || query.allDailyTxsReport) {
         ;(transactionStats as DailyTransactionStats[]).forEach((item: DailyTransactionStats) =>
           temp_array.push([
             item.dateStartTime,
