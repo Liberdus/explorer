@@ -51,7 +51,7 @@ export const LatestCycle: React.FC<LatestCycleProps> = ({ cycles }) => {
           router.push('/cycle')
         }}
       >
-        View all cycles
+        VIEW ALL CYCLES
       </Button>
     </div>
   )

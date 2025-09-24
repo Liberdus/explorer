@@ -78,7 +78,7 @@ export const LatestTransactions: React.FC<LatestTransactionsProps> = ({ transact
           router.push('/transaction')
         }}
       >
-        View all transactions
+        VIEW ALL TRANSACTIONS
       </Button>
     </div>
   )
