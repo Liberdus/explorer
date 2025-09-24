@@ -5,6 +5,11 @@ interface DataPoint {
   x: number
   y: number
   cycle: number
+  // Additional properties for tooltip data
+  transferTxs?: number
+  messageTxs?: number
+  depositStakeTxs?: number
+  withdrawStakeTxs?: number
 }
 
 interface SeriesData {
@@ -212,6 +217,76 @@ export function convertValidatorStatsToSeriesData(
     seriesData[3].data.push({ x: timestampMillis, y: stat.removed, cycle: stat.cycle })
     seriesData[4].data.push({ x: timestampMillis, y: stat.apoped, cycle: stat.cycle })
   })
+
+  return seriesData
+}
+
+export function convertTransactionStatsToDailyData(
+  transactionStats: TransactionStats[] | number[][]
+): SeriesData[] {
+  if (!transactionStats || transactionStats.length === 0) {
+    return [
+      { name: 'Total Txs', data: [], zIndex: 1, tooltip: 'Total transactions per day', visible: true },
+    ]
+  }
+
+  // Initialize series data array - only Total Txs
+  const seriesData: SeriesData[] = [
+    { name: 'Total Txs', data: [], zIndex: 1, tooltip: 'Total transactions per day', visible: true },
+  ]
+
+  transactionStats
+    .sort((a, b) => {
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a[0] - b[0] // Sort by dateStartTime (index 0 in array format for daily stats)
+      }
+      return (a as TransactionStats).timestamp - (b as TransactionStats).timestamp
+    })
+    .forEach((transactionStat) => {
+      let timestamp: number
+      let totalTxs: number
+
+      if (Array.isArray(transactionStat)) {
+        // Array format for daily stats: [dateStartTime, totalTxs, ...]
+        timestamp = transactionStat[0] // dateStartTime is already in milliseconds
+        totalTxs = transactionStat[1] || 0
+      } else {
+        // Object format
+        timestamp = transactionStat.timestamp * 1000
+        totalTxs = transactionStat.totalTxs || 0
+      }
+
+      // Extract transaction type data for tooltip
+      let transferTxs = 0
+      let messageTxs = 0
+      let depositStakeTxs = 0
+      let withdrawStakeTxs = 0
+
+      if (Array.isArray(transactionStat)) {
+        // For daily stats array format: [dateStartTime, totalTxs, totalTransferTxs, totalMessageTxs, totalDepositStakeTxs, totalWithdrawStakeTxs]
+        transferTxs = transactionStat[2] || 0 // Transfer index in daily stats
+        messageTxs = transactionStat[3] || 0 // Message index in daily stats
+        depositStakeTxs = transactionStat[4] || 0 // Deposit Stake index in daily stats
+        withdrawStakeTxs = transactionStat[5] || 0 // Withdraw Stake index in daily stats
+      } else {
+        // Object format
+        transferTxs = transactionStat.totalTransferTxs || 0
+        messageTxs = transactionStat.totalMessageTxs || 0
+        depositStakeTxs = transactionStat.totalDepositStakeTxs || 0
+        withdrawStakeTxs = transactionStat.totalWithdrawStakeTxs || 0
+      }
+
+      // Add data point for Total Txs with transaction type breakdown for tooltip
+      seriesData[0].data.push({
+        x: timestamp,
+        y: totalTxs,
+        cycle: 0,
+        transferTxs,
+        messageTxs,
+        depositStakeTxs,
+        withdrawStakeTxs,
+      })
+    })
 
   return seriesData
 }

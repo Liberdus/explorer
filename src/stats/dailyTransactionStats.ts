@@ -2,14 +2,10 @@
 import { config } from '../config'
 import * as db from '../storage/sqlite3storage'
 import { dailyTransactionStatsDatabase } from '.'
+import { BaseTxStats } from './transactionStats'
 
-export interface DailyTransactionStats {
+export interface DailyTransactionStats extends BaseTxStats {
   dateStartTime: number
-  totalTxs: number
-  totalTransferTxs: number
-  totalMessageTxs: number
-  totalDepositStakeTxs: number
-  totalWithdrawStakeTxs: number
 }
 
 export async function insertDailyTransactionStats(

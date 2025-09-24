@@ -422,6 +422,8 @@ export const recordDailyTransactionsStats = async (
   for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
     const beforeTimestamp = startTimestamp + one_day_in_ms + 1 // we want to include the endTimestamp
     const afterTimestamp = startTimestamp
+
+    // Get total transaction count
     const totalTxs = await TransactionDB.queryTransactionCount(
       undefined,
       undefined,
@@ -430,46 +432,202 @@ export const recordDailyTransactionsStats = async (
       beforeTimestamp,
       afterTimestamp
     )
-    const totalTransferTxs = await TransactionDB.queryTransactionCount(
-      TransactionType.transfer,
-      undefined,
-      0,
-      0,
-      beforeTimestamp,
-      afterTimestamp
-    )
-    const totalMessageTxs = await TransactionDB.queryTransactionCount(
-      TransactionType.message,
-      undefined,
-      0,
-      0,
-      beforeTimestamp,
-      afterTimestamp
-    )
-    const totalDepositStakeTxs = await TransactionDB.queryTransactionCount(
-      TransactionType.deposit_stake,
-      undefined,
-      0,
-      0,
-      beforeTimestamp,
-      afterTimestamp
-    )
-    const totalWithdrawStakeTxs = await TransactionDB.queryTransactionCount(
-      TransactionType.withdraw_stake,
-      undefined,
-      0,
-      0,
-      beforeTimestamp,
-      afterTimestamp
-    )
-    const dailyTransactionStats = {
+
+    // Get transaction counts by type in a single query
+    const txCountsByType = await TransactionDB.queryTransactionCountsByType(beforeTimestamp, afterTimestamp)
+
+    // Initialize all transaction type counts to 0
+    const dailyTransactionStats: DailyTransactionStatsDB.DailyTransactionStats = {
       dateStartTime: startTimestamp,
       totalTxs,
-      totalTransferTxs,
-      totalMessageTxs,
-      totalDepositStakeTxs,
-      totalWithdrawStakeTxs,
+      totalInitNetworkTxs: 0,
+      totalNetworkWindowsTxs: 0,
+      totalSnapshotTxs: 0,
+      totalEmailTxs: 0,
+      totalGossipEmailHashTxs: 0,
+      totalVerifyTxs: 0,
+      totalRegisterTxs: 0,
+      totalCreateTxs: 0,
+      totalTransferTxs: 0,
+      totalDistributeTxs: 0,
+      totalMessageTxs: 0,
+      totalTollTxs: 0,
+      totalFriendTxs: 0,
+      totalRemoveFriendTxs: 0,
+      totalStakeTxs: 0,
+      totalRemoveStakeTxs: 0,
+      totalRemoveStakeRequestTxs: 0,
+      totalNodeRewardTxs: 0,
+      totalSnapshotClaimTxs: 0,
+      totalIssueTxs: 0,
+      totalProposalTxs: 0,
+      totalVoteTxs: 0,
+      totalTallyTxs: 0,
+      totalApplyTallyTxs: 0,
+      totalParametersTxs: 0,
+      totalApplyParametersTxs: 0,
+      totalDevIssueTxs: 0,
+      totalDevProposalTxs: 0,
+      totalDevVoteTxs: 0,
+      totalDevTallyTxs: 0,
+      totalApplyDevTallyTxs: 0,
+      totalDevParametersTxs: 0,
+      totalApplyDevParametersTxs: 0,
+      totalDeveloperPaymentTxs: 0,
+      totalApplyDeveloperPaymentTxs: 0,
+      totalChangeConfigTxs: 0,
+      totalApplyChangeConfigTxs: 0,
+      totalChangeNetworkParamTxs: 0,
+      totalApplyChangeNetworkParamTxs: 0,
+      totalDepositStakeTxs: 0,
+      totalWithdrawStakeTxs: 0,
+      totalSetCertTimeTxs: 0,
+      totalInitRewardTxs: 0,
+      totalClaimRewardTxs: 0,
+      totalApplyPenaltyTxs: 0,
     }
+
+    // Update counts based on query results
+    txCountsByType.forEach((typeCount) => {
+      switch (typeCount.transactionType) {
+        case TransactionType.init_network:
+          dailyTransactionStats.totalInitNetworkTxs = typeCount.count
+          break
+        case TransactionType.network_windows:
+          dailyTransactionStats.totalNetworkWindowsTxs = typeCount.count
+          break
+        case TransactionType.snapshot:
+          dailyTransactionStats.totalSnapshotTxs = typeCount.count
+          break
+        case TransactionType.email:
+          dailyTransactionStats.totalEmailTxs = typeCount.count
+          break
+        case TransactionType.gossip_email_hash:
+          dailyTransactionStats.totalGossipEmailHashTxs = typeCount.count
+          break
+        case TransactionType.verify:
+          dailyTransactionStats.totalVerifyTxs = typeCount.count
+          break
+        case TransactionType.register:
+          dailyTransactionStats.totalRegisterTxs = typeCount.count
+          break
+        case TransactionType.create:
+          dailyTransactionStats.totalCreateTxs = typeCount.count
+          break
+        case TransactionType.transfer:
+          dailyTransactionStats.totalTransferTxs = typeCount.count
+          break
+        case TransactionType.distribute:
+          dailyTransactionStats.totalDistributeTxs = typeCount.count
+          break
+        case TransactionType.message:
+          dailyTransactionStats.totalMessageTxs = typeCount.count
+          break
+        case TransactionType.toll:
+          dailyTransactionStats.totalTollTxs = typeCount.count
+          break
+        case TransactionType.friend:
+          dailyTransactionStats.totalFriendTxs = typeCount.count
+          break
+        case TransactionType.remove_friend:
+          dailyTransactionStats.totalRemoveFriendTxs = typeCount.count
+          break
+        case TransactionType.stake:
+          dailyTransactionStats.totalStakeTxs = typeCount.count
+          break
+        case TransactionType.remove_stake:
+          dailyTransactionStats.totalRemoveStakeTxs = typeCount.count
+          break
+        case TransactionType.remove_stake_request:
+          dailyTransactionStats.totalRemoveStakeRequestTxs = typeCount.count
+          break
+        case TransactionType.node_reward:
+          dailyTransactionStats.totalNodeRewardTxs = typeCount.count
+          break
+        case TransactionType.snapshot_claim:
+          dailyTransactionStats.totalSnapshotClaimTxs = typeCount.count
+          break
+        case TransactionType.issue:
+          dailyTransactionStats.totalIssueTxs = typeCount.count
+          break
+        case TransactionType.proposal:
+          dailyTransactionStats.totalProposalTxs = typeCount.count
+          break
+        case TransactionType.vote:
+          dailyTransactionStats.totalVoteTxs = typeCount.count
+          break
+        case TransactionType.tally:
+          dailyTransactionStats.totalTallyTxs = typeCount.count
+          break
+        case TransactionType.apply_tally:
+          dailyTransactionStats.totalApplyTallyTxs = typeCount.count
+          break
+        case TransactionType.parameters:
+          dailyTransactionStats.totalParametersTxs = typeCount.count
+          break
+        case TransactionType.apply_parameters:
+          dailyTransactionStats.totalApplyParametersTxs = typeCount.count
+          break
+        case TransactionType.dev_issue:
+          dailyTransactionStats.totalDevIssueTxs = typeCount.count
+          break
+        case TransactionType.dev_proposal:
+          dailyTransactionStats.totalDevProposalTxs = typeCount.count
+          break
+        case TransactionType.dev_vote:
+          dailyTransactionStats.totalDevVoteTxs = typeCount.count
+          break
+        case TransactionType.dev_tally:
+          dailyTransactionStats.totalDevTallyTxs = typeCount.count
+          break
+        case TransactionType.apply_dev_tally:
+          dailyTransactionStats.totalApplyDevTallyTxs = typeCount.count
+          break
+        case TransactionType.dev_parameters:
+          dailyTransactionStats.totalDevParametersTxs = typeCount.count
+          break
+        case TransactionType.apply_dev_parameters:
+          dailyTransactionStats.totalApplyDevParametersTxs = typeCount.count
+          break
+        case TransactionType.developer_payment:
+          dailyTransactionStats.totalDeveloperPaymentTxs = typeCount.count
+          break
+        case TransactionType.apply_developer_payment:
+          dailyTransactionStats.totalApplyDeveloperPaymentTxs = typeCount.count
+          break
+        case TransactionType.change_config:
+          dailyTransactionStats.totalChangeConfigTxs = typeCount.count
+          break
+        case TransactionType.apply_change_config:
+          dailyTransactionStats.totalApplyChangeConfigTxs = typeCount.count
+          break
+        case TransactionType.change_network_param:
+          dailyTransactionStats.totalChangeNetworkParamTxs = typeCount.count
+          break
+        case TransactionType.apply_change_network_param:
+          dailyTransactionStats.totalApplyChangeNetworkParamTxs = typeCount.count
+          break
+        case TransactionType.deposit_stake:
+          dailyTransactionStats.totalDepositStakeTxs = typeCount.count
+          break
+        case TransactionType.withdraw_stake:
+          dailyTransactionStats.totalWithdrawStakeTxs = typeCount.count
+          break
+        case TransactionType.set_cert_time:
+          dailyTransactionStats.totalSetCertTimeTxs = typeCount.count
+          break
+        case TransactionType.init_reward:
+          dailyTransactionStats.totalInitRewardTxs = typeCount.count
+          break
+        case TransactionType.claim_reward:
+          dailyTransactionStats.totalClaimRewardTxs = typeCount.count
+          break
+        case TransactionType.apply_penalty:
+          dailyTransactionStats.totalApplyPenaltyTxs = typeCount.count
+          break
+      }
+    })
+
     await DailyTransactionStatsDB.insertDailyTransactionStats(dailyTransactionStats)
     console.log(
       `Stored daily transaction stats for ${new Date(

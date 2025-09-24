@@ -294,6 +294,42 @@ export async function queryTransactionsForCycle(cycleNumber: number): Promise<Tr
   return transactions
 }
 
+export async function queryTransactionCountsByType(
+  beforeTimestamp?: number,
+  afterTimestamp?: number
+): Promise<{ transactionType: string; count: number }[]> {
+  let results: { transactionType: string; 'COUNT(*)': number }[] = []
+  try {
+    let sql = `SELECT transactionType, COUNT(*) FROM transactions`
+    const values: unknown[] = []
+
+    if (beforeTimestamp && afterTimestamp) {
+      sql += ` WHERE timestamp < ? AND timestamp >= ?`
+      values.push(beforeTimestamp, afterTimestamp)
+    } else if (beforeTimestamp) {
+      sql += ` WHERE timestamp < ?`
+      values.push(beforeTimestamp)
+    } else if (afterTimestamp) {
+      sql += ` WHERE timestamp >= ?`
+      values.push(afterTimestamp)
+    }
+
+    sql += ` GROUP BY transactionType`
+
+    results = (await db.all(transactionDatabase, sql, values)) as {
+      transactionType: string
+      'COUNT(*)': number
+    }[]
+  } catch (e) {
+    console.log('Error querying transaction counts by type:', e)
+  }
+
+  return results.map((result) => ({
+    transactionType: result.transactionType,
+    count: result['COUNT(*)'],
+  }))
+}
+
 function deserializeDbTransaction(transaction: DbTransaction): void {
   transaction.data = StringUtils.safeJsonParse(transaction.data)
   transaction.originalTxData = StringUtils.safeJsonParse(transaction.originalTxData)
