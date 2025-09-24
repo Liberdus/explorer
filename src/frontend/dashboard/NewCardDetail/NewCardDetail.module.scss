@@ -5,9 +5,9 @@
   justify-content: space-between;
   flex-wrap: wrap;
   border: border(gray);
-  border-radius: borderRadius(8);
+  border-radius: borderRadius(16);
   box-shadow: shadow(shadow1);
-  padding: spacing(16) 0;
+  padding: spacing(8) 0;
 
   .cardRow {
     display: flex;

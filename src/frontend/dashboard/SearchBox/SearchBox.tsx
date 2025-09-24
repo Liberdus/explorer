@@ -35,7 +35,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({ mode }) => {
           }}
         />
         <div className={styles.iconWrapper} onClick={onSearch}>
-          <Icon name="search" size="medium" color="white" />
+          <Icon name="search" size="small" color="white" />
         </div>
       </div>
       {searchError && <Notification message={searchError} type="error" />}

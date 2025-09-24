@@ -47,7 +47,7 @@ export const Dashboard: React.FC = () => {
         totalLIB={totalLIB}
         networkParameters={networkAccount?.data?.current}
       />
-      <Spacer space="48" />
+      <Spacer space="32" />
       <div className={styles.tableGrid}>
         <LatestCycle cycles={cycles} />
         <LatestTransactions transactions={transactions} />
