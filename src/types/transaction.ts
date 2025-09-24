@@ -68,7 +68,7 @@ export enum TransactionType {
   deposit_stake = 'deposit_stake',
   withdraw_stake = 'withdraw_stake',
   set_cert_time = 'set_cert_time',
-  query_certificate = 'query_certificate',
+  // query_certificate = 'query_certificate', // This is not an actual transaction in the network
   init_reward = 'init_reward',
   claim_reward = 'claim_reward',
   apply_penalty = 'apply_penalty',

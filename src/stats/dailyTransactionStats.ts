@@ -4,12 +4,19 @@ import * as db from '../storage/sqlite3storage'
 import { dailyTransactionStatsDatabase } from '.'
 import { BaseTxStats } from './transactionStats'
 
-export interface DailyTransactionStats extends BaseTxStats {
+export interface BaseDailyTransactionStats {
   dateStartTime: number
+  totalTxs: number
+}
+
+export type DailyTransactionStats = BaseDailyTransactionStats & BaseTxStats
+
+export type DbDailyTransactionStats = BaseDailyTransactionStats & {
+  txsByType: string
 }
 
 export async function insertDailyTransactionStats(
-  dailyTransactionStats: DailyTransactionStats
+  dailyTransactionStats: DbDailyTransactionStats
 ): Promise<void> {
   try {
     const fields = Object.keys(dailyTransactionStats).join(', ')
@@ -28,7 +35,7 @@ export async function insertDailyTransactionStats(
 }
 
 export async function bulkInsertTransactionsStats(
-  dailyTransactionsStats: DailyTransactionStats[]
+  dailyTransactionsStats: DbDailyTransactionStats[]
 ): Promise<void> {
   try {
     const fields = Object.keys(dailyTransactionsStats[0]).join(', ')
@@ -41,25 +48,28 @@ export async function bulkInsertTransactionsStats(
     await db.run(dailyTransactionStatsDatabase, sql, values)
     const addedCycles = dailyTransactionsStats.map((v) => v)
     console.log(
-      'Successfully bulk inserted TransactionsStats',
+      'Successfully bulk inserted DailyTransactionStats',
       dailyTransactionsStats.length,
       'for cycles',
       addedCycles
     )
   } catch (e) {
     console.log(e)
-    console.log('Unable to bulk insert TransactionsStats', dailyTransactionsStats.length)
+    console.log('Unable to bulk insert dailyTransactionStats', dailyTransactionsStats.length)
   }
 }
 
 export async function queryLatestDailyTransactionStats(count: number): Promise<DailyTransactionStats[]> {
   try {
-    const sql = `SELECT * FROM daily_transactions ORDER BY dateStartTime DESC LIMIT ${count ? count : 100}`
-    const dailyTransactionsStats: DailyTransactionStats[] = await db.all(dailyTransactionStatsDatabase, sql)
+    const sql = `SELECT * FROM daily_transactions ORDER BY dateStartTime DESC ${
+      count ? 'LIMIT ' + count : ''
+    }`
+    const dailyTransactionsStats: DbDailyTransactionStats[] = await db.all(dailyTransactionStatsDatabase, sql)
     if (config.verbose) console.log('dailyTransactionStats count', dailyTransactionsStats)
-    return dailyTransactionsStats
+    return parseDailyTransactionStats(dailyTransactionsStats)
   } catch (e) {
     console.log(e)
+    return []
   }
 }
 
@@ -69,13 +79,27 @@ export async function queryDailyTransactionStatsBetween(
 ): Promise<DailyTransactionStats[]> {
   try {
     const sql = `SELECT * FROM daily_transactions WHERE dateStartTime BETWEEN ? AND ? ORDER BY dateStartTime ASC`
-    const dailyTransactionsStats: DailyTransactionStats[] = await db.all(dailyTransactionStatsDatabase, sql, [
-      startTimestamp,
-      endTimestamp,
-    ])
+    const dailyTransactionsStats: DbDailyTransactionStats[] = await db.all(
+      dailyTransactionStatsDatabase,
+      sql,
+      [startTimestamp, endTimestamp]
+    )
     if (config.verbose) console.log('dailyTransactionStats between', dailyTransactionsStats)
-    return dailyTransactionsStats
+    return parseDailyTransactionStats(dailyTransactionsStats)
   } catch (e) {
     console.log(e)
   }
+}
+
+export function parseDailyTransactionStats(stats: DbDailyTransactionStats[]): DailyTransactionStats[] {
+  if (!stats || !stats.length) return []
+  return stats.map((stat) => {
+    const txsByType = JSON.parse(stat.txsByType) as BaseTxStats
+    // Ensure all required fields from BaseTxStats and DailyTransactionStats (except txsByType) are present
+    return {
+      dateStartTime: stat.dateStartTime,
+      totalTxs: stat.totalTxs,
+      ...txsByType,
+    } as DailyTransactionStats
+  })
 }
