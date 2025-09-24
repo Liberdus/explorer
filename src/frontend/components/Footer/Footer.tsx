@@ -35,9 +35,9 @@ export const Footer: React.FC = () => {
           </div>
           <Spacer space="16" />
           <div className={styles.label}>
-            Liberdus is a decentralized, open source, encrypted messaging and payment app. It is developed
-            using Shardus technology which uses dynamic state sharding which solves the problems of
-            scalability, decentralization and security of the blockchain.
+            Liberdus is a decentralized, open source, encrypted messaging and payment app. Built on Shardus
+            technology, it leverages dynamic state sharding to solve key blockchain issues: scalability,
+            security, and decentralization.
           </div>
         </div>
         <div></div>
