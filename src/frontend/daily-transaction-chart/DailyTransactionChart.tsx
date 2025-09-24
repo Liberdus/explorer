@@ -14,7 +14,7 @@ export const DailyTransactionChart: React.FC = () => {
 
   const { transactionStats, loading } = useStats({
     transactionResponseType,
-    last14DaysTxsReport: true,
+    allDailyTxsReport: true,
   })
 
   return (

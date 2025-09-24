@@ -2,60 +2,74 @@
 import { config } from '../config'
 import * as db from '../storage/sqlite3storage'
 import { transactionStatsDatabase } from '.'
+import { DailyTransactionStats } from './dailyTransactionStats'
+import { TransactionType } from '../types/transaction'
 
-export interface BaseTxStats {
-  totalTxs: number
-  totalInitNetworkTxs: number
-  totalNetworkWindowsTxs: number
-  totalSnapshotTxs: number
-  totalEmailTxs: number
-  totalGossipEmailHashTxs: number
-  totalVerifyTxs: number
-  totalRegisterTxs: number
-  totalCreateTxs: number
-  totalTransferTxs: number
-  totalDistributeTxs: number
-  totalMessageTxs: number
-  totalTollTxs: number
-  totalFriendTxs: number
-  totalRemoveFriendTxs: number
-  totalStakeTxs: number
-  totalRemoveStakeTxs: number
-  totalRemoveStakeRequestTxs: number
-  totalNodeRewardTxs: number
-  totalSnapshotClaimTxs: number
-  totalIssueTxs: number
-  totalProposalTxs: number
-  totalVoteTxs: number
-  totalTallyTxs: number
-  totalApplyTallyTxs: number
-  totalParametersTxs: number
-  totalApplyParametersTxs: number
-  totalDevIssueTxs: number
-  totalDevProposalTxs: number
-  totalDevVoteTxs: number
-  totalDevTallyTxs: number
-  totalApplyDevTallyTxs: number
-  totalDevParametersTxs: number
-  totalApplyDevParametersTxs: number
-  totalDeveloperPaymentTxs: number
-  totalApplyDeveloperPaymentTxs: number
-  totalChangeConfigTxs: number
-  totalApplyChangeConfigTxs: number
-  totalChangeNetworkParamTxs: number
-  totalApplyChangeNetworkParamTxs: number
-  totalDepositStakeTxs: number
-  totalWithdrawStakeTxs: number
-  totalSetCertTimeTxs: number
-  // totalQueryCertificateTxs: number // This is not an actual transaction in the network
-  totalInitRewardTxs: number
-  totalClaimRewardTxs: number
-  totalApplyPenaltyTxs: number
+// Utility type to convert snake_case to PascalCase
+type SnakeToPascal<S extends string> = S extends `${infer T}_${infer U}`
+  ? `${Capitalize<T>}${SnakeToPascal<U>}`
+  : Capitalize<S>
+
+// Utility type to generate total field names from TransactionType enum
+type TotalTxFieldName<T extends TransactionType> = `total${SnakeToPascal<T>}Txs`
+
+// Generate BaseTxStats interface from TransactionType enum
+export type BaseTxStats = {
+  [K in TransactionType as TotalTxFieldName<K>]: number
+}
+
+// Helper function to convert snake_case enum value to totalPascalCaseTxs property name
+function transactionTypeToPropertyName(transactionType: TransactionType): keyof BaseTxStats {
+  const snakeToPascal = (str: string): string => {
+    return str
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('')
+  }
+  return `total${snakeToPascal(transactionType)}Txs` as keyof BaseTxStats
+}
+
+// Get ordered list of transaction types
+function getOrderedTransactionTypes(): TransactionType[] {
+  return Object.values(TransactionType)
+}
+
+export function convertBaseTxStatsAsArray(stats: TransactionStats | DailyTransactionStats): number[] {
+  const orderedTypes = getOrderedTransactionTypes()
+  return orderedTypes.map((type) => {
+    const propertyName = transactionTypeToPropertyName(type)
+    return stats[propertyName] || 0
+  })
+}
+
+export function convertBaseTxStatsFromArray(arr: number[]): BaseTxStats {
+  const orderedTypes = getOrderedTransactionTypes()
+  const result = {} as BaseTxStats
+
+  orderedTypes.forEach((type, index) => {
+    const propertyName = transactionTypeToPropertyName(type)
+    result[propertyName] = arr[index]
+  })
+
+  return result
+}
+
+export function createEmptyBaseTxStats(): BaseTxStats {
+  const orderedTypes = getOrderedTransactionTypes()
+  const result = {} as BaseTxStats
+
+  orderedTypes.forEach((type) => {
+    const propertyName = transactionTypeToPropertyName(type)
+    result[propertyName] = 0
+  })
+
+  return result
 }
 
 export interface TransactionStats extends BaseTxStats {
   timestamp: number
   cycle: number
+  totalTxs: number
 }
 
 export async function insertTransactionStats(transactionStats: TransactionStats): Promise<void> {

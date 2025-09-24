@@ -41,7 +41,7 @@ import { config, envEnum } from './config'
 import { Utils as StringUtils } from '@shardus/types'
 import { healthCheckRouter } from './routes/healthCheck'
 import { ValidatorStats } from './stats/validatorStats'
-import { TransactionStats } from './stats/transactionStats'
+import { TransactionStats, convertBaseTxStatsAsArray } from './stats/transactionStats'
 import { DailyTransactionStats } from './stats/dailyTransactionStats'
 
 if (config.env == envEnum.DEV) {
@@ -1110,75 +1110,18 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      // Fetch all available daily transaction stats (use a large number as limit)
-      transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(10000)
+      transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(0)
     }
     if (query.responseType && query.responseType === 'array') {
       const temp_array = []
 
       if (query.last14DaysTxsReport || query.allDailyTxsReport) {
         ;(transactionStats as DailyTransactionStats[]).forEach((item: DailyTransactionStats) =>
-          temp_array.push([
-            item.dateStartTime,
-            item.totalTxs,
-            item.totalTransferTxs,
-            item.totalMessageTxs,
-            item.totalDepositStakeTxs,
-            item.totalWithdrawStakeTxs,
-          ])
+          temp_array.push([item.dateStartTime, ...convertBaseTxStatsAsArray(item)])
         )
       } else {
         ;(transactionStats as TransactionStats[]).forEach((item: TransactionStats) =>
-          temp_array.push([
-            item.cycle,
-            item.timestamp,
-            item.totalTxs,
-            item.totalInitNetworkTxs,
-            item.totalNetworkWindowsTxs,
-            item.totalSnapshotTxs,
-            item.totalEmailTxs,
-            item.totalGossipEmailHashTxs,
-            item.totalVerifyTxs,
-            item.totalRegisterTxs,
-            item.totalCreateTxs,
-            item.totalTransferTxs,
-            item.totalDistributeTxs,
-            item.totalMessageTxs,
-            item.totalTollTxs,
-            item.totalFriendTxs,
-            item.totalRemoveFriendTxs,
-            item.totalStakeTxs,
-            item.totalRemoveStakeTxs,
-            item.totalRemoveStakeRequestTxs,
-            item.totalNodeRewardTxs,
-            item.totalSnapshotClaimTxs,
-            item.totalIssueTxs,
-            item.totalProposalTxs,
-            item.totalVoteTxs,
-            item.totalTallyTxs,
-            item.totalApplyTallyTxs,
-            item.totalParametersTxs,
-            item.totalApplyParametersTxs,
-            item.totalDevIssueTxs,
-            item.totalDevProposalTxs,
-            item.totalDevVoteTxs,
-            item.totalDevTallyTxs,
-            item.totalApplyDevTallyTxs,
-            item.totalDevParametersTxs,
-            item.totalApplyDevParametersTxs,
-            item.totalDeveloperPaymentTxs,
-            item.totalApplyDeveloperPaymentTxs,
-            item.totalChangeConfigTxs,
-            item.totalApplyChangeConfigTxs,
-            item.totalChangeNetworkParamTxs,
-            item.totalApplyChangeNetworkParamTxs,
-            item.totalDepositStakeTxs,
-            item.totalWithdrawStakeTxs,
-            item.totalSetCertTimeTxs,
-            item.totalInitRewardTxs,
-            item.totalClaimRewardTxs,
-            item.totalApplyPenaltyTxs,
-          ])
+          temp_array.push([item.cycle, item.timestamp, ...convertBaseTxStatsAsArray(item)])
         )
       }
       transactionStats = temp_array

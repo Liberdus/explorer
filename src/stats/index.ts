@@ -123,10 +123,7 @@ export const initializeStatsDB = async (): Promise<void> => {
     CREATE TABLE if not exists daily_transactions (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       totalTxs NUMBER NOT NULL,
-      totalTransferTxs NUMBER NOT NULL,
-      totalMessageTxs NUMBER NOT NULL,
-      totalDepositStakeTxs NUMBER NOT NULL,
-      totalWithdrawStakeTxs NUMBER NOT NULL
+      txsByType TEXT NOT NULL
     )`
   )
   // await runCreate(dailyTransactionStatsDatabase, 'Drop INDEX if exists `daily_transactions_idx`');
