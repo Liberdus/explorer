@@ -45,6 +45,7 @@ import { ValidatorStats } from './stats/validatorStats'
 import { TransactionStats, convertBaseTxStatsAsArray } from './stats/transactionStats'
 import { DailyTransactionStats } from './stats/dailyTransactionStats'
 import { DailyAccountStats } from './stats/dailyAccountStats'
+import { last } from 'lodash'
 
 if (config.env == envEnum.DEV) {
   //default debug mode
@@ -1014,6 +1015,7 @@ const start = async (): Promise<void> => {
       responseType: string
       last14DaysTxsReport: string
       allDailyTxsReport: string
+      fetchTransactionStats: string
     }
   }>
 
@@ -1025,6 +1027,7 @@ const start = async (): Promise<void> => {
       responseType: 's?',
       last14DaysTxsReport: 's?',
       allDailyTxsReport: 's?',
+      fetchTransactionStats: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -1038,7 +1041,8 @@ const start = async (): Promise<void> => {
       !query.endCycle &&
       !query.responseType &&
       !query.last14DaysTxsReport &&
-      !query.allDailyTxsReport
+      !query.allDailyTxsReport &&
+      !query.fetchTransactionStats
     ) {
       reply.send({
         success: false,
@@ -1113,6 +1117,20 @@ const start = async (): Promise<void> => {
         return
       }
       transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(0)
+    } else if (query.fetchTransactionStats) {
+      if (query.fetchTransactionStats !== 'true') {
+        reply.send({
+          success: false,
+          error: 'Invalid fetchTransactionStats',
+        })
+        return
+      }
+      const stats = await DailyTransactionStatsDB.queryTransactionStats()
+      reply.send({
+        success: true,
+        ...stats,
+      })
+      return
     }
     if (query.responseType && query.responseType === 'array') {
       const temp_array = []
@@ -1135,110 +1153,122 @@ const start = async (): Promise<void> => {
     reply.send(res)
   })
 
-  // type AccountStatsRequest = FastifyRequest<{
-  //   Querystring: {
-  //     count: string
-  //     startTimestamp: string
-  //     endTimestamp: string
-  //     responseType: string
-  //     last14DaysAccountReport: string
-  //     allDailyAccountReport: string
-  //   }
-  // }>
+  type AccountStatsRequest = FastifyRequest<{
+    Querystring: {
+      count: string
+      responseType: string
+      allDailyAccountReport: string
+      fetchAccountStats: string
+    }
+  }>
 
-  // server.get('/api/stats/account', async (_request: AccountStatsRequest, reply) => {
-  //   const err = utils.validateTypes(_request.query, {
-  //     count: 's?',
-  //     startTimestamp: 's?',
-  //     endTimestamp: 's?',
-  //     responseType: 's?',
-  //     last14DaysAccountReport: 's?',
-  //     allDailyAccountReport: 's?',
-  //   })
-  //   if (err) {
-  //     reply.send({ success: false, error: err })
-  //     return
-  //   }
-  //   const query = _request.query
-  //   // Check at least one of the query parameters is present
-  //   if (
-  //     !query.count &&
-  //     !query.startTimestamp &&
-  //     !query.endTimestamp &&
-  //     !query.responseType &&
-  //     !query.last14DaysAccountReport &&
-  //     !query.allDailyAccountReport
-  //   ) {
-  //     reply.send({
-  //       success: false,
-  //       reason: 'Not specified which account stats to query',
-  //     })
-  //     return
-  //   }
-  //   let accountStats: DailyAccountStats[] = []
-  //   if (query.count) {
-  //     const count: number = parseInt(query.count)
-  //     if (count <= 0 || Number.isNaN(count)) {
-  //       reply.send({ success: false, error: 'Invalid count' })
-  //       return
-  //     }
-  //     if (count > config.requestLimits.MAX_STATS_PER_REQUEST) {
-  //       reply.send({
-  //         success: false,
-  //         error: `Max stats size is ${config.requestLimits.MAX_STATS_PER_REQUEST}`,
-  //       })
-  //       return
-  //     }
-  //     accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(count)
-  //   } else if (query.startTimestamp) {
-  //     const startTimestamp = parseInt(query.startTimestamp)
-  //     if (startTimestamp < 0 || Number.isNaN(startTimestamp)) {
-  //       reply.send({ success: false, error: 'Invalid start timestamp' })
-  //       return
-  //     }
-  //     let endTimestamp = startTimestamp + 24 * 60 * 60 * 1000 // default to next day
-  //     if (query.endTimestamp) {
-  //       endTimestamp = parseInt(query.endTimestamp)
-  //       if (endTimestamp < 0 || Number.isNaN(endTimestamp) || endTimestamp < startTimestamp) {
-  //         reply.send({ success: false, error: 'Invalid end timestamp' })
-  //         return
-  //       }
-  //     }
-  //     accountStats = await DailyAccountStatsDB.queryDailyAccountStatsBetween(startTimestamp, endTimestamp)
-  //   } else if (query.last14DaysAccountReport) {
-  //     if (query.last14DaysAccountReport !== 'true') {
-  //       reply.send({
-  //         success: false,
-  //         error: 'Invalid last14DaysAccountReport',
-  //       })
-  //       return
-  //     }
-  //     accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(14)
-  //   } else if (query.allDailyAccountReport) {
-  //     if (query.allDailyAccountReport !== 'true') {
-  //       reply.send({
-  //         success: false,
-  //         error: 'Invalid allDailyAccountReport',
-  //       })
-  //       return
-  //     }
-  //     accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(0)
-  //   }
-  //   if (query.responseType && query.responseType === 'array') {
-  //     const temp_array = []
-  //     accountStats.forEach((item: DailyAccountStats) =>
-  //       temp_array.push([item.dateStartTime, item.newAccounts, item.activeAccounts])
-  //     )
-  //     accountStats = temp_array as any
-  //   }
-  //   const res = {
-  //     success: true,
-  //     accountStats,
-  //   }
-  //   reply.send(res)
-  // })
+  server.get('/api/stats/account', async (_request: AccountStatsRequest, reply) => {
+    const err = utils.validateTypes(_request.query, {
+      count: 's?',
+      responseType: 's?',
+      allDailyAccountReport: 's?',
+      fetchAccountStats: 's?',
+    })
+    if (err) {
+      reply.send({ success: false, error: err })
+      return
+    }
+    const query = _request.query
+    // Check at least one of the query parameters is present
+    if (!query.count && !query.responseType && !query.allDailyAccountReport && !query.fetchAccountStats) {
+      reply.send({
+        success: false,
+        reason: 'Not specified which account stats to query',
+      })
+      return
+    }
+    let accountStats: DailyAccountStats[] = []
+    if (query.count) {
+      const count: number = parseInt(query.count)
+      if (count <= 0 || Number.isNaN(count)) {
+        reply.send({ success: false, error: 'Invalid count' })
+        return
+      }
+      if (count > config.requestLimits.MAX_STATS_PER_REQUEST) {
+        reply.send({
+          success: false,
+          error: `Max stats size is ${config.requestLimits.MAX_STATS_PER_REQUEST}`,
+        })
+        return
+      }
+      accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(count)
+    } else if (query.fetchAccountStats) {
+      if (query.fetchAccountStats !== 'true') {
+        reply.send({
+          success: false,
+          error: 'Invalid fetchAccountStats',
+        })
+        return
+      }
+      const stats = await DailyAccountStatsDB.queryAccountStats()
+      reply.send({
+        success: true,
+        ...stats,
+      })
+      return
+    } else if (query.allDailyAccountReport) {
+      if (query.allDailyAccountReport !== 'true') {
+        reply.send({
+          success: false,
+          error: 'Invalid allDailyAccountReport',
+        })
+        return
+      }
+      accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(0)
+    }
+    if (query.responseType && query.responseType === 'array') {
+      const temp_array = []
+      accountStats.forEach((item: DailyAccountStats) =>
+        temp_array.push([item.dateStartTime, item.newAccounts, item.activeAccounts])
+      )
+      accountStats = temp_array as any
+    }
+    const res = {
+      success: true,
+      accountStats,
+    }
+    reply.send(res)
+  })
 
-  server.get('/api/stats/coin', async (_request, reply) => {
+  type CoinStatsRequest = FastifyRequest<{
+    Querystring: {
+      last24hoursCoinReport: string
+    }
+  }>
+
+  server.get('/api/stats/coin', async (_request: CoinStatsRequest, reply) => {
+    const err = utils.validateTypes(_request.query, {
+      last24hoursCoinReport: 's?',
+    })
+    if (err) {
+      reply.send({ success: false, error: err })
+      return
+    }
+
+    const query = _request.query
+
+    if (query.last24hoursCoinReport) {
+      if (query.last24hoursCoinReport !== 'true') {
+        reply.send({
+          success: false,
+          error: 'Invalid last24hoursCoinReport',
+        })
+        return
+      }
+      const stats = await CoinStatsDB.queryLast24HoursCoinStats()
+      reply.send({
+        success: true,
+        last24HrsSupplyChange: stats,
+      })
+      return
+    }
+
+    // Default behavior - return aggregated stats
     let coinStats
     const latestCycleNumber = await CycleDB.queryLatestCycleNumber()
     if (isCacheRecordValid(latestCycleNumber, coinStatsCacheRecord)) {
