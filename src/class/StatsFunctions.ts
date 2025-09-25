@@ -5,6 +5,7 @@ import {
   NodeStatsDB,
   MetadataDB,
   DailyTransactionStatsDB,
+  DailyAccountStatsDB,
   TotalAccountBalanceDB,
 } from '../stats'
 import { AccountDB, CycleDB, TransactionDB } from '../storage'
@@ -337,8 +338,19 @@ export const recordCoinStats = async (
             return sum + transactionFee
           }, BigInt(0))
 
+          // Calculate total network toll tax fee in cycle
+          const networkTollTaxFee: bigint = transactions.reduce((sum, current) => {
+            const networkTollTaxFee = (current.data as any)?.additionalInfo?.networkTollTaxFee || BigInt(0)
+            return sum + networkTollTaxFee
+          }, BigInt(0))
+
           // Calculate the total amount of tokens created in cycle
           const createAmount: bigint = createTransactions.reduce((sum, current) => {
+            if (current.data?.additionalInfo?.amount !== undefined) {
+              const newAccountBalance =
+                current.data.additionalInfo.newAccount === true ? DEFAULT_ACCOUNT_BALANCE : BigInt(0)
+              return sum + current.data.additionalInfo.amount + newAccountBalance
+            }
             const createAmount = (current.originalTxData as any).tx.amount || BigInt(0)
             return sum + createAmount
           }, BigInt(0))
@@ -351,6 +363,8 @@ export const recordCoinStats = async (
               registerAmount + createAmount + nodeRewardAmount - transactionFee - nodePenaltyAmount
             ),
             totalStakeChange: weiBNToEth(stakeAmount - unStakeAmount - nodePenaltyAmount),
+            transactionFee: weiBNToEth(transactionFee),
+            networkCommission: weiBNToEth(networkTollTaxFee + nodePenaltyAmount),
             timestamp: cycle.cycleRecord.start,
           }
           // await CoinStats.insertCoinStats(coinStatsForCycle)
@@ -370,14 +384,13 @@ export const recordCoinStats = async (
   if (recordAccountBalance) await recordTotalAccountBalances(latestCycle)
 }
 
-export const recordDailyTransactionsStats = async (
-  dateStartTime: number,
-  dateEndTime: number
-): Promise<void> => {
+export const recordDailyStats = async (dateStartTime: number, dateEndTime: number): Promise<void> => {
   const one_day_in_ms = 24 * 60 * 60 * 1000
   for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
     const beforeTimestamp = startTimestamp + one_day_in_ms + 1 // we want to include the endTimestamp
     const afterTimestamp = startTimestamp
+
+    // ----- Daily Transaction Stats -----
 
     // Get total transaction count
     const totalTxs = await TransactionDB.queryTransactionCount(
@@ -544,10 +557,60 @@ export const recordDailyTransactionsStats = async (
 
     await DailyTransactionStatsDB.insertDailyTransactionStats(dailyTransactionStats)
     console.log(
-      `Stored daily transaction stats for ${new Date(
-        startTimestamp
-      )}, startTimestamp ${startTimestamp} endTimestamp ${beforeTimestamp}`,
+      `Stored daily transaction stats for ${new Date(startTimestamp)}, startTimestamp ${
+        startTimestamp + 1
+      } endTimestamp ${beforeTimestamp - 1}`,
       dailyTransactionStats
+    )
+
+    // ----- Daily Account Stats -----
+
+    // Get count of active accounts (accounts that made transactions during this day)
+    // This counts unique account addresses that appear in transactions during the day
+    const activeTransactions = await TransactionDB.queryTransactions(
+      0,
+      0,
+      undefined,
+      undefined,
+      0,
+      0,
+      beforeTimestamp,
+      afterTimestamp
+    )
+
+    // Filter successful register and create transactions from activeTransactions for new accounts
+    const accountCreationTxs = activeTransactions.filter((tx) => {
+      if (tx.transactionType === TransactionType.register && tx.data.success === true) return true
+      if (tx.transactionType === TransactionType.create && tx.data.success === true) {
+        if (tx.data?.additionalInfo) {
+          if (tx.data?.additionalInfo?.newAccount === true) return true
+          else return false
+        } else return true
+      }
+      return false
+    })
+
+    const newAccounts = accountCreationTxs.length
+
+    const uniqueActiveAccounts = new Set()
+    activeTransactions.forEach((tx) => {
+      if (tx.data?.from) uniqueActiveAccounts.add(tx.data.from)
+      if (tx.data?.to) uniqueActiveAccounts.add(tx.data.to)
+    })
+    const activeAccounts = uniqueActiveAccounts.size
+
+    const dailyAccountStats: DailyAccountStatsDB.DbDailyAccountStats = {
+      dateStartTime: startTimestamp,
+      newAccounts,
+      activeAccounts,
+    }
+
+    await DailyAccountStatsDB.insertDailyAccountStats(dailyAccountStats)
+    console.log(
+      `Stored daily account stats for ${new Date(startTimestamp)}, startTimestamp ${
+        startTimestamp + 1
+      } endTimestamp ${beforeTimestamp - 1}`,
+      dailyAccountStats
     )
   }
 }

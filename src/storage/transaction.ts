@@ -187,13 +187,19 @@ export async function queryTransactions(
       values.push(afterTimestamp)
     }
     if (beforeTimestamp > 0) {
-      sql += ` ORDER BY timestamp DESC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY timestamp DESC`
     } else if (afterTimestamp > 0) {
-      sql += ` ORDER BY timestamp ASC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY timestamp ASC`
     } else if (startCycleNumber || endCycleNumber) {
-      sql += ` ORDER BY cycleNumber ASC, timestamp ASC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY cycleNumber ASC, timestamp ASC`
     } else {
-      sql += ` ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY cycleNumber DESC, timestamp DESC`
+    }
+    if (limit > 0) {
+      sql += ` LIMIT ${limit}`
+    }
+    if (skip > 0) {
+      sql += ` OFFSET ${skip}`
     }
     transactions = (await db.all(transactionDatabase, sql, values)) as DbTransaction[]
     // console.log('queryTransactions', sql, values, transactions)

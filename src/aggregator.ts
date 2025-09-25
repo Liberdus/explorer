@@ -5,6 +5,7 @@ import {
   ValidatorStatsDB,
   TransactionStatsDB,
   DailyTransactionStatsDB,
+  DailyAccountStatsDB,
   CoinStatsDB,
   MetadataDB,
 } from './stats'
@@ -61,6 +62,10 @@ const start = async (): Promise<void> => {
   const lastStoredDailyTransactions = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(1)
   if (lastStoredDailyTransactions.length > 0)
     lastCheckedDateStartTime = lastStoredDailyTransactions[0].dateStartTime
+
+  const lastStoredDailyAccounts = await DailyAccountStatsDB.queryLatestDailyAccountStats(1)
+  if (lastStoredDailyAccounts.length > 0)
+    lastCheckedDateStartTime = Math.min(lastCheckedDateStartTime, lastStoredDailyAccounts[0].dateStartTime)
 
   if (lastCheckedDateStartTime === -1) {
     const firstCycle = await CycleDB.queryCycleByCounter(0)
@@ -126,7 +131,7 @@ const start = async (): Promise<void> => {
     )
     lastCheckedCycleForCoinStats = latestCycleCounter
 
-    // ----- Daily Transactions Stats -----
+    // ----- Daily Stats -----
     const currentTimestamp = Date.now()
     const timeSinceLastChecked = currentTimestamp - lastCheckedDateStartTime
     const one_day_in_ms = 24 * 60 * 60 * 1000
@@ -138,7 +143,7 @@ const start = async (): Promise<void> => {
       if (timeSinceLastChecked > one_day_in_ms + extra_safety_margin) {
         // calculate end timestamp for the day
         const dateEndTimestamp = currentTimestamp - (timeSinceLastChecked % one_day_in_ms)
-        StatsFunctions.recordDailyTransactionsStats(lastCheckedDateStartTime, dateEndTimestamp)
+        StatsFunctions.recordDailyStats(lastCheckedDateStartTime, dateEndTimestamp)
         // Reset counter and update date/boundaries
         lastCheckedDateStartTime = dateEndTimestamp
       }

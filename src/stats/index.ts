@@ -5,6 +5,7 @@ import { createDirectories } from '../utils'
 import * as ValidatorStatsDB from './validatorStats'
 import * as TransactionStatsDB from './transactionStats'
 import * as DailyTransactionStatsDB from './dailyTransactionStats'
+import * as DailyAccountStatsDB from './dailyAccountStats'
 import * as CoinStatsDB from './coinStats'
 import * as NodeStatsDB from './nodeStats'
 import * as MetadataDB from './metadata'
@@ -13,6 +14,7 @@ import * as TotalAccountBalanceDB from '../stats/totalAccountBalance'
 export let validatorStatsDatabase: Database
 export let transactionStatsDatabase: Database
 export let dailyTransactionStatsDatabase: Database
+export let dailyAccountStatsDatabase: Database
 export let coinStatsDatabase: Database
 export let nodeStatsDatabase: Database
 export let metadataDatabase: Database
@@ -31,6 +33,10 @@ export const initializeStatsDB = async (): Promise<void> => {
   dailyTransactionStatsDatabase = await createDB(
     `${config.COLLECTOR_STATS_DB_DIR_PATH}/${config.COLLECTOR_STATS_DATA.dailyTransactionStatsDB}`,
     'DailyTransactionStats'
+  )
+  dailyAccountStatsDatabase = await createDB(
+    `${config.COLLECTOR_STATS_DB_DIR_PATH}/${config.COLLECTOR_STATS_DATA.dailyAccountStatsDB}`,
+    'DailyAccountStats'
   )
   coinStatsDatabase = await createDB(
     `${config.COLLECTOR_STATS_DB_DIR_PATH}/${config.COLLECTOR_STATS_DATA.coinStatsDB}`,
@@ -126,6 +132,15 @@ export const initializeStatsDB = async (): Promise<void> => {
       txsByType TEXT NOT NULL
     )`
   )
+  await runCreate(
+    dailyAccountStatsDatabase,
+    `
+    CREATE TABLE if not exists daily_accounts (
+      dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
+      newAccounts NUMBER NOT NULL,
+      activeAccounts NUMBER NOT NULL
+    )`
+  )
   // await runCreate(dailyTransactionStatsDatabase, 'Drop INDEX if exists `daily_transactions_idx`');
   // await runCreate(
   //   dailyTransactionStatsDatabase,
@@ -133,7 +148,7 @@ export const initializeStatsDB = async (): Promise<void> => {
   // )
   await runCreate(
     coinStatsDatabase,
-    'CREATE TABLE if not exists `coin_stats` (`cycle` NUMBER NOT NULL UNIQUE PRIMARY KEY, `totalSupplyChange` BIGINT NOT NULL, `totalStakeChange` BIGINT NOT NULL, `timestamp` BIGINT NOT NULL)'
+    'CREATE TABLE if not exists `coin_stats` (`cycle` NUMBER NOT NULL UNIQUE PRIMARY KEY, `totalSupplyChange` BIGINT NOT NULL, `totalStakeChange` BIGINT NOT NULL, `transactionFee` BIGINT NOT NULL DEFAULT 0, `networkCommission` BIGINT NOT NULL DEFAULT 0, `timestamp` BIGINT NOT NULL)'
   )
   // await runCreate(coinStatsDatabase, 'Drop INDEX if exists `coin_stats_idx`');
   await runCreate(
@@ -190,6 +205,7 @@ export const closeStatsDatabase = async (): Promise<void> => {
   promises.push(close(validatorStatsDatabase, 'ValidatorStats'))
   promises.push(close(transactionStatsDatabase, 'TransactionStats'))
   promises.push(close(dailyTransactionStatsDatabase, 'DailyTransactionStats'))
+  promises.push(close(dailyAccountStatsDatabase, 'DailyAccountStats'))
   promises.push(close(coinStatsDatabase, 'CoinStats'))
   promises.push(close(nodeStatsDatabase, 'NodeStats'))
   promises.push(close(metadataDatabase, 'Metadata'))
@@ -201,6 +217,7 @@ export {
   ValidatorStatsDB,
   TransactionStatsDB,
   DailyTransactionStatsDB,
+  DailyAccountStatsDB,
   CoinStatsDB,
   NodeStatsDB,
   MetadataDB,
