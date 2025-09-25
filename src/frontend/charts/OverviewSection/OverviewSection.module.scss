@@ -1,0 +1,85 @@
+@import '../../../styles/index.scss';
+
+.OverviewSection {
+  .sectionHeader {
+    margin-bottom: 16px;
+
+    h5 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #212529;
+      margin: 0 0 8px 0;
+    }
+
+    p {
+      font-size: 10px;
+      color: #6c757d;
+      margin: 0;
+    }
+  }
+
+  .statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+
+  .statsCard {
+    padding: spacing(12);
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+
+    &:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .cardHeader {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+
+      .cardTitle {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+
+    .cardValue {
+      font-size: 20px;
+      font-weight: 600;
+      color: #212529;
+      line-height: 1.2;
+    }
+
+    .cardChange {
+      font-size: 14px;
+      font-weight: 500;
+      margin-left: 8px;
+
+      &.positive {
+        color: #28a745;
+      }
+
+      &.negative {
+        color: #dc3545;
+      }
+
+      &.neutral {
+        color: #6c757d;
+      }
+    }
+  }
+}

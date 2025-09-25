@@ -36,8 +36,8 @@ export const Header: React.FC<Record<string, never>> = () => {
       submenu: [
         { name: 'Charts & Stats', href: '/charts' },
         { name: 'Daily Transactions', href: '/daily_transactions' },
-        { name: 'Validators Stats', href: '/validator_line_chart' },
-        { name: 'Transactions Stats', href: '/transaction_line_chart' },
+        // { name: 'Validators Stats', href: '/validator_line_chart' },
+        // { name: 'Transactions Stats', href: '/transaction_line_chart' },
       ],
     },
     {

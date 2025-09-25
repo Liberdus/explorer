@@ -1,3 +1,5 @@
 export { StatsDashboard } from './StatsDashboard'
 export { CardDetail } from './CardDetail'
 export { ChartDetail } from './ChartDetail'
+export { ChartsPage } from './ChartsPage'
+export { OverviewSection } from './OverviewSection'
