@@ -28,7 +28,7 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
           <div className={styles.value}>{transaction?.txId}</div>
         </div>
         <div className={styles.item}>
-          <div className={styles.title}>Transaction Status:</div>
+          <div className={styles.title}>Status:</div>
           <div className={styles.value}>
             <Chip
               title={transaction?.data?.success === true ? 'Success' : 'Failed'}
@@ -47,7 +47,7 @@ export const Ovewview: React.FC<OvewviewProps> = ({ transaction }) => {
           </div>
         )}
         <div className={styles.item}>
-          <div className={styles.title}>Method:</div>
+          <div className={styles.title}>Type:</div>
           <div className={styles.value}>
             <Chip title={transaction.transactionType} color="info" className={styles.chip} />
           </div>

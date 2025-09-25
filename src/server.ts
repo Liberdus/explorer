@@ -1117,11 +1117,11 @@ const start = async (): Promise<void> => {
 
       if (query.last14DaysTxsReport || query.allDailyTxsReport) {
         ;(transactionStats as DailyTransactionStats[]).forEach((item: DailyTransactionStats) =>
-          temp_array.push([item.dateStartTime, ...convertBaseTxStatsAsArray(item)])
+          temp_array.push([item.dateStartTime, item.totalTxs, ...convertBaseTxStatsAsArray(item)])
         )
       } else {
         ;(transactionStats as TransactionStats[]).forEach((item: TransactionStats) =>
-          temp_array.push([item.cycle, item.timestamp, ...convertBaseTxStatsAsArray(item)])
+          temp_array.push([item.cycle, item.timestamp, item.totalTxs, ...convertBaseTxStatsAsArray(item)])
         )
       }
       transactionStats = temp_array
