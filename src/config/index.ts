@@ -44,6 +44,7 @@ export interface Config {
     validatorStatsDB: string
     transactionStatsDB: string
     dailyTransactionStatsDB: string
+    dailyAccountStatsDB: string
     coinStatsDB: string
     nodeStatsDB: string
     metadataDB: string
@@ -132,6 +133,7 @@ let config: Config = {
     validatorStatsDB: 'validatorStats.sqlite3',
     transactionStatsDB: 'transactionStats.sqlite3',
     dailyTransactionStatsDB: 'dailyTransactionStats.sqlite3',
+    dailyAccountStatsDB: 'dailyAccountStats.sqlite3',
     coinStatsDB: 'coinStats.sqlite3',
     nodeStatsDB: 'nodeStats.sqlite3',
     metadataDB: 'metadata.sqlite3',

@@ -14,6 +14,7 @@ import {
   ValidatorStatsDB,
   TransactionStatsDB,
   DailyTransactionStatsDB,
+  DailyAccountStatsDB,
   CoinStatsDB,
   NodeStatsDB,
 } from './stats'
@@ -43,6 +44,7 @@ import { healthCheckRouter } from './routes/healthCheck'
 import { ValidatorStats } from './stats/validatorStats'
 import { TransactionStats, convertBaseTxStatsAsArray } from './stats/transactionStats'
 import { DailyTransactionStats } from './stats/dailyTransactionStats'
+import { DailyAccountStats } from './stats/dailyAccountStats'
 
 if (config.env == envEnum.DEV) {
   //default debug mode
@@ -1132,6 +1134,109 @@ const start = async (): Promise<void> => {
     }
     reply.send(res)
   })
+
+  // type AccountStatsRequest = FastifyRequest<{
+  //   Querystring: {
+  //     count: string
+  //     startTimestamp: string
+  //     endTimestamp: string
+  //     responseType: string
+  //     last14DaysAccountReport: string
+  //     allDailyAccountReport: string
+  //   }
+  // }>
+
+  // server.get('/api/stats/account', async (_request: AccountStatsRequest, reply) => {
+  //   const err = utils.validateTypes(_request.query, {
+  //     count: 's?',
+  //     startTimestamp: 's?',
+  //     endTimestamp: 's?',
+  //     responseType: 's?',
+  //     last14DaysAccountReport: 's?',
+  //     allDailyAccountReport: 's?',
+  //   })
+  //   if (err) {
+  //     reply.send({ success: false, error: err })
+  //     return
+  //   }
+  //   const query = _request.query
+  //   // Check at least one of the query parameters is present
+  //   if (
+  //     !query.count &&
+  //     !query.startTimestamp &&
+  //     !query.endTimestamp &&
+  //     !query.responseType &&
+  //     !query.last14DaysAccountReport &&
+  //     !query.allDailyAccountReport
+  //   ) {
+  //     reply.send({
+  //       success: false,
+  //       reason: 'Not specified which account stats to query',
+  //     })
+  //     return
+  //   }
+  //   let accountStats: DailyAccountStats[] = []
+  //   if (query.count) {
+  //     const count: number = parseInt(query.count)
+  //     if (count <= 0 || Number.isNaN(count)) {
+  //       reply.send({ success: false, error: 'Invalid count' })
+  //       return
+  //     }
+  //     if (count > config.requestLimits.MAX_STATS_PER_REQUEST) {
+  //       reply.send({
+  //         success: false,
+  //         error: `Max stats size is ${config.requestLimits.MAX_STATS_PER_REQUEST}`,
+  //       })
+  //       return
+  //     }
+  //     accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(count)
+  //   } else if (query.startTimestamp) {
+  //     const startTimestamp = parseInt(query.startTimestamp)
+  //     if (startTimestamp < 0 || Number.isNaN(startTimestamp)) {
+  //       reply.send({ success: false, error: 'Invalid start timestamp' })
+  //       return
+  //     }
+  //     let endTimestamp = startTimestamp + 24 * 60 * 60 * 1000 // default to next day
+  //     if (query.endTimestamp) {
+  //       endTimestamp = parseInt(query.endTimestamp)
+  //       if (endTimestamp < 0 || Number.isNaN(endTimestamp) || endTimestamp < startTimestamp) {
+  //         reply.send({ success: false, error: 'Invalid end timestamp' })
+  //         return
+  //       }
+  //     }
+  //     accountStats = await DailyAccountStatsDB.queryDailyAccountStatsBetween(startTimestamp, endTimestamp)
+  //   } else if (query.last14DaysAccountReport) {
+  //     if (query.last14DaysAccountReport !== 'true') {
+  //       reply.send({
+  //         success: false,
+  //         error: 'Invalid last14DaysAccountReport',
+  //       })
+  //       return
+  //     }
+  //     accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(14)
+  //   } else if (query.allDailyAccountReport) {
+  //     if (query.allDailyAccountReport !== 'true') {
+  //       reply.send({
+  //         success: false,
+  //         error: 'Invalid allDailyAccountReport',
+  //       })
+  //       return
+  //     }
+  //     accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(0)
+  //   }
+  //   if (query.responseType && query.responseType === 'array') {
+  //     const temp_array = []
+  //     accountStats.forEach((item: DailyAccountStats) =>
+  //       temp_array.push([item.dateStartTime, item.newAccounts, item.activeAccounts])
+  //     )
+  //     accountStats = temp_array as any
+  //   }
+  //   const res = {
+  //     success: true,
+  //     accountStats,
+  //   }
+  //   reply.send(res)
+  // })
 
   server.get('/api/stats/coin', async (_request, reply) => {
     let coinStats

@@ -41,9 +41,23 @@ export const OverviewSection: React.FC = () => {
     fetchCoinStats: true,
   })
 
-  const latestCycle = cycles[0]
+  const latestCycle = cycles?.[0]
   const activeNodes = latestCycle?.cycleRecord?.active || 0
   const standbyNodes = latestCycle?.cycleRecord?.standby || 0
+
+  // 👇 Prepare an array of stats
+  const stats: StatsCardProps[] = [
+    { title: 'Active Nodes', value: activeNodes, change: '3%', changeType: 'neutral' },
+    { title: 'Standby Nodes', value: standbyNodes, change: '5%', changeType: 'negative' },
+    { title: 'Total Accounts', value: totalAccounts, change: '10%', changeType: 'positive' },
+    { title: 'Total Transactions', value: totalTransactions },
+    { title: 'Transfer Txns', value: totalTransferTxs },
+    { title: 'Message Txns', value: totalMessageTxs },
+    { title: 'Deposit Stake Txns', value: totalDepositStakeTxs },
+    { title: 'Withdraw Stake Txns', value: totalWithdrawStakeTxs },
+    { title: 'Total LIB', value: totalLIB },
+    { title: 'Total Staked LIB', value: totalStakedLIB },
+  ]
 
   return (
     <div className={styles.OverviewSection}>
@@ -54,30 +68,9 @@ export const OverviewSection: React.FC = () => {
 
       {/* Network Statistics Grid */}
       <div className={styles.statsGrid}>
-        <StatsCard
-          title="Total Transactions"
-          value={totalTransactions}
-          change="0.20%"
-          changeType="positive"
-        />
-
-        <StatsCard title="Total Accounts" value={totalAccounts} />
-
-        <StatsCard title="Active Validators" value={activeNodes} />
-
-        <StatsCard title="Standby Nodes" value={standbyNodes} />
-
-        <StatsCard title="Total LIB Supply" value={totalLIB?.toLocaleString() || 'Loading...'} />
-
-        <StatsCard title="Staked LIB" value={totalStakedLIB?.toLocaleString() || 'Loading...'} />
-
-        <StatsCard title="Transfer Transactions" value={totalTransferTxs} />
-
-        <StatsCard title="Message Transactions" value={totalMessageTxs} />
-
-        <StatsCard title="Stake Deposits" value={totalDepositStakeTxs} />
-
-        <StatsCard title="Stake Withdrawals" value={totalWithdrawStakeTxs} />
+        {stats.map((s, i) => (
+          <StatsCard key={i} title={s.title} value={s.value} change={s?.change} changeType={s?.changeType} />
+        ))}
       </div>
     </div>
   )

@@ -7,6 +7,8 @@ export interface CoinStats {
   timestamp: number
   totalSupplyChange: number
   totalStakeChange: number
+  transactionFee: number
+  networkCommission: number
 }
 
 export async function insertCoinStats(coinStats: CoinStats): Promise<void> {
@@ -54,12 +56,16 @@ export async function queryLatestCoinStats(count?: number): Promise<CoinStats[]>
 export async function queryAggregatedCoinStats(): Promise<{
   totalSupplyChange: number
   totalStakeChange: number
+  transactionFee: number
+  networkCommission: number
 }> {
   try {
-    const sql = `SELECT IFNULL(sum(totalSupplyChange), 0) as totalSupplyChange, IFNULL(sum(totalStakeChange), 0) as totalStakeChange FROM coin_stats`
+    const sql = `SELECT IFNULL(sum(totalSupplyChange), 0) as totalSupplyChange, IFNULL(sum(totalStakeChange), 0) as totalStakeChange, IFNULL(sum(transactionFee), 0) as transactionFee, IFNULL(sum(networkCommission), 0) as networkCommission FROM coin_stats`
     const coinStats: {
       totalSupplyChange: number
       totalStakeChange: number
+      transactionFee: number
+      networkCommission: number
     } = await db.get(coinStatsDatabase, sql)
     if (config.verbose) console.log('aggregated coin stats', coinStats)
     return coinStats
