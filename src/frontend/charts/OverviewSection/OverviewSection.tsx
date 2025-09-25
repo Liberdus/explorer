@@ -1,5 +1,5 @@
 import React from 'react'
-import { useCycle, useTransaction, useAccount, useStats } from '../../api'
+import { useCycle, useTransaction, useAccount, useNewStats } from '../../api'
 import { TransactionSearchParams } from '../../../types'
 import styles from './OverviewSection.module.scss'
 
@@ -23,40 +23,70 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, changeType 
 )
 
 export const OverviewSection: React.FC = () => {
-  const { data: cycles } = useCycle({ count: 10 })
   const {
-    totalTransferTxs,
-    totalMessageTxs,
-    totalDepositStakeTxs,
-    totalWithdrawStakeTxs,
+    totalAccounts,
+    totalNewAccounts,
     totalTransactions,
-  } = useTransaction({
-    count: 10,
-    txType: TransactionSearchParams.all,
-    totalTxsDetail: true,
+    totalNewTransactions,
+    totalAccountsChange,
+    totalNewAccountsChange,
+    totalTransactionsChange,
+    totalNewTransactionsChange,
+    last24HrsSupplyChange,
+  } = useNewStats({
+    fetchAccountStats: true,
+    fetchTransactionStats: true,
+    last24hoursCoinReport: true,
   })
 
-  const { totalAccounts } = useAccount({ count: 10 })
-  const { totalLIB, totalStakedLIB } = useStats({
-    fetchCoinStats: true,
-  })
-
-  const latestCycle = cycles?.[0]
-  const activeNodes = latestCycle?.cycleRecord?.active || 0
-  const standbyNodes = latestCycle?.cycleRecord?.standby || 0
+  // Helper function to format percentage and determine change type
+  const formatPercentage = (value: number): { change: string; changeType: 'positive' | 'negative' | 'neutral' } => {
+    const formattedValue = Math.abs(value).toFixed(1)
+    if (value > 0) {
+      return { change: `+${formattedValue}%`, changeType: 'positive' }
+    } else if (value < 0) {
+      return { change: `-${formattedValue}%`, changeType: 'negative' }
+    } else {
+      return { change: '0%', changeType: 'neutral' }
+    }
+  }
 
   // 👇 Prepare an array of stats
   const stats: StatsCardProps[] = [
-    { title: 'Active Nodes', value: activeNodes, change: '3%', changeType: 'neutral' },
-    { title: 'Standby Nodes', value: standbyNodes, change: '5%', changeType: 'negative' },
-    { title: 'Total Accounts', value: totalAccounts, change: '10%', changeType: 'positive' },
-    { title: 'Total Transactions', value: totalTransactions },
-    { title: 'Transfer Txns', value: totalTransferTxs },
-    { title: 'Message Txns', value: totalMessageTxs },
-    { title: 'Deposit Stake Txns', value: totalDepositStakeTxs },
-    { title: 'Withdraw Stake Txns', value: totalWithdrawStakeTxs },
-    { title: 'Total LIB', value: totalLIB },
-    { title: 'Total Staked LIB', value: totalStakedLIB },
+    {
+      title: 'Addresses (Total)',
+      value: totalAccounts,
+      ...formatPercentage(totalAccountsChange)
+    },
+    {
+      title: 'Transactions (Total)',
+      value: totalTransactions,
+      ...formatPercentage(totalTransactionsChange)
+    },
+    {
+      title: 'New Addresses (24H)',
+      value: totalNewAccounts,
+      ...formatPercentage(totalNewAccountsChange)
+    },
+    {
+      title: 'Transactions (24H)',
+      value: totalNewTransactions,
+      ...formatPercentage(totalNewTransactionsChange)
+    },
+    // Avg tx fee would be total_tx_fee_24h / transactions_24h
+    {
+      title: 'Total Transaction Fee (24H)',
+      value: last24HrsSupplyChange.totalTransactionFee,
+    },
+    {
+      title: 'Avg Transaction Fee (24H)',
+      value: last24HrsSupplyChange.totalTransactionFee / totalNewTransactions,
+    },
+    { title: 'Network Utilization (24H)', value: 0 },
+    {
+      title: 'Burnt Fees (24H)',
+      value: last24HrsSupplyChange.totalTransactionFee + last24HrsSupplyChange.totalBurntFees,
+    },
   ]
 
   return (

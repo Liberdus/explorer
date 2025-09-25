@@ -103,3 +103,92 @@ export function parseDailyTransactionStats(stats: DbDailyTransactionStats[]): Da
     } as DailyTransactionStats
   })
 }
+
+export async function queryTransactionStats(): Promise<{
+  totalTransactions: number
+  totalNewTransactions: number
+  totalTransactionsChange: number
+  totalNewTransactionsChange: number
+}> {
+  try {
+    // Get sum of all transactions from daily_transactions table
+    const totalSql = 'SELECT SUM(totalTxs) as totalTransactions FROM daily_transactions'
+    const totalResult: { totalTransactions: number } = await db.get(dailyTransactionStatsDatabase, totalSql)
+
+    // Get the totalTxs from the latest entry (most recent entry by dateStartTime)
+    const latestSql =
+      'SELECT totalTxs as totalNewTransactions FROM daily_transactions ORDER BY dateStartTime DESC LIMIT 1'
+    const latestResult: { totalNewTransactions: number } = await db.get(
+      dailyTransactionStatsDatabase,
+      latestSql
+    )
+
+    // Calculate percentage changes
+    const totalTransactionsChange = await calculateTotalTransactionsChange()
+    const totalNewTransactionsChange = await calculateNewTransactionsChange()
+
+    return {
+      totalTransactions: totalResult?.totalTransactions || 0,
+      totalNewTransactions: latestResult?.totalNewTransactions || 0,
+      totalTransactionsChange,
+      totalNewTransactionsChange,
+    }
+  } catch (e) {
+    console.log(e)
+    return {
+      totalTransactions: 0,
+      totalNewTransactions: 0,
+      totalTransactionsChange: 0,
+      totalNewTransactionsChange: 0,
+    }
+  }
+}
+
+async function calculateTotalTransactionsChange(): Promise<number> {
+  try {
+    // Get total transactions for the last 7 days and previous 7 days to compare
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
+
+    const last7DaysSql = 'SELECT SUM(totalTxs) as total FROM daily_transactions WHERE dateStartTime >= ?'
+    const previous7DaysSql =
+      'SELECT SUM(totalTxs) as total FROM daily_transactions WHERE dateStartTime >= ? AND dateStartTime < ?'
+
+    const last7DaysResult: { total: number } = await db.get(dailyTransactionStatsDatabase, last7DaysSql, [
+      sevenDaysAgo,
+    ])
+    const previous7DaysResult: { total: number } = await db.get(
+      dailyTransactionStatsDatabase,
+      previous7DaysSql,
+      [fourteenDaysAgo, sevenDaysAgo]
+    )
+
+    const current = last7DaysResult?.total || 0
+    const previous = previous7DaysResult?.total || 0
+
+    if (previous === 0) return current > 0 ? 100 : 0
+    return ((current - previous) / previous) * 100
+  } catch (e) {
+    console.log('Error calculating total transactions change:', e)
+    return 0
+  }
+}
+
+async function calculateNewTransactionsChange(): Promise<number> {
+  try {
+    // Compare latest day's totalTxs with the previous day
+    const latestTwoDaysSql = 'SELECT totalTxs FROM daily_transactions ORDER BY dateStartTime DESC LIMIT 2'
+    const results: { totalTxs: number }[] = await db.all(dailyTransactionStatsDatabase, latestTwoDaysSql)
+
+    if (results.length < 2) return 0
+
+    const current = results[0]?.totalTxs || 0
+    const previous = results[1]?.totalTxs || 0
+
+    if (previous === 0) return current > 0 ? 100 : 0
+    return ((current - previous) / previous) * 100
+  } catch (e) {
+    console.log('Error calculating new transactions change:', e)
+    return 0
+  }
+}

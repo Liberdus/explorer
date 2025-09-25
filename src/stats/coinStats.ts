@@ -73,3 +73,35 @@ export async function queryAggregatedCoinStats(): Promise<{
     console.log('Unable to retrieve aggregated coin stats', e)
   }
 }
+
+export async function queryLast24HoursCoinStats(): Promise<{
+  totalTransactionFee: number
+  totalBurntFees: number
+}> {
+  try {
+    // Calculate timestamp for 24 hours ago
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000
+    const twentyFourHoursAgoInSeconds = Math.floor(twentyFourHoursAgo / 1000)
+
+    // Query for the sum of transaction fees and network commission in the last 24 hours
+    const sql = `SELECT
+      IFNULL(sum(transactionFee), 0) as totalTransactionFee,
+      IFNULL(sum(networkCommission), 0) as totalBurntFees
+      FROM coin_stats
+      WHERE timestamp >= ?`
+
+    const result: { totalTransactionFee: number; totalBurntFees: number } = await db.get(
+      coinStatsDatabase,
+      sql,
+      [twentyFourHoursAgoInSeconds]
+    )
+
+    return result
+  } catch (e) {
+    console.log('Unable to retrieve last 24 hours coin stats', e)
+    return {
+      totalTransactionFee: 0,
+      totalBurntFees: 0,
+    }
+  }
+}
