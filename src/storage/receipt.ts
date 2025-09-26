@@ -53,7 +53,7 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
   if (receipts && receipts.length <= 0) return
   const bucketSize = 1000
   let combineReceipts: Receipt[] = []
-  let combineAccounts: Account[] = []
+  let combineAccounts: Account[] = [] // For new accounts to bulk insert; Not for accounts that are already stored in database
   let combineTransactions: Transaction[] = []
   let accountHistoryStateList: AccountHistoryStateDB.AccountHistoryState[] = []
   for (const receiptObj of receipts) {
@@ -88,6 +88,7 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
         hash: account.hash,
         accountType,
         isGlobal: account.isGlobal,
+        createdTimestamp: account.timestamp, // Initial value - SQL triggers will preserve the oldest timestamp automatically
       }
       const index = combineAccounts.findIndex((a) => {
         return a.accountId === accObj.accountId
@@ -96,6 +97,7 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
         // eslint-disable-next-line security/detect-object-injection
         const accountExist = combineAccounts[index]
         if (accountExist.timestamp < accObj.timestamp) {
+          accObj.createdTimestamp = accountExist.createdTimestamp // swap createdTimestamp of the old account
           combineAccounts.splice(index, 1)
           combineAccounts.push(accObj)
         }
@@ -106,7 +108,13 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
           combineAccounts.push(accObj)
         } else {
           if (accountExist.timestamp < accObj.timestamp) {
-            await AccountDB.updateAccount(accObj.accountId, accObj)
+            await AccountDB.updateAccount(accObj)
+          } else if (accObj.createdTimestamp < accountExist.createdTimestamp) {
+            // THIS SHOULD NOT HAPPEN - [TO CATCH IF IT HAPPENS]
+            console.error(
+              `Found new account that has older created timestamp than existing account. ${accObj.accountId} createdTimestamp ${accObj.createdTimestamp}  accountExist.createdTimestamp ${accountExist.createdTimestamp} timestamp ${accObj.timestamp} accountExist.timestamp ${accountExist.timestamp}`
+            )
+            await AccountDB.updateCreatedTimestamp(accObj.accountId, accObj.createdTimestamp)
           }
         }
       }
