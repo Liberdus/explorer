@@ -2,14 +2,15 @@ import { Signature } from '@shardus/crypto-utils'
 
 export interface Transaction {
   txId: string
-  appReceiptId?: string // Dapp receipt id (eg. txhash for the EVM receipt in shardeum)
+  // appReceiptId?: string // Dapp receipt id (eg. txhash for the EVM receipt in shardeum)
   timestamp: number
   cycleNumber: number
-  data: any & { txId?: string; appReceiptId?: string }
+  data: any & { txId?: string }
   originalTxData: unknown & { tx: any } // eslint-disable-line @typescript-eslint/no-explicit-any
   transactionType: TransactionType
   txFrom?: string
   txTo?: string
+  txFee?: number
 }
 
 export interface BaseLiberdusTx {

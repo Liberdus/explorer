@@ -19,7 +19,7 @@ export type BaseTxStats = {
 }
 
 // Helper function to convert snake_case enum value to totalPascalCaseTxs property name
-function transactionTypeToPropertyName(transactionType: TransactionType): keyof BaseTxStats {
+export function transactionTypeToPropertyName(transactionType: TransactionType): keyof BaseTxStats {
   const snakeToPascal = (str: string): string => {
     return str
       .split('_')
@@ -30,7 +30,7 @@ function transactionTypeToPropertyName(transactionType: TransactionType): keyof 
 }
 
 // Get ordered list of transaction types
-function getOrderedTransactionTypes(): TransactionType[] {
+export function getOrderedTransactionTypes(): TransactionType[] {
   return Object.values(TransactionType)
 }
 

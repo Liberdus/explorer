@@ -17,7 +17,7 @@ export async function insertTransaction(transaction: Transaction): Promise<void>
     const sql = 'INSERT OR REPLACE INTO transactions (' + fields + ') VALUES (' + placeholders + ')'
     await db.run(transactionDatabase, sql, values)
     if (config.verbose)
-      console.log('Successfully inserted Transaction', transaction.txId, transaction.appReceiptId)
+      console.log('Successfully inserted Transaction', transaction.txId)
   } catch (e) {
     console.log(e)
     console.log('Unable to insert Transaction or it is already stored in to database', transaction.txId)
@@ -43,18 +43,18 @@ export async function bulkInsertTransactions(transactions: Transaction[]): Promi
 
 export async function updateTransaction(_txId: string, transaction: Partial<Transaction>): Promise<void> {
   try {
-    const sql = `UPDATE transactions SET result = $result, cycleNumber = $cycleNumber, data = $data, appReceiptId = $appReceiptId WHERE txId = $txId `
+    const sql = `UPDATE transactions SET result = $result, cycleNumber = $cycleNumber, data = $data, txFee = $txFee WHERE txId = $txId `
     await db.run(transactionDatabase, sql, {
       $cycleNumber: transaction.cycleNumber,
       $data: transaction.data && StringUtils.safeStringify(transaction.data),
-      $appReceiptId: transaction.appReceiptId,
+      $txFee: transaction.txFee,
       $txId: transaction.txId,
     })
     if (config.verbose)
-      console.log('Successfully Updated Transaction', transaction.txId, transaction.appReceiptId)
+      console.log('Successfully Updated Transaction', transaction.txId)
   } catch (e) {
     /* prettier-ignore */ if (config.verbose) console.log(e);
-    console.log('Unable to update Transaction', transaction.txId, transaction.appReceiptId)
+    console.log('Unable to update Transaction', transaction.txId)
   }
 }
 
@@ -70,7 +70,6 @@ export async function processTransactionData(transactions: Transaction[]): Promi
       timestamp: transaction.timestamp,
       originalTxData: transaction.originalTxData || {},
       data: transaction.data,
-      appReceiptId: transaction.appReceiptId,
     } as Transaction
     if (transaction.data) {
       txObj.transactionType = transaction.data.type as TransactionType // be sure to update with the correct field with the transaction type defined in the dapp
@@ -232,22 +231,6 @@ export async function queryTransactionByTxId(txId: string): Promise<Transaction 
   return null
 }
 
-export async function queryTransactionByAppReceiptId(appReceiptId: string): Promise<Transaction[] | null> {
-  try {
-    const sql = `SELECT * FROM transactions WHERE appReceiptId=? ORDER BY cycleNumber DESC, timestamp DESC`
-    const transactions = (await db.all(transactionDatabase, sql, [appReceiptId])) as DbTransaction[]
-    if (transactions.length > 0) {
-      for (const transaction of transactions) {
-        deserializeDbTransaction(transaction)
-      }
-    }
-    if (config.verbose) console.log('transaction hash', transactions)
-    return transactions
-  } catch (e) {
-    console.log(e)
-  }
-  return null
-}
 
 export async function queryTransactionCountByCycles(
   start: number,
