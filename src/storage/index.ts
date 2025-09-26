@@ -9,7 +9,6 @@ import * as TransactionDB from './transaction'
 import * as OriginalTxDataDB from './originalTxData'
 import * as AccountHistoryStateDB from './accountHistoryState'
 
-
 export let cycleDatabase: Database
 export let accountDatabase: Database
 export let transactionDatabase: Database
@@ -48,12 +47,48 @@ export const initializeDB = async (): Promise<void> => {
   await runCreate(cycleDatabase, 'CREATE INDEX if not exists `cycles_idx` ON `cycles` (`counter` DESC)')
   await runCreate(
     accountDatabase,
-    'CREATE TABLE if not exists `accounts` (`accountId` TEXT NOT NULL UNIQUE PRIMARY KEY, `data` JSON NOT NULL, `timestamp` BIGINT NOT NULL, `hash` TEXT NOT NULL, `cycleNumber` NUMBER NOT NULL, `isGlobal` BOOLEAN NOT NULL, `accountType` TEXT NOT NULL)'
+    'CREATE TABLE if not exists `accounts` (`accountId` TEXT NOT NULL UNIQUE PRIMARY KEY, `data` JSON NOT NULL, `timestamp` BIGINT NOT NULL, `hash` TEXT NOT NULL, `cycleNumber` NUMBER NOT NULL, `createdTimestamp` BIGINT NOT NULL, `isGlobal` BOOLEAN NOT NULL, `accountType` TEXT NOT NULL)'
+  )
+
+  /**
+   * createdTimestamp logic
+   * 1. New account, no createdTimestamp provided: Sets createdTimestamp = timestamp
+   * 2. New account, createdTimestamp provided: Uses the provided createdTimestamp
+   * 3. Existing account, no createdTimestamp provided: Compares existing createdTimestamp with new timestamp, saves the older one
+   * 4. Existing account, createdTimestamp provided: Compares existing createdTimestamp with provided createdTimestamp, saves the older one
+   */
+
+  // Create trigger to handle createdTimestamp logic for INSERT OR REPLACE and UPDATE operations
+  await runCreate(
+    accountDatabase,
+    `CREATE TRIGGER IF NOT EXISTS accounts_created_timestamp_trigger
+     BEFORE UPDATE ON accounts
+     FOR EACH ROW
+     BEGIN
+       UPDATE accounts
+       SET createdTimestamp = CASE
+         WHEN OLD.createdTimestamp IS NULL THEN COALESCE(NEW.createdTimestamp, NEW.timestamp)
+         WHEN NEW.createdTimestamp IS NULL THEN MIN(OLD.createdTimestamp, NEW.timestamp)
+         ELSE MIN(OLD.createdTimestamp, NEW.createdTimestamp)
+       END
+       WHERE accountId = NEW.accountId;
+     END;`
   )
   await runCreate(
     accountDatabase,
     'CREATE INDEX if not exists `accounts_idx` ON `accounts` (`cycleNumber` DESC, `timestamp` DESC)'
   )
+
+  await runCreate(
+    accountDatabase,
+    'CREATE INDEX if not exists `accounts_created_timestamp_idx` ON `accounts` (`createdTimestamp` DESC)'
+  )
+
+  await runCreate(
+    accountDatabase,
+    'CREATE INDEX if not exists `accounts_accountType_idx` ON `accounts` (`accountType`)'
+  )
+
   // be sure to adjust the data types of `transactionType`, `txFrom`, `txTo` as needed
   await runCreate(
     transactionDatabase,

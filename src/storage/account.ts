@@ -41,7 +41,7 @@ export async function bulkInsertAccounts(accounts: Account[]): Promise<void> {
   }
 }
 
-export async function updateAccount(_accountId: string, account: Partial<Account>): Promise<void> {
+export async function updateAccount(account: Partial<Account>): Promise<void> {
   try {
     const sql = `UPDATE accounts SET cycleNumber = $cycleNumber, timestamp = $timestamp, data = $data, hash = $hash WHERE accountId = $accountId `
     await db.run(accountDatabase, sql, {
@@ -55,6 +55,20 @@ export async function updateAccount(_accountId: string, account: Partial<Account
   } catch (e) {
     console.log(e)
     console.log('Unable to update Account', account)
+  }
+}
+
+export async function updateCreatedTimestamp(accountId: string, createdTimestamp: number): Promise<void> {
+  try {
+    const sql = `UPDATE accounts SET createdTimestamp = $createdTimestamp WHERE accountId = $accountId`
+    await db.run(accountDatabase, sql, {
+      $createdTimestamp: createdTimestamp,
+      $accountId: accountId,
+    })
+    if (config.verbose) console.log('Successfully updated createdTimestamp for Account', accountId)
+  } catch (e) {
+    console.log(e)
+    console.log('Unable to update createdTimestamp for Account', accountId)
   }
 }
 
