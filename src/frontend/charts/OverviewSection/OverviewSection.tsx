@@ -26,21 +26,24 @@ export const OverviewSection: React.FC = () => {
   const {
     totalAccounts,
     totalNewAccounts,
-    totalTransactions,
-    totalNewTransactions,
+    totalUserTxs,
+    totalNewUserTxs,
     totalAccountsChange,
     totalNewAccountsChange,
-    totalTransactionsChange,
-    totalNewTransactionsChange,
-    last24HrsSupplyChange,
+    totalUserTxsChange,
+    totalNewUserTxsChange,
+    totalNewTransactionFee,
+    totalNewBurntFee,
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
-    last24hoursCoinReport: true,
+    last24HrsCoinReport: true,
   })
 
   // Helper function to format percentage and determine change type
-  const formatPercentage = (value: number): { change: string; changeType: 'positive' | 'negative' | 'neutral' } => {
+  const formatPercentage = (
+    value: number
+  ): { change: string; changeType: 'positive' | 'negative' | 'neutral' } => {
     const formattedValue = Math.abs(value).toFixed(1)
     if (value > 0) {
       return { change: `+${formattedValue}%`, changeType: 'positive' }
@@ -56,36 +59,36 @@ export const OverviewSection: React.FC = () => {
     {
       title: 'Addresses (Total)',
       value: totalAccounts,
-      ...formatPercentage(totalAccountsChange)
+      ...formatPercentage(totalAccountsChange),
     },
     {
       title: 'Transactions (Total)',
-      value: totalTransactions,
-      ...formatPercentage(totalTransactionsChange)
+      value: totalUserTxs,
+      ...formatPercentage(totalUserTxsChange),
     },
     {
       title: 'New Addresses (24H)',
       value: totalNewAccounts,
-      ...formatPercentage(totalNewAccountsChange)
+      ...formatPercentage(totalNewAccountsChange),
     },
     {
       title: 'Transactions (24H)',
-      value: totalNewTransactions,
-      ...formatPercentage(totalNewTransactionsChange)
+      value: totalNewUserTxs,
+      ...formatPercentage(totalNewUserTxsChange),
     },
     // Avg tx fee would be total_tx_fee_24h / transactions_24h
     {
       title: 'Total Transaction Fee (24H)',
-      value: last24HrsSupplyChange.totalTransactionFee,
+      value: totalNewTransactionFee,
     },
     {
       title: 'Avg Transaction Fee (24H)',
-      value: last24HrsSupplyChange.totalTransactionFee / totalNewTransactions,
+      value: totalNewTransactionFee / totalNewUserTxs,
     },
     { title: 'Network Utilization (24H)', value: 0 },
     {
       title: 'Burnt Fees (24H)',
-      value: last24HrsSupplyChange.totalTransactionFee + last24HrsSupplyChange.totalBurntFees,
+      value: totalNewTransactionFee + totalNewBurntFee,
     },
   ]
 

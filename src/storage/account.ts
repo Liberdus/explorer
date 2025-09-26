@@ -189,3 +189,24 @@ export async function processAccountData(accounts: AccountsCopy[]): Promise<Acco
   if (combineAccounts.length > 0) await bulkInsertAccounts(combineAccounts)
   return transactions
 }
+
+export async function queryAccountCountByCreatedTimestamp(
+  startTimestamp: number,
+  endTimestamp: number,
+  type?: AccountSearchType
+): Promise<number> {
+  let accounts: { 'COUNT(*)': number } = { 'COUNT(*)': 0 }
+  try {
+    let sql = `SELECT COUNT(*) FROM accounts WHERE createdTimestamp BETWEEN ? AND ?`
+    const values: unknown[] = [startTimestamp, endTimestamp]
+    if (type) {
+      sql += ` AND accountType=?`
+      values.push(type)
+    }
+    accounts = (await db.get(accountDatabase, sql, values)) as { 'COUNT(*)': number }
+  } catch (e) {
+    console.log(e)
+  }
+  if (config.verbose) console.log('Account count by createdTimestamp', accounts)
+  return accounts['COUNT(*)'] || 0
+}

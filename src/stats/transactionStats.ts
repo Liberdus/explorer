@@ -66,6 +66,18 @@ export function createEmptyBaseTxStats(): BaseTxStats {
   return result
 }
 
+export function generateTransactionStatsSchema(): string {
+  const orderedTypes = getOrderedTransactionTypes()
+  const dynamicColumns = orderedTypes
+    .map((type) => {
+      const propertyName = transactionTypeToPropertyName(type)
+      return `${propertyName} NUMBER NOT NULL DEFAULT 0`
+    })
+    .join(',\n      ')
+
+  return dynamicColumns
+}
+
 export interface TransactionStats extends BaseTxStats {
   timestamp: number
   cycle: number

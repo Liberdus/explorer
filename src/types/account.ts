@@ -300,6 +300,7 @@ export enum AccountType {
   AliasAccount = 'AliasAccount',
   ChatAccount = 'ChatAccount',
   NetworkAccount = 'NetworkAccount',
+  DevAccount = 'DevAccount',
   IssueAccount = 'IssueAccount',
   DevIssueAccount = 'DevIssueAccount',
   ProposalAccount = 'ProposalAccount',

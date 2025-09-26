@@ -293,13 +293,13 @@ export async function queryTransactionCountsByType(
     const values: unknown[] = []
 
     if (beforeTimestamp && afterTimestamp) {
-      sql += ` WHERE timestamp < ? AND timestamp >= ?`
+      sql += ` WHERE timestamp < ? AND timestamp > ?`
       values.push(beforeTimestamp, afterTimestamp)
     } else if (beforeTimestamp) {
       sql += ` WHERE timestamp < ?`
       values.push(beforeTimestamp)
     } else if (afterTimestamp) {
-      sql += ` WHERE timestamp >= ?`
+      sql += ` WHERE timestamp > ?`
       values.push(afterTimestamp)
     }
 
@@ -317,6 +317,48 @@ export async function queryTransactionCountsByType(
     transactionType: result.transactionType,
     count: result['COUNT(*)'],
   }))
+}
+
+export async function queryActiveAccountsCountByTxFee(
+  beforeTimestamp: number,
+  afterTimestamp: number,
+  minTxFee = 0
+): Promise<number> {
+  let activeAccounts: { 'COUNT(DISTINCT account)': number } = { 'COUNT(DISTINCT account)': 0 }
+  try {
+    const sql = `
+      SELECT COUNT(DISTINCT account) FROM (
+        SELECT txFrom as account FROM transactions
+        WHERE timestamp < ? AND timestamp > ? AND txFee > ?
+        UNION
+        SELECT txTo as account FROM transactions
+        WHERE timestamp < ? AND timestamp > ? AND txFee > ?
+      )
+    `
+    const values = [beforeTimestamp, afterTimestamp, minTxFee, beforeTimestamp, afterTimestamp, minTxFee]
+    activeAccounts = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(DISTINCT account)': number }
+  } catch (e) {
+    console.log('Error querying active accounts by txFee:', e)
+  }
+  if (config.verbose) console.log('Active accounts count by txFee', activeAccounts)
+  return activeAccounts['COUNT(DISTINCT account)'] || 0
+}
+
+export async function queryTransactionCountByTxFee(
+  beforeTimestamp: number,
+  afterTimestamp: number,
+  minTxFee = 0
+): Promise<number> {
+  let userTxs: { 'COUNT(*)': number } = { 'COUNT(*)': 0 }
+  try {
+    const sql = `SELECT COUNT(*) FROM transactions WHERE timestamp < ? AND timestamp > ? AND txFee > ?`
+    const values = [beforeTimestamp, afterTimestamp, minTxFee]
+    userTxs = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(*)': number }
+  } catch (e) {
+    console.log('Error querying transaction count by txFee:', e)
+  }
+  if (config.verbose) console.log('User transactions count by txFee', userTxs)
+  return userTxs['COUNT(*)'] || 0
 }
 
 function deserializeDbTransaction(transaction: DbTransaction): void {
