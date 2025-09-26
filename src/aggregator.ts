@@ -6,6 +6,7 @@ import {
   TransactionStatsDB,
   DailyTransactionStatsDB,
   DailyAccountStatsDB,
+  DailyNetworkStatsDB,
   CoinStatsDB,
   MetadataDB,
 } from './stats'
@@ -66,6 +67,13 @@ const start = async (): Promise<void> => {
   const lastStoredDailyAccounts = await DailyAccountStatsDB.queryLatestDailyAccountStats(1)
   if (lastStoredDailyAccounts.length > 0)
     lastCheckedDateStartTime = Math.min(lastCheckedDateStartTime, lastStoredDailyAccounts[0].dateStartTime)
+  else lastCheckedDateStartTime = -1
+
+  const lastStoredDailyNetwork = await DailyNetworkStatsDB.queryLatestDailyNetworkStats(1)
+  if (lastStoredDailyNetwork.length > 0)
+    lastCheckedDateStartTime = Math.min(lastCheckedDateStartTime, lastStoredDailyNetwork[0].dateStartTime)
+  else lastCheckedDateStartTime = -1
+
 
   if (lastCheckedDateStartTime === -1) {
     const firstCycle = await CycleDB.queryCycleByCounter(0)

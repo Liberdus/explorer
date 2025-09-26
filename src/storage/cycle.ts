@@ -6,8 +6,6 @@ import { cleanOldReceiptsMap } from './receipt'
 import { cleanOldOriginalTxsMap } from './originalTxData'
 import { Utils as StringUtils } from '@shardus/types'
 
-export let Collection: unknown
-
 type DbCycle = Cycle & {
   cycleRecord: string
 }
@@ -54,10 +52,11 @@ export async function bulkInsertCycles(cycles: Cycle[]): Promise<void> {
 
 export async function updateCycle(marker: string, cycle: Cycle): Promise<void> {
   try {
-    const sql = `UPDATE cycles SET counter = $counter, cycleRecord = $cycleRecord WHERE cycleMarker = $marker `
+    const sql = `UPDATE cycles SET counter = $counter, cycleRecord = $cycleRecord, start = $start WHERE cycleMarker = $marker `
     await db.run(cycleDatabase, sql, {
       $counter: cycle.counter,
       $cycleRecord: cycle.cycleRecord && StringUtils.safeStringify(cycle.cycleRecord),
+      $start: cycle.start,
       $marker: marker,
     })
     if (config.verbose) console.log('Updated cycle for counter', cycle.cycleRecord.counter, cycle.cycleMarker)
@@ -73,6 +72,7 @@ export async function insertOrUpdateCycle(cycle: Cycle): Promise<void> {
       counter: cycle.cycleRecord.counter,
       cycleRecord: cycle.cycleRecord,
       cycleMarker: cycle.cycleMarker,
+      start: cycle.cycleRecord.start, // Extract start timestamp from cycleRecord.start
     }
     const cycleExist = await queryCycleByMarker(cycle.cycleMarker)
     if (config.verbose) console.log('cycleExist', cycleExist)
@@ -179,4 +179,30 @@ export async function queryLatestCycleNumber(): Promise<number> {
   const latestCycleRecords = await queryLatestCycleRecords(1)
   const latestCycleNumber = latestCycleRecords.length > 0 ? latestCycleRecords[0].counter : 0
   return latestCycleNumber
+}
+
+export async function queryCycleRecordsByTimestamp(
+  afterTimestampInSeconds: number,
+  beforeTimestampInSeconds: number
+): Promise<Cycle[]> {
+  try {
+    const sql = `SELECT * FROM cycles WHERE start > ? AND start < ? ORDER BY counter ASC`
+    const cycles = (await db.all(cycleDatabase, sql, [
+      afterTimestampInSeconds,
+      beforeTimestampInSeconds,
+    ])) as DbCycle[]
+
+    if (cycles.length > 0) {
+      cycles.forEach((cycleRecord: DbCycle) => {
+        if (cycleRecord.cycleRecord)
+          cycleRecord.cycleRecord = StringUtils.safeJsonParse(cycleRecord.cycleRecord)
+      })
+    }
+
+    console.log('cycles by timestamp', cycles.length)
+    return cycles as unknown as Cycle[]
+  } catch (e) {
+    console.log('Error querying cycles by timestamp:', e)
+    return []
+  }
 }

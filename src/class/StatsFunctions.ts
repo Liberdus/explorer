@@ -6,12 +6,13 @@ import {
   MetadataDB,
   DailyTransactionStatsDB,
   DailyAccountStatsDB,
+  DailyNetworkStatsDB,
   TotalAccountBalanceDB,
 } from '../stats'
 import { AccountDB, CycleDB, TransactionDB } from '../storage'
 import { TransactionType, AccountType } from '../types'
 import { P2P } from '@shardus/types'
-import { config } from '../config/index'
+import { config, NetworkAccountId } from '../config/index'
 import {
   BaseTxStats,
   TransactionStats,
@@ -432,10 +433,7 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
     // ----- Daily Account Stats -----
 
     // Query accounts created directly from accounts database (all types)
-    const newAccounts = await AccountDB.queryAccountCountByCreatedTimestamp(
-      afterTimestamp,
-      beforeTimestamp
-    )
+    const newAccounts = await AccountDB.queryAccountCountByCreatedTimestamp(afterTimestamp, beforeTimestamp)
 
     // Query user accounts created directly from accounts database (UserAccount type only)
     const newUserAccounts = await AccountDB.queryAccountCountByCreatedTimestamp(
@@ -464,6 +462,47 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
         startTimestamp + 1
       } endTimestamp ${beforeTimestamp - 1}`,
       dailyAccountStats
+    )
+
+    // ----- Daily Network Stats -----
+
+    // Get network account data for this time period - look for any network account snapshot
+    const networkAccount = await AccountDB.queryAccountByAccountId(NetworkAccountId)
+
+    // Convert milliseconds to seconds since cycle.start is stored in seconds
+    const afterTimestampInSeconds = Math.floor(afterTimestamp / 1000)
+    const beforeTimestampInSeconds = Math.floor(beforeTimestamp / 1000)
+
+    // Calculate average active nodes from cycle records in the time period
+    const cycleRecords = await CycleDB.queryCycleRecordsByTimestamp(
+      afterTimestampInSeconds,
+      beforeTimestampInSeconds
+    )
+    let totalActiveNodes = 0
+    for (const cycle of cycleRecords) {
+      totalActiveNodes += cycle.cycleRecord.active
+    }
+    const avgActiveNodes = Math.round(totalActiveNodes / cycleRecords.length)
+
+    const current = networkAccount.data.current
+    const transactionFeeUsd = current.stabilityFactorStr
+    const nodeRewardAmountUsd = current.nodeRewardAmountUsdStr
+    const stakeRequiredUsd = current.stakeRequiredUsdStr
+
+    const dailyNetworkStats: DailyNetworkStatsDB.DbDailyNetworkStats = {
+      dateStartTime: startTimestamp,
+      transactionFeeUsd,
+      nodeRewardAmountUsd,
+      stakeRequiredUsd,
+      activeNodes: avgActiveNodes,
+    }
+
+    await DailyNetworkStatsDB.insertDailyNetworkStats(dailyNetworkStats)
+    console.log(
+      `Stored daily network stats for ${new Date(startTimestamp)}, startTimestamp ${
+        startTimestamp + 1
+      } endTimestamp ${beforeTimestamp - 1}`,
+      dailyNetworkStats
     )
   }
 }

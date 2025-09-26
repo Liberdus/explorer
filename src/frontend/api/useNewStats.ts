@@ -15,15 +15,21 @@ type StatsResult = {
   totalNewUserTxsChange: number // percentage change in new transactions (day-to-day comparison)
   totalNewTransactionFee: number // total transaction fee in the last 24 hours
   totalNewBurntFee: number // total burnt fee in the last 24 hours
+  transactionFeeUsd: string // transaction fee in USD
+  nodeRewardAmountUsd: string // node reward amount in USD per hour
+  stakeRequiredUsd: string // stake required amount in USD
+  activeNodes: number // number of active nodes count in the last 24 hours
 }
 
 export const useNewStats = (query: {
   fetchAccountStats?: boolean
   fetchTransactionStats?: boolean
   last24HrsCoinReport?: boolean
+  fetchNetworkStats?: boolean
   refreshEnabled?: boolean
 }): StatsResult => {
-  const { fetchAccountStats, fetchTransactionStats, last24HrsCoinReport, refreshEnabled } = query
+  const { fetchAccountStats, fetchTransactionStats, last24HrsCoinReport, fetchNetworkStats, refreshEnabled } =
+    query
 
   // set query paths to `null` if we shouldn't fetch them
   const accountStatsQuery = fetchAccountStats ? `${PATHS.STATS_ACCOUNT}?fetchAccountStats=true` : null
@@ -31,6 +37,7 @@ export const useNewStats = (query: {
     ? `${PATHS.STATS_TRANSACTION}?fetchTransactionStats=true`
     : null
   const coinStatsQuery = last24HrsCoinReport ? `${PATHS.STATS_COIN}?last24HrsCoinReport=true` : null
+  const networkStatsQuery = fetchNetworkStats ? `${PATHS.STATS_NETWORK}` : null
 
   const swrOptions = {
     refreshInterval: !refreshEnabled ? 0 : undefined,
@@ -56,6 +63,13 @@ export const useNewStats = (query: {
     totalNewTransactionFee: number
     totalNewBurntFees: number
   }>(coinStatsQuery, fetcher, swrOptions)
+
+  const networkStatsResponse = useSWR<{
+    transactionFeeUsd: string
+    nodeRewardAmountUsd: string
+    stakeRequiredUsd: string
+    activeNodes: number
+  }>(networkStatsQuery, fetcher, swrOptions)
 
   // get values
   const totalAccounts =
@@ -120,6 +134,34 @@ export const useNewStats = (query: {
       ? Number(coinStatsResponse.data.totalNewBurntFee)
       : 0
 
+  const transactionFeeUsd =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'transactionFeeUsd' in networkStatsResponse.data
+      ? networkStatsResponse.data.transactionFeeUsd
+      : '0.01'
+
+  const nodeRewardAmountUsd =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'nodeRewardAmountUsd' in networkStatsResponse.data
+      ? networkStatsResponse.data.nodeRewardAmountUsd
+      : '1.0'
+
+  const stakeRequiredUsd =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'stakeRequiredUsd' in networkStatsResponse.data
+      ? networkStatsResponse.data.stakeRequiredUsd
+      : '10.0'
+
+  const activeNodes =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'activeNodes' in networkStatsResponse.data
+      ? Number(networkStatsResponse.data.activeNodes)
+      : 0
+
   return {
     totalAccounts,
     totalNewAccounts,
@@ -131,5 +173,9 @@ export const useNewStats = (query: {
     totalNewUserTxsChange,
     totalNewTransactionFee,
     totalNewBurntFee,
+    transactionFeeUsd,
+    nodeRewardAmountUsd,
+    stakeRequiredUsd,
+    activeNodes,
   }
 }
