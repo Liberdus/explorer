@@ -1125,10 +1125,13 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      const stats = await DailyTransactionStatsDB.queryTransactionStats()
+      const stats = await DailyTransactionStatsDB.queryTransactionStats({ userTxs: true })
       reply.send({
         success: true,
-        ...stats,
+        totalUserTxs: stats.totalTransactions,
+        totalNewUserTxs: stats.totalNewTransactions,
+        totalUserTxsChange: stats.totalTransactionsChange,
+        totalNewUserTxsChange: stats.totalNewTransactionsChange,
       })
       return
     }
@@ -1237,13 +1240,13 @@ const start = async (): Promise<void> => {
 
   type CoinStatsRequest = FastifyRequest<{
     Querystring: {
-      last24hoursCoinReport: string
+      last24HrsCoinReport: string
     }
   }>
 
   server.get('/api/stats/coin', async (_request: CoinStatsRequest, reply) => {
     const err = utils.validateTypes(_request.query, {
-      last24hoursCoinReport: 's?',
+      last24HrsCoinReport: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -1252,18 +1255,19 @@ const start = async (): Promise<void> => {
 
     const query = _request.query
 
-    if (query.last24hoursCoinReport) {
-      if (query.last24hoursCoinReport !== 'true') {
+    if (query.last24HrsCoinReport) {
+      if (query.last24HrsCoinReport !== 'true') {
         reply.send({
           success: false,
-          error: 'Invalid last24hoursCoinReport',
+          error: 'Invalid last24HrsCoinReport',
         })
         return
       }
       const stats = await CoinStatsDB.queryLast24HoursCoinStats()
       reply.send({
         success: true,
-        last24HrsSupplyChange: stats,
+        totalNewTransactionFee: stats.totalTransactionFee,
+        totalBurntFee: stats.totalBurntFee,
       })
       return
     }

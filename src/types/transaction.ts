@@ -26,6 +26,8 @@ export interface Message extends BaseLiberdusTx {
   message: string
 }
 
+// Liberdus Transaction Types
+// https://github.com/Liberdus/server/blob/4acd5f4800c20e9904979724f38547572768de99/src/@types/index.ts#L72
 export enum TransactionType {
   init_network = 'init_network',
   network_windows = 'network_windows',
@@ -38,6 +40,10 @@ export enum TransactionType {
   transfer = 'transfer',
   distribute = 'distribute',
   message = 'message',
+  read = 'read',
+  reclaim_toll = 'reclaim_toll',
+  update_chat_toll = 'update_chat_toll',
+  update_toll_required = 'update_toll_required',
   toll = 'toll',
   friend = 'friend',
   remove_friend = 'remove_friend',

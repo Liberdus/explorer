@@ -6,6 +6,7 @@ import { dailyAccountStatsDatabase } from '.'
 export interface BaseDailyAccountStats {
   dateStartTime: number
   newAccounts: number
+  newUserAccounts: number
   activeAccounts: number
 }
 

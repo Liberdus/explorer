@@ -411,9 +411,13 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       txsByTypeObject[propertyName] = typeCount.count
     })
 
+    // Query user transactions (transactions with txFee > 0)
+    const totalUserTxs = await TransactionDB.queryTransactionCountByTxFee(beforeTimestamp, afterTimestamp, 0)
+
     const dailyTransactionStats: DailyTransactionStatsDB.DbDailyTransactionStats = {
       dateStartTime: startTimestamp,
       totalTxs: calculatedTotalTxs,
+      totalUserTxs,
       txsByType: JSON.stringify(txsByTypeObject),
     }
 
@@ -427,43 +431,30 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
 
     // ----- Daily Account Stats -----
 
-    // Get count of active accounts (accounts that made transactions during this day)
-    // This counts unique account addresses that appear in transactions during the day
-    const activeTransactions = await TransactionDB.queryTransactions(
-      0,
-      0,
-      undefined,
-      undefined,
-      0,
-      0,
-      beforeTimestamp,
-      afterTimestamp
+    // Query accounts created directly from accounts database (all types)
+    const newAccounts = await AccountDB.queryAccountCountByCreatedTimestamp(
+      afterTimestamp,
+      beforeTimestamp
     )
 
-    // Filter successful register and create transactions from activeTransactions for new accounts
-    const accountCreationTxs = activeTransactions.filter((tx) => {
-      if (tx.transactionType === TransactionType.register && tx.data.success === true) return true
-      if (tx.transactionType === TransactionType.create && tx.data.success === true) {
-        if (tx.data?.additionalInfo) {
-          if (tx.data?.additionalInfo?.newAccount === true) return true
-          else return false
-        } else return true
-      }
-      return false
-    })
+    // Query user accounts created directly from accounts database (UserAccount type only)
+    const newUserAccounts = await AccountDB.queryAccountCountByCreatedTimestamp(
+      afterTimestamp,
+      beforeTimestamp,
+      AccountType.UserAccount
+    )
 
-    const newAccounts = accountCreationTxs.length
-
-    const uniqueActiveAccounts = new Set()
-    activeTransactions.forEach((tx) => {
-      if (tx.data?.from) uniqueActiveAccounts.add(tx.data.from)
-      if (tx.data?.to) uniqueActiveAccounts.add(tx.data.to)
-    })
-    const activeAccounts = uniqueActiveAccounts.size
+    // Query active accounts by transactions with txFee > 0
+    const activeAccounts = await TransactionDB.queryActiveAccountsCountByTxFee(
+      beforeTimestamp,
+      afterTimestamp,
+      0
+    )
 
     const dailyAccountStats: DailyAccountStatsDB.DbDailyAccountStats = {
       dateStartTime: startTimestamp,
       newAccounts,
+      newUserAccounts,
       activeAccounts,
     }
 

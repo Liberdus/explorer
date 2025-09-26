@@ -71,51 +71,7 @@ export const initializeStatsDB = async (): Promise<void> => {
       cycle NUMBER NOT NULL UNIQUE PRIMARY KEY,
       timestamp BIGINT NOT NULL,
       totalTxs NUMBER NOT NULL DEFAULT 0,
-      totalInitNetworkTxs NUMBER NOT NULL DEFAULT 0,
-      totalNetworkWindowsTxs NUMBER NOT NULL DEFAULT 0,
-      totalSnapshotTxs NUMBER NOT NULL DEFAULT 0,
-      totalEmailTxs NUMBER NOT NULL DEFAULT 0,
-      totalGossipEmailHashTxs NUMBER NOT NULL DEFAULT 0,
-      totalVerifyTxs NUMBER NOT NULL DEFAULT 0,
-      totalRegisterTxs NUMBER NOT NULL DEFAULT 0,
-      totalCreateTxs NUMBER NOT NULL DEFAULT 0,
-      totalTransferTxs NUMBER NOT NULL DEFAULT 0,
-      totalDistributeTxs NUMBER NOT NULL DEFAULT 0,
-      totalMessageTxs NUMBER NOT NULL DEFAULT 0,
-      totalTollTxs NUMBER NOT NULL DEFAULT 0,
-      totalFriendTxs NUMBER NOT NULL DEFAULT 0,
-      totalRemoveFriendTxs NUMBER NOT NULL DEFAULT 0,
-      totalStakeTxs NUMBER NOT NULL DEFAULT 0,
-      totalRemoveStakeTxs NUMBER NOT NULL DEFAULT 0,
-      totalRemoveStakeRequestTxs NUMBER NOT NULL DEFAULT 0,
-      totalNodeRewardTxs NUMBER NOT NULL DEFAULT 0,
-      totalSnapshotClaimTxs NUMBER NOT NULL DEFAULT 0,
-      totalIssueTxs NUMBER NOT NULL DEFAULT 0,
-      totalProposalTxs NUMBER NOT NULL DEFAULT 0,
-      totalVoteTxs NUMBER NOT NULL DEFAULT 0,
-      totalTallyTxs NUMBER NOT NULL DEFAULT 0,
-      totalApplyTallyTxs NUMBER NOT NULL DEFAULT 0,
-      totalParametersTxs NUMBER NOT NULL DEFAULT 0,
-      totalApplyParametersTxs NUMBER NOT NULL DEFAULT 0,
-      totalDevIssueTxs NUMBER NOT NULL DEFAULT 0,
-      totalDevProposalTxs NUMBER NOT NULL DEFAULT 0,
-      totalDevVoteTxs NUMBER NOT NULL DEFAULT 0,
-      totalDevTallyTxs NUMBER NOT NULL DEFAULT 0,
-      totalApplyDevTallyTxs NUMBER NOT NULL DEFAULT 0,
-      totalDevParametersTxs NUMBER NOT NULL DEFAULT 0,
-      totalApplyDevParametersTxs NUMBER NOT NULL DEFAULT 0,
-      totalDeveloperPaymentTxs NUMBER NOT NULL DEFAULT 0,
-      totalApplyDeveloperPaymentTxs NUMBER NOT NULL DEFAULT 0,
-      totalChangeConfigTxs NUMBER NOT NULL DEFAULT 0,
-      totalApplyChangeConfigTxs NUMBER NOT NULL DEFAULT 0,
-      totalChangeNetworkParamTxs NUMBER NOT NULL DEFAULT 0,
-      totalApplyChangeNetworkParamTxs NUMBER NOT NULL DEFAULT 0,
-      totalDepositStakeTxs NUMBER NOT NULL DEFAULT 0,
-      totalWithdrawStakeTxs NUMBER NOT NULL DEFAULT 0,
-      totalSetCertTimeTxs NUMBER NOT NULL DEFAULT 0,
-      totalInitRewardTxs NUMBER NOT NULL DEFAULT 0,
-      totalClaimRewardTxs NUMBER NOT NULL DEFAULT 0,
-      totalApplyPenaltyTxs NUMBER NOT NULL DEFAULT 0
+      ${TransactionStatsDB.generateTransactionStatsSchema()}
     )`
   )
   // await runCreate(transactionStatsDatabase, 'Drop INDEX if exists `transactions_idx`');
@@ -129,15 +85,18 @@ export const initializeStatsDB = async (): Promise<void> => {
     CREATE TABLE if not exists daily_transactions (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       totalTxs NUMBER NOT NULL,
+      totalUserTxs NUMBER NOT NULL DEFAULT 0,
       txsByType TEXT NOT NULL
     )`
   )
+
   await runCreate(
     dailyAccountStatsDatabase,
     `
     CREATE TABLE if not exists daily_accounts (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       newAccounts NUMBER NOT NULL,
+      newUserAccounts NUMBER NOT NULL,
       activeAccounts NUMBER NOT NULL
     )`
   )
