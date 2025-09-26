@@ -92,7 +92,7 @@ export const initializeDB = async (): Promise<void> => {
   // be sure to adjust the data types of `transactionType`, `txFrom`, `txTo` as needed
   await runCreate(
     transactionDatabase,
-    'CREATE TABLE if not exists `transactions` (`txId` TEXT NOT NULL UNIQUE PRIMARY KEY, `appReceiptId` TEXT, `timestamp` BIGINT NOT NULL, `cycleNumber` NUMBER NOT NULL, `data` JSON NOT NULL, `originalTxData` JSON NOT NULL, `transactionType` TEXT, `txFrom` TEXT, `txTo` TEXT, `nominee` TEXT)'
+    'CREATE TABLE if not exists `transactions` (`txId` TEXT NOT NULL UNIQUE PRIMARY KEY, `timestamp` BIGINT NOT NULL, `cycleNumber` NUMBER NOT NULL, `transactionType` TEXT, `txFrom` TEXT, `txTo` TEXT, `txFee` BIGINT NOT NULL DEFAULT 0, `data` JSON NOT NULL, `originalTxData` JSON NOT NULL)'
   )
   await runCreate(
     transactionDatabase,
@@ -120,7 +120,7 @@ export const initializeDB = async (): Promise<void> => {
   )
   await runCreate(
     transactionDatabase,
-    'CREATE INDEX if not exists `transactions_nominee` ON `transactions` (`nominee`)'
+    'CREATE INDEX if not exists `transactions_txFee` ON `transactions` (`txFee`)'
   )
   await runCreate(
     receiptDatabase,
