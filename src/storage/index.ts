@@ -41,10 +41,11 @@ export const initializeDB = async (): Promise<void> => {
   )
   await runCreate(
     cycleDatabase,
-    'CREATE TABLE if not exists `cycles` (`cycleMarker` TEXT NOT NULL UNIQUE PRIMARY KEY, `counter` NUMBER NOT NULL, `cycleRecord` JSON NOT NULL)'
+    'CREATE TABLE if not exists `cycles` (`cycleMarker` TEXT NOT NULL UNIQUE PRIMARY KEY, `counter` NUMBER NOT NULL, `start` BIGINT NOT NULL, `cycleRecord` JSON NOT NULL)'
   )
   // await runCreate(cycleDatabase, 'Drop INDEX if exists `cycles_idx`');
   await runCreate(cycleDatabase, 'CREATE INDEX if not exists `cycles_idx` ON `cycles` (`counter` DESC)')
+  await runCreate(cycleDatabase, 'CREATE INDEX if not exists `cycles_start_idx` ON `cycles` (`start` DESC)')
   await runCreate(
     accountDatabase,
     'CREATE TABLE if not exists `accounts` (`accountId` TEXT NOT NULL UNIQUE PRIMARY KEY, `data` JSON NOT NULL, `timestamp` BIGINT NOT NULL, `hash` TEXT NOT NULL, `cycleNumber` NUMBER NOT NULL, `createdTimestamp` BIGINT NOT NULL, `isGlobal` BOOLEAN NOT NULL, `accountType` TEXT NOT NULL)'

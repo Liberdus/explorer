@@ -15,6 +15,7 @@ import {
   TransactionStatsDB,
   DailyTransactionStatsDB,
   DailyAccountStatsDB,
+  DailyNetworkStatsDB,
   CoinStatsDB,
   NodeStatsDB,
 } from './stats'
@@ -1297,6 +1298,24 @@ const start = async (): Promise<void> => {
       }
     }
     reply.send(res)
+  })
+
+  server.get('/api/stats/network', async (_request, reply) => {
+    try {
+      const stats = await DailyNetworkStatsDB.queryNetworkStats()
+      reply.send({
+        success: true,
+        transactionFeeUsd: stats.transactionFeeUsd,
+        nodeRewardAmountUsd: stats.nodeRewardAmountUsd,
+        stakeRequiredUsd: stats.stakeRequiredUsd,
+        activeNodes: stats.activeNodes,
+      })
+    } catch (e) {
+      reply.send({
+        success: false,
+        error: 'Unable to query network stats',
+      })
+    }
   })
 
   server.get<{ Params: { nodePubKey: string } }>('/api/nodeStats/:nodePubKey', async (_request, reply) => {

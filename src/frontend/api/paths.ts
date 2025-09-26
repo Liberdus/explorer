@@ -24,4 +24,5 @@ export const PATHS = {
   STATS_ACCOUNT: BASE_URL + '/api/stats/account',
   STATS_TRANSACTION: BASE_URL + '/api/stats/transaction',
   STATS_COIN: BASE_URL + '/api/stats/coin',
+  STATS_NETWORK: BASE_URL + '/api/stats/network',
 }

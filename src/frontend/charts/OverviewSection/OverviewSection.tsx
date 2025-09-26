@@ -34,10 +34,15 @@ export const OverviewSection: React.FC = () => {
     totalNewUserTxsChange,
     totalNewTransactionFee,
     totalNewBurntFee,
+    transactionFeeUsd,
+    nodeRewardAmountUsd,
+    stakeRequiredUsd,
+    activeNodes,
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
     last24HrsCoinReport: true,
+    fetchNetworkStats: true,
   })
 
   // Helper function to format percentage and determine change type
@@ -90,6 +95,10 @@ export const OverviewSection: React.FC = () => {
       title: 'Burnt Fees (24H)',
       value: totalNewTransactionFee + totalNewBurntFee,
     },
+    { title: 'Tx Fee Set', value: `$${transactionFeeUsd}` },
+    { title: 'Node Reward / Hr', value: `$${nodeRewardAmountUsd}` },
+    { title: 'Stake Required Amount', value: `$${stakeRequiredUsd}` },
+    { title: 'Active Nodes', value: activeNodes },
   ]
 
   return (
