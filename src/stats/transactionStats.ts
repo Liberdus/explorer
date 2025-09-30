@@ -18,20 +18,44 @@ export type BaseTxStats = {
   [K in TransactionType as TotalTxFieldName<K>]: number
 }
 
+// Cache for ordered transaction types
+// Avoids rebuilding the array on every call since enum values never change at runtime
+// Used frequently by convertBaseTxStatsAsArray, convertBaseTxStatsFromArray, createEmptyBaseTxStats, and generateTransactionStatsSchema
+let orderedTransactionTypesCache: TransactionType[] | null = null
+
+// Cache for transaction type to property name mappings
+// Avoids repeated string splitting and transformation for each transaction type
+// Called many times in loops when processing transaction stats (e.g., every transaction type in convertBaseTxStatsAsArray)
+const transactionTypeToPropertyNameCache = new Map<TransactionType, keyof BaseTxStats>()
+
+// Cache for empty base tx stats
+// Avoids recreating the same empty object structure on every call since the result is always the same
+// Returns the same immutable object reference for efficiency
+let emptyBaseTxStatsCache: BaseTxStats | null = null
+
 // Helper function to convert snake_case enum value to totalPascalCaseTxs property name
 export function transactionTypeToPropertyName(transactionType: TransactionType): keyof BaseTxStats {
+  if (transactionTypeToPropertyNameCache.has(transactionType)) {
+    return transactionTypeToPropertyNameCache.get(transactionType)!
+  }
+
   const snakeToPascal = (str: string): string => {
     return str
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join('')
   }
-  return `total${snakeToPascal(transactionType)}Txs` as keyof BaseTxStats
+  const propertyName = `total${snakeToPascal(transactionType)}Txs` as keyof BaseTxStats
+  transactionTypeToPropertyNameCache.set(transactionType, propertyName)
+  return propertyName
 }
 
 // Get ordered list of transaction types
 export function getOrderedTransactionTypes(): TransactionType[] {
-  return Object.values(TransactionType)
+  if (orderedTransactionTypesCache === null) {
+    orderedTransactionTypesCache = Object.values(TransactionType)
+  }
+  return orderedTransactionTypesCache
 }
 
 export function convertBaseTxStatsAsArray(stats: TransactionStats | DailyTransactionStats): number[] {
@@ -55,15 +79,18 @@ export function convertBaseTxStatsFromArray(arr: number[]): BaseTxStats {
 }
 
 export function createEmptyBaseTxStats(): BaseTxStats {
-  const orderedTypes = getOrderedTransactionTypes()
-  const result = {} as BaseTxStats
+  if (emptyBaseTxStatsCache === null) {
+    const orderedTypes = getOrderedTransactionTypes()
+    const result = {} as BaseTxStats
 
-  orderedTypes.forEach((type) => {
-    const propertyName = transactionTypeToPropertyName(type)
-    result[propertyName] = 0
-  })
+    orderedTypes.forEach((type) => {
+      const propertyName = transactionTypeToPropertyName(type)
+      result[propertyName] = 0
+    })
 
-  return result
+    emptyBaseTxStatsCache = result
+  }
+  return emptyBaseTxStatsCache
 }
 
 export function generateTransactionStatsSchema(): string {

@@ -1,6 +1,5 @@
 import React from 'react'
-import { useCycle, useTransaction, useAccount, useNewStats } from '../../api'
-import { TransactionSearchParams } from '../../../types'
+import { useNewStats } from '../../api'
 import styles from './OverviewSection.module.scss'
 
 interface StatsCardProps {
@@ -41,7 +40,7 @@ export const OverviewSection: React.FC = () => {
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
-    last24HrsCoinReport: true,
+    fetchCoinStats: true,
     fetchNetworkStats: true,
   })
 
