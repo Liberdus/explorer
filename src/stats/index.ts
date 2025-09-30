@@ -7,6 +7,7 @@ import * as TransactionStatsDB from './transactionStats'
 import * as DailyTransactionStatsDB from './dailyTransactionStats'
 import * as DailyAccountStatsDB from './dailyAccountStats'
 import * as DailyNetworkStatsDB from './dailyNetworkStats'
+import * as DailyCoinStatsDB from './dailyCoinStats'
 import * as CoinStatsDB from './coinStats'
 import * as NodeStatsDB from './nodeStats'
 import * as MetadataDB from './metadata'
@@ -17,6 +18,7 @@ export let transactionStatsDatabase: Database
 export let dailyTransactionStatsDatabase: Database
 export let dailyAccountStatsDatabase: Database
 export let dailyNetworkStatsDatabase: Database
+export let dailyCoinStatsDatabase: Database
 export let coinStatsDatabase: Database
 export let nodeStatsDatabase: Database
 export let metadataDatabase: Database
@@ -43,6 +45,10 @@ export const initializeStatsDB = async (): Promise<void> => {
   dailyNetworkStatsDatabase = await createDB(
     `${config.COLLECTOR_STATS_DB_DIR_PATH}/${config.COLLECTOR_STATS_DATA.dailyNetworkStatsDB}`,
     'DailyNetworkStats'
+  )
+  dailyCoinStatsDatabase = await createDB(
+    `${config.COLLECTOR_STATS_DB_DIR_PATH}/${config.COLLECTOR_STATS_DATA.dailyCoinStatsDB}`,
+    'DailyCoinStats'
   )
   coinStatsDatabase = await createDB(
     `${config.COLLECTOR_STATS_DB_DIR_PATH}/${config.COLLECTOR_STATS_DATA.coinStatsDB}`,
@@ -118,6 +124,22 @@ export const initializeStatsDB = async (): Promise<void> => {
       activeNodes NUMBER NOT NULL
     )`
   )
+
+  await runCreate(
+    dailyCoinStatsDatabase,
+    `
+    CREATE TABLE if not exists daily_coin_stats (
+      dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
+      mintedCoin BIGINT NOT NULL DEFAULT 0,
+      transactionFee BIGINT NOT NULL DEFAULT 0,
+      burntFee BIGINT NOT NULL DEFAULT 0,
+      stakeAmount BIGINT NOT NULL DEFAULT 0,
+      unStakeAmount BIGINT NOT NULL DEFAULT 0,
+      nodeRewardAmount BIGINT NOT NULL DEFAULT 0,
+      penaltyAmount BIGINT NOT NULL DEFAULT 0
+    )`
+  )
+
   // await runCreate(dailyTransactionStatsDatabase, 'Drop INDEX if exists `daily_transactions_idx`');
   // await runCreate(
   //   dailyTransactionStatsDatabase,
@@ -184,6 +206,7 @@ export const closeStatsDatabase = async (): Promise<void> => {
   promises.push(close(dailyTransactionStatsDatabase, 'DailyTransactionStats'))
   promises.push(close(dailyAccountStatsDatabase, 'DailyAccountStats'))
   promises.push(close(dailyNetworkStatsDatabase, 'DailyNetworkStats'))
+  promises.push(close(dailyCoinStatsDatabase, 'DailyCoinStats'))
   promises.push(close(coinStatsDatabase, 'CoinStats'))
   promises.push(close(nodeStatsDatabase, 'NodeStats'))
   promises.push(close(metadataDatabase, 'Metadata'))
@@ -197,6 +220,7 @@ export {
   DailyTransactionStatsDB,
   DailyAccountStatsDB,
   DailyNetworkStatsDB,
+  DailyCoinStatsDB,
   CoinStatsDB,
   NodeStatsDB,
   MetadataDB,

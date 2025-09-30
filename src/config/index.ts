@@ -46,6 +46,7 @@ export interface Config {
     dailyTransactionStatsDB: string
     dailyAccountStatsDB: string
     dailyNetworkStatsDB: string
+    dailyCoinStatsDB: string
     coinStatsDB: string
     nodeStatsDB: string
     metadataDB: string
@@ -136,6 +137,7 @@ let config: Config = {
     dailyTransactionStatsDB: 'dailyTransactionStats.sqlite3',
     dailyAccountStatsDB: 'dailyAccountStats.sqlite3',
     dailyNetworkStatsDB: 'dailyNetworkStats.sqlite3',
+    dailyCoinStatsDB: 'dailyCoinStats.sqlite3',
     coinStatsDB: 'coinStats.sqlite3',
     nodeStatsDB: 'nodeStats.sqlite3',
     metadataDB: 'metadata.sqlite3',

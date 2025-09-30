@@ -7,6 +7,7 @@ import {
   DailyTransactionStatsDB,
   DailyAccountStatsDB,
   DailyNetworkStatsDB,
+  DailyCoinStatsDB,
   TotalAccountBalanceDB,
 } from '../stats'
 import { AccountDB, CycleDB, TransactionDB } from '../storage'
@@ -504,6 +505,110 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       } endTimestamp ${beforeTimestamp - 1}`,
       dailyNetworkStats
     )
+
+    // ----- Daily Coin Stats -----
+
+    // Query transactions directly by timestamp
+    const transactions = await TransactionDB.queryTransactions(
+      0,
+      0,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      beforeTimestamp,
+      afterTimestamp
+    )
+
+    // Filter transactions
+    const depositStakeTransactions = transactions.filter(
+      (a) => a.transactionType === TransactionType.deposit_stake && a.data.success === true
+    )
+    const withdrawStakeTransactions = transactions.filter(
+      (a) => a.transactionType === TransactionType.withdraw_stake && a.data.success === true
+    )
+    const createTransactions = transactions.filter(
+      (a) => a.transactionType === TransactionType.create && a.data.success === true
+    )
+    const registerTransactions = transactions.filter(
+      (a) => a.transactionType === TransactionType.register && a.data.success === true
+    )
+
+    try {
+      // Calculate total staked amount
+      const stakeAmount: bigint = depositStakeTransactions.reduce((sum, current) => {
+        const stakeAmount = (current.data as any)?.additionalInfo?.stake || BigInt(0)
+        return sum + stakeAmount
+      }, BigInt(0))
+
+      // Calculate total unstaked amount
+      const unStakeAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
+        const unStakeAmount = (current.data as any)?.additionalInfo?.stake || BigInt(0)
+        return sum + unStakeAmount
+      }, BigInt(0))
+
+      // Calculate total node rewards
+      const nodeRewardAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
+        const nodeRewardAmount = (current.data as any)?.additionalInfo?.reward || BigInt(0)
+        return sum + nodeRewardAmount
+      }, BigInt(0))
+
+      // Calculate total node penalties
+      const nodePenaltyAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
+        const nodePenaltyAmount = (current.data as any)?.additionalInfo?.penalty || BigInt(0)
+        return sum + nodePenaltyAmount
+      }, BigInt(0))
+
+      // Calculate total gas burnt
+      const transactionFeeAmount: bigint = transactions.reduce((sum, current) => {
+        const transactionFee = (current.data as any).transactionFee || BigInt(0)
+        return sum + transactionFee
+      }, BigInt(0))
+
+      // Calculate total network toll tax fee
+      const networkTollTaxFee: bigint = transactions.reduce((sum, current) => {
+        const networkTollTaxFee = (current.data as any)?.additionalInfo?.networkTollTaxFee || BigInt(0)
+        return sum + networkTollTaxFee
+      }, BigInt(0))
+
+      // Calculate the total amount of tokens created
+      const createAmount: bigint = createTransactions.reduce((sum, current) => {
+        if (current.data?.additionalInfo?.amount !== undefined) {
+          const newAccountBalance =
+            current.data.additionalInfo.newAccount === true ? DEFAULT_ACCOUNT_BALANCE : BigInt(0)
+          return sum + current.data.additionalInfo.amount + newAccountBalance
+        }
+        const createAmount = (current.originalTxData as any).tx.amount || BigInt(0)
+        return sum + createAmount
+      }, BigInt(0))
+
+      const registerAmount = BigInt(registerTransactions.length) * DEFAULT_ACCOUNT_BALANCE
+
+      const mintedCoin = weiBNToEth(registerAmount + createAmount)
+      const transactionFee = weiBNToEth(transactionFeeAmount)
+      const burntFee = weiBNToEth(networkTollTaxFee + nodePenaltyAmount)
+
+      const dailyCoinStats: DailyCoinStatsDB.DbDailyCoinStats = {
+        dateStartTime: startTimestamp,
+        transactionFee,
+        burntFee,
+        stakeAmount: weiBNToEth(stakeAmount),
+        unStakeAmount: weiBNToEth(unStakeAmount),
+        penaltyAmount: weiBNToEth(nodePenaltyAmount),
+        nodeRewardAmount: weiBNToEth(nodeRewardAmount),
+        mintedCoin,
+      }
+
+      await DailyCoinStatsDB.insertDailyCoinStats(dailyCoinStats)
+      console.log(
+        `Stored daily coin stats for ${new Date(startTimestamp)}, startTimestamp ${
+          startTimestamp + 1
+        } endTimestamp ${beforeTimestamp - 1}`,
+        dailyCoinStats
+      )
+    } catch (e) {
+      console.log(`Failed to calculate daily coin stats for ${new Date(startTimestamp)}`, e)
+    }
   }
 }
 

@@ -16,6 +16,7 @@ import {
   DailyTransactionStatsDB,
   DailyAccountStatsDB,
   DailyNetworkStatsDB,
+  DailyCoinStatsDB,
   CoinStatsDB,
   NodeStatsDB,
 } from './stats'
@@ -47,6 +48,7 @@ import { TransactionStats, convertBaseTxStatsAsArray } from './stats/transaction
 import { DailyTransactionStats } from './stats/dailyTransactionStats'
 import { DailyAccountStats } from './stats/dailyAccountStats'
 import { last } from 'lodash'
+import { DailyCoinStats } from './stats/dailyCoinStats'
 
 if (config.env == envEnum.DEV) {
   //default debug mode
@@ -1241,13 +1243,13 @@ const start = async (): Promise<void> => {
 
   type CoinStatsRequest = FastifyRequest<{
     Querystring: {
-      last24HrsCoinReport: string
+      count: string
     }
   }>
 
   server.get('/api/stats/coin', async (_request: CoinStatsRequest, reply) => {
     const err = utils.validateTypes(_request.query, {
-      last24HrsCoinReport: 's?',
+      count: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -1256,19 +1258,24 @@ const start = async (): Promise<void> => {
 
     const query = _request.query
 
-    if (query.last24HrsCoinReport) {
-      if (query.last24HrsCoinReport !== 'true') {
+    let dailyCoinStats: DailyCoinStats[] = []
+    if (query.count) {
+      const count: number = parseInt(query.count)
+      if (count <= 0 || Number.isNaN(count)) {
+        reply.send({ success: false, error: 'Invalid count' })
+        return
+      }
+      if (count > config.requestLimits.MAX_STATS_PER_REQUEST) {
         reply.send({
           success: false,
-          error: 'Invalid last24HrsCoinReport',
+          error: `Maximum count is ${config.requestLimits.MAX_STATS_PER_REQUEST}`,
         })
         return
       }
-      const stats = await CoinStatsDB.queryLast24HoursCoinStats()
+      dailyCoinStats = await DailyCoinStatsDB.queryLatestDailyCoinStats(count)
       reply.send({
         success: true,
-        totalNewTransactionFee: stats.totalTransactionFee,
-        totalBurntFee: stats.totalBurntFee,
+        dailyCoinStats,
       })
       return
     }

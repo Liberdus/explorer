@@ -24,11 +24,11 @@ type StatsResult = {
 export const useNewStats = (query: {
   fetchAccountStats?: boolean
   fetchTransactionStats?: boolean
-  last24HrsCoinReport?: boolean
+  fetchCoinStats?: boolean
   fetchNetworkStats?: boolean
   refreshEnabled?: boolean
 }): StatsResult => {
-  const { fetchAccountStats, fetchTransactionStats, last24HrsCoinReport, fetchNetworkStats, refreshEnabled } =
+  const { fetchAccountStats, fetchTransactionStats, fetchCoinStats, fetchNetworkStats, refreshEnabled } =
     query
 
   // set query paths to `null` if we shouldn't fetch them
@@ -36,7 +36,7 @@ export const useNewStats = (query: {
   const transactionStatsQuery = fetchTransactionStats
     ? `${PATHS.STATS_TRANSACTION}?fetchTransactionStats=true`
     : null
-  const coinStatsQuery = last24HrsCoinReport ? `${PATHS.STATS_COIN}?last24HrsCoinReport=true` : null
+  const coinStatsQuery = fetchCoinStats ? `${PATHS.STATS_COIN}?count=1` : null
   const networkStatsQuery = fetchNetworkStats ? `${PATHS.STATS_NETWORK}` : null
 
   const swrOptions = {
@@ -60,8 +60,11 @@ export const useNewStats = (query: {
     totalNewUserTxsChange: number
   }>(transactionStatsQuery, fetcher, swrOptions)
   const coinStatsResponse = useSWR<{
-    totalNewTransactionFee: number
-    totalNewBurntFees: number
+    success: boolean
+    dailyCoinStats: Array<{
+      transactionFee: number
+      burntFee: number
+    }>
   }>(coinStatsQuery, fetcher, swrOptions)
 
   const networkStatsResponse = useSWR<{
@@ -124,14 +127,18 @@ export const useNewStats = (query: {
   const totalNewTransactionFee =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'totalNewTransactionFee' in coinStatsResponse.data
-      ? Number(coinStatsResponse.data.totalNewTransactionFee)
+    'dailyCoinStats' in coinStatsResponse.data &&
+    Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
+    coinStatsResponse.data.dailyCoinStats.length > 0
+      ? Number(coinStatsResponse.data.dailyCoinStats[0].transactionFee)
       : 0
   const totalNewBurntFee =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'totalNewBurntFee' in coinStatsResponse.data
-      ? Number(coinStatsResponse.data.totalNewBurntFee)
+    'dailyCoinStats' in coinStatsResponse.data &&
+    Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
+    coinStatsResponse.data.dailyCoinStats.length > 0
+      ? Number(coinStatsResponse.data.dailyCoinStats[0].burntFee)
       : 0
 
   const transactionFeeUsd =
