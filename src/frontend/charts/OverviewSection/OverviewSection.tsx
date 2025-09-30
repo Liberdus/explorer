@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNewStats } from '../../api'
 import styles from './OverviewSection.module.scss'
+import { parse } from 'path'
 
 interface StatsCardProps {
   title: string
@@ -33,10 +34,15 @@ export const OverviewSection: React.FC = () => {
     totalNewUserTxsChange,
     totalNewTransactionFee,
     totalNewBurntFee,
-    transactionFeeUsd,
-    nodeRewardAmountUsd,
-    stakeRequiredUsd,
+    totalNewNodeReward,
+    totalSupply,
+    totalStaked,
+    stabilityFactorStr,
+    transactionFeeUsdStr,
+    nodeRewardAmountUsdStr,
+    stakeRequiredUsdStr,
     activeNodes,
+    standbyNodes,
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
@@ -83,21 +89,52 @@ export const OverviewSection: React.FC = () => {
     // Avg tx fee would be total_tx_fee_24h / transactions_24h
     {
       title: 'Total Transaction Fee (24H)',
-      value: totalNewTransactionFee,
+      value: `$${totalNewTransactionFee * parseFloat(stabilityFactorStr)}`,
     },
     {
       title: 'Avg Transaction Fee (24H)',
-      value: totalNewTransactionFee / totalNewUserTxs,
+      value: `$${(totalNewTransactionFee / totalNewUserTxs) * parseFloat(stabilityFactorStr)}`,
     },
     { title: 'Network Utilization (24H)', value: 0 },
     {
       title: 'Burnt Fees (24H)',
-      value: totalNewTransactionFee + totalNewBurntFee,
+      value: `$${(totalNewTransactionFee + totalNewBurntFee) * parseFloat(stabilityFactorStr)}`,
     },
-    { title: 'Tx Fee Set', value: `$${transactionFeeUsd}` },
-    { title: 'Node Reward / Hr', value: `$${nodeRewardAmountUsd}` },
-    { title: 'Stake Required Amount', value: `$${stakeRequiredUsd}` },
+    { title: 'Tx Fee Set', value: `$${transactionFeeUsdStr}` },
+    { title: 'Node Reward / Hr', value: `$${nodeRewardAmountUsdStr}` },
+    { title: 'Stake Required Amount', value: `$${stakeRequiredUsdStr}` },
     { title: 'Active Nodes', value: activeNodes },
+    { title: 'LIB Price ', value: `$${stabilityFactorStr}` },
+    { title: 'LIB Supply', value: `${totalSupply} LIB` },
+    {
+      title: 'LIB MarketCap',
+      value: `$${(totalSupply * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      })}`,
+    },
+    {
+      title: '$Total Staked',
+      value: `$${(totalStaked * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      })}`,
+    },
+    {
+      title: '$Network Rev (24H)',
+      value: `$${(
+        (totalNewTransactionFee + totalNewBurntFee) *
+        parseFloat(stabilityFactorStr)
+      ).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+    },
+    {
+      title: '$Network Exp (24H)',
+      value: `$${(totalNewNodeReward * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      })}`,
+    },
+    {
+      title: 'SA Ratio',
+      value: `${standbyNodes} :  ${activeNodes}`,
+    },
   ]
 
   return (

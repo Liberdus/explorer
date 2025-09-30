@@ -480,22 +480,34 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       beforeTimestampInSeconds
     )
     let totalActiveNodes = 0
+    let totalStandbyNodes = 0
     for (const cycle of cycleRecords) {
       totalActiveNodes += cycle.cycleRecord.active
+      totalStandbyNodes += cycle.cycleRecord.standby
     }
     const avgActiveNodes = Math.round(totalActiveNodes / cycleRecords.length)
+    const avgStandbyNodes = Math.ceil(totalStandbyNodes / cycleRecords.length)
 
     const current = networkAccount.data.current
-    const transactionFeeUsd = current.stabilityFactorStr
-    const nodeRewardAmountUsd = current.nodeRewardAmountUsdStr
-    const stakeRequiredUsd = current.stakeRequiredUsdStr
+    const transactionFeeUsdStr = current.transactionFeeUsdStr
+    const stabilityFactorStr = current.stabilityFactorStr
+    const minTollUsdStr = current.minTollUsdStr
+    const defaultTollUsdStr = current.defaultTollUsdStr
+    const nodePenaltyUsdStr = current.nodePenaltyUsdStr
+    const nodeRewardAmountUsdStr = current.nodeRewardAmountUsdStr
+    const stakeRequiredUsdStr = current.stakeRequiredUsdStr
 
     const dailyNetworkStats: DailyNetworkStatsDB.DbDailyNetworkStats = {
       dateStartTime: startTimestamp,
-      transactionFeeUsd,
-      nodeRewardAmountUsd,
-      stakeRequiredUsd,
+      stabilityFactorStr,
+      transactionFeeUsdStr,
+      stakeRequiredUsdStr,
+      nodeRewardAmountUsdStr,
+      nodePenaltyUsdStr,
+      defaultTollUsdStr,
+      minTollUsdStr,
       activeNodes: avgActiveNodes,
+      standbyNodes: avgStandbyNodes,
     }
 
     await DailyNetworkStatsDB.insertDailyNetworkStats(dailyNetworkStats)
@@ -527,6 +539,9 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
     const withdrawStakeTransactions = transactions.filter(
       (a) => a.transactionType === TransactionType.withdraw_stake && a.data.success === true
     )
+    const claimRewardTransactions = transactions.filter(
+      (a) => a.transactionType === TransactionType.claim_reward && a.data.success === true
+    )
     const createTransactions = transactions.filter(
       (a) => a.transactionType === TransactionType.create && a.data.success === true
     )
@@ -547,10 +562,16 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
         return sum + unStakeAmount
       }, BigInt(0))
 
-      // Calculate total node rewards
-      const nodeRewardAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
-        const nodeRewardAmount = (current.data as any)?.additionalInfo?.reward || BigInt(0)
-        return sum + nodeRewardAmount
+      // Calculate total realized node rewards (withdraw stake)
+      const rewardAmountRealized: bigint = withdrawStakeTransactions.reduce((sum, current) => {
+        const reward = (current.data as any)?.additionalInfo?.reward || BigInt(0)
+        return sum + reward
+      }, BigInt(0))
+
+      // Calculate total unrealized node rewards (claim reward)
+      const rewardAmountUnrealized: bigint = claimRewardTransactions.reduce((sum, current) => {
+        const reward = (current.data as any)?.additionalInfo?.rewardedAmount || BigInt(0)
+        return sum + reward
       }, BigInt(0))
 
       // Calculate total node penalties
@@ -586,7 +607,7 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
 
       const mintedCoin = weiBNToEth(registerAmount + createAmount)
       const transactionFee = weiBNToEth(transactionFeeAmount)
-      const burntFee = weiBNToEth(networkTollTaxFee + nodePenaltyAmount)
+      const burntFee = weiBNToEth(networkTollTaxFee)
 
       const dailyCoinStats: DailyCoinStatsDB.DbDailyCoinStats = {
         dateStartTime: startTimestamp,
@@ -595,7 +616,8 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
         stakeAmount: weiBNToEth(stakeAmount),
         unStakeAmount: weiBNToEth(unStakeAmount),
         penaltyAmount: weiBNToEth(nodePenaltyAmount),
-        nodeRewardAmount: weiBNToEth(nodeRewardAmount),
+        rewardAmountRealized: weiBNToEth(rewardAmountRealized),
+        rewardAmountUnrealized: weiBNToEth(rewardAmountUnrealized),
         mintedCoin,
       }
 
