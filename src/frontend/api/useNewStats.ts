@@ -3,6 +3,8 @@ import useSWR from 'swr'
 import { fetcher } from './fetcher'
 
 import { PATHS } from './paths'
+import { BaseDailyNetworkStats } from '../../stats/dailyNetworkStats'
+import { BaseDailyCoinStats } from '../../stats/dailyCoinStats'
 
 type StatsResult = {
   totalAccounts: number
@@ -15,10 +17,15 @@ type StatsResult = {
   totalNewUserTxsChange: number // percentage change in new transactions (day-to-day comparison)
   totalNewTransactionFee: number // total transaction fee in the last 24 hours
   totalNewBurntFee: number // total burnt fee in the last 24 hours
-  transactionFeeUsd: string // transaction fee in USD
-  nodeRewardAmountUsd: string // node reward amount in USD per hour
-  stakeRequiredUsd: string // stake required amount in USD
+  totalNewNodeReward: number // total node rewards (network expense 24h)
+  totalSupply: number // total LIB supply
+  totalStaked: number // total staked amount
+  stabilityFactorStr: string // LIB Pric in USD
+  transactionFeeUsdStr: string // transaction fee in USD
+  nodeRewardAmountUsdStr: string // node reward amount in USD per hour
+  stakeRequiredUsdStr: string // stake required amount in USD
   activeNodes: number // number of active nodes count in the last 24 hours
+  standbyNodes: number // number of standby nodes count in the last 24 hours
 }
 
 export const useNewStats = (query: {
@@ -61,18 +68,12 @@ export const useNewStats = (query: {
   }>(transactionStatsQuery, fetcher, swrOptions)
   const coinStatsResponse = useSWR<{
     success: boolean
-    dailyCoinStats: Array<{
-      transactionFee: number
-      burntFee: number
-    }>
+    dailyCoinStats: BaseDailyCoinStats[]
+    totalSupply: number
+    totalStaked: number
   }>(coinStatsQuery, fetcher, swrOptions)
 
-  const networkStatsResponse = useSWR<{
-    transactionFeeUsd: string
-    nodeRewardAmountUsd: string
-    stakeRequiredUsd: string
-    activeNodes: number
-  }>(networkStatsQuery, fetcher, swrOptions)
+  const networkStatsResponse = useSWR<BaseDailyNetworkStats>(networkStatsQuery, fetcher, swrOptions)
 
   // get values
   const totalAccounts =
@@ -141,32 +142,69 @@ export const useNewStats = (query: {
       ? Number(coinStatsResponse.data.dailyCoinStats[0].burntFee)
       : 0
 
-  const transactionFeeUsd =
-    typeof networkStatsResponse.data === 'object' &&
-    networkStatsResponse.data != null &&
-    'transactionFeeUsd' in networkStatsResponse.data
-      ? networkStatsResponse.data.transactionFeeUsd
-      : '0.01'
+  const totalNewNodeReward =
+    typeof coinStatsResponse.data === 'object' &&
+    coinStatsResponse.data != null &&
+    'dailyCoinStats' in coinStatsResponse.data &&
+    Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
+    coinStatsResponse.data.dailyCoinStats.length > 0
+      ? Number(coinStatsResponse.data.dailyCoinStats[0].rewardAmountUnrealized)
+      : 0
 
-  const nodeRewardAmountUsd =
-    typeof networkStatsResponse.data === 'object' &&
-    networkStatsResponse.data != null &&
-    'nodeRewardAmountUsd' in networkStatsResponse.data
-      ? networkStatsResponse.data.nodeRewardAmountUsd
-      : '1.0'
+  const totalSupply =
+    typeof coinStatsResponse.data === 'object' &&
+    coinStatsResponse.data != null &&
+    'totalSupply' in coinStatsResponse.data
+      ? Number(coinStatsResponse.data.totalSupply)
+      : 0
 
-  const stakeRequiredUsd =
+  const totalStaked =
+    typeof coinStatsResponse.data === 'object' &&
+    coinStatsResponse.data != null &&
+    'totalStaked' in coinStatsResponse.data
+      ? Number(coinStatsResponse.data.totalStaked)
+      : 0
+
+  const stabilityFactorStr =
     typeof networkStatsResponse.data === 'object' &&
     networkStatsResponse.data != null &&
-    'stakeRequiredUsd' in networkStatsResponse.data
-      ? networkStatsResponse.data.stakeRequiredUsd
-      : '10.0'
+    'stabilityFactorStr' in networkStatsResponse.data
+      ? networkStatsResponse.data.stabilityFactorStr
+      : '0'
+
+  const transactionFeeUsdStr =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'stabilityFactorStr' in networkStatsResponse.data
+      ? networkStatsResponse.data.transactionFeeUsdStr
+      : '0'
+
+  const nodeRewardAmountUsdStr =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'nodeRewardAmountUsdStr' in networkStatsResponse.data
+      ? networkStatsResponse.data.nodeRewardAmountUsdStr
+      : '0'
+
+  const stakeRequiredUsdStr =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'stakeRequiredUsdStr' in networkStatsResponse.data
+      ? networkStatsResponse.data.stakeRequiredUsdStr
+      : '0'
 
   const activeNodes =
     typeof networkStatsResponse.data === 'object' &&
     networkStatsResponse.data != null &&
     'activeNodes' in networkStatsResponse.data
       ? Number(networkStatsResponse.data.activeNodes)
+      : 0
+
+  const standbyNodes =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'standbyNodes' in networkStatsResponse.data
+      ? Number(networkStatsResponse.data.standbyNodes)
       : 0
 
   return {
@@ -180,9 +218,14 @@ export const useNewStats = (query: {
     totalNewUserTxsChange,
     totalNewTransactionFee,
     totalNewBurntFee,
-    transactionFeeUsd,
-    nodeRewardAmountUsd,
-    stakeRequiredUsd,
+    totalNewNodeReward,
+    totalSupply,
+    totalStaked,
+    stabilityFactorStr,
+    transactionFeeUsdStr,
+    nodeRewardAmountUsdStr,
+    stakeRequiredUsdStr,
     activeNodes,
+    standbyNodes,
   }
 }

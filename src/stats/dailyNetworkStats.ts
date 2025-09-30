@@ -5,10 +5,15 @@ import { dailyNetworkStatsDatabase } from '.'
 
 export interface BaseDailyNetworkStats {
   dateStartTime: number
-  transactionFeeUsd: string
-  nodeRewardAmountUsd: string
-  stakeRequiredUsd: string
+  stabilityFactorStr: string
+  transactionFeeUsdStr: string
+  stakeRequiredUsdStr: string
+  nodeRewardAmountUsdStr: string
+  nodePenaltyUsdStr: string
+  defaultTollUsdStr: string
+  minTollUsdStr: string
   activeNodes: number
+  standbyNodes: number
 }
 
 export type DailyNetworkStats = BaseDailyNetworkStats
@@ -82,33 +87,5 @@ export async function queryDailyNetworkStatsBetween(
   } catch (e) {
     console.log(e)
     return []
-  }
-}
-
-export async function queryNetworkStats(): Promise<{
-  transactionFeeUsd: string
-  nodeRewardAmountUsd: string
-  stakeRequiredUsd: string
-  activeNodes: number
-}> {
-  try {
-    // Get the latest entry (most recent entry by dateStartTime)
-    const latestSql = `SELECT * FROM daily_network ORDER BY dateStartTime DESC LIMIT 1`
-    const latestResult: DbDailyNetworkStats = await db.get(dailyNetworkStatsDatabase, latestSql)
-
-    return {
-      transactionFeeUsd: latestResult?.transactionFeeUsd || '0.01',
-      nodeRewardAmountUsd: latestResult?.nodeRewardAmountUsd || '1.0',
-      stakeRequiredUsd: latestResult?.stakeRequiredUsd || '10.0',
-      activeNodes: latestResult?.activeNodes || 0,
-    }
-  } catch (e) {
-    console.log(e)
-    return {
-      transactionFeeUsd: '0.01',
-      nodeRewardAmountUsd: '1.0',
-      stakeRequiredUsd: '10.0',
-      activeNodes: 0,
-    }
   }
 }

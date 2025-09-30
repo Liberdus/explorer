@@ -118,10 +118,15 @@ export const initializeStatsDB = async (): Promise<void> => {
     `
     CREATE TABLE if not exists daily_network (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
-      transactionFeeUsd TEXT NOT NULL,
-      nodeRewardAmountUsd TEXT NOT NULL,
-      stakeRequiredUsd TEXT NOT NULL,
-      activeNodes NUMBER NOT NULL
+      stabilityFactorStr TEXT NOT NULL,
+      transactionFeeUsdStr TEXT NOT NULL,
+      stakeRequiredUsdStr TEXT NOT NULL,
+      nodeRewardAmountUsdStr TEXT NOT NULL,
+      nodePenaltyUsdStr TEXT NOT NULL,
+      defaultTollUsdStr TEXT NOT NULL,
+      minTollUsdStr TEXT NOT NULL,
+      activeNodes NUMBER NOT NULL,
+      standbyNodes NUMBER NOT NULL
     )`
   )
 
@@ -135,7 +140,8 @@ export const initializeStatsDB = async (): Promise<void> => {
       burntFee BIGINT NOT NULL DEFAULT 0,
       stakeAmount BIGINT NOT NULL DEFAULT 0,
       unStakeAmount BIGINT NOT NULL DEFAULT 0,
-      nodeRewardAmount BIGINT NOT NULL DEFAULT 0,
+      rewardAmountRealized BIGINT NOT NULL DEFAULT 0,
+      rewardAmountUnrealized BIGINT NOT NULL DEFAULT 0,
       penaltyAmount BIGINT NOT NULL DEFAULT 0
     )`
   )

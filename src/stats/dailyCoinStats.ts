@@ -10,7 +10,8 @@ export interface BaseDailyCoinStats {
   burntFee: number // Additional other fees not included in transactionFee (e.g. network toll tax )
   stakeAmount: number
   unStakeAmount: number
-  nodeRewardAmount: number
+  rewardAmountRealized: number
+  rewardAmountUnrealized: number
   penaltyAmount: number
 }
 
@@ -71,7 +72,8 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
   stakeAmount: number
   unStakeAmount: number
   penaltyAmount: number
-  nodeRewardAmount: number
+  rewardAmountRealized: number
+  rewardAmountUnrealized: number
   mintedCoin: number
 }> {
   try {
@@ -81,7 +83,8 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
       IFNULL(sum(burntFee), 0) as burntFee,
       IFNULL(sum(stakeAmount), 0) as stakeAmount,
       IFNULL(sum(unStakeAmount), 0) as unStakeAmount,
-      IFNULL(sum(nodeRewardAmount), 0) as nodeRewardAmount,
+      IFNULL(sum(rewardAmountRealized), 0) as rewardAmountRealized,
+      IFNULL(sum(rewardAmountUnrealized), 0) as rewardAmountUnrealized,
       IFNULL(sum(penaltyAmount), 0) as penaltyAmount
       FROM daily_coin_stats`
     const dailyCoinStats: {
@@ -90,7 +93,8 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
       stakeAmount: number
       unStakeAmount: number
       penaltyAmount: number
-      nodeRewardAmount: number
+      rewardAmountRealized: number
+      rewardAmountUnrealized: number
       mintedCoin: number
     } = await db.get(dailyCoinStatsDatabase, sql)
     if (config.verbose) console.log('aggregated daily coin stats', dailyCoinStats)
@@ -103,7 +107,8 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
       stakeAmount: 0,
       unStakeAmount: 0,
       penaltyAmount: 0,
-      nodeRewardAmount: 0,
+      rewardAmountRealized: 0,
+      rewardAmountUnrealized: 0,
       mintedCoin: 0,
     }
   }

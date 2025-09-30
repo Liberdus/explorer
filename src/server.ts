@@ -1273,9 +1273,24 @@ const start = async (): Promise<void> => {
         return
       }
       dailyCoinStats = await DailyCoinStatsDB.queryLatestDailyCoinStats(count)
+
+      // Also fetch aggregated totals for supply and stake calculations
+      const aggregatedStats = await DailyCoinStatsDB.queryAggregatedDailyCoinStats()
+      const totalSupply =
+        config.genesisLIBSupply +
+        aggregatedStats.mintedCoin +
+        aggregatedStats.rewardAmountRealized +
+        aggregatedStats.transactionFee -
+        aggregatedStats.burntFee -
+        aggregatedStats.penaltyAmount
+      const totalStaked =
+        aggregatedStats.stakeAmount - aggregatedStats.unStakeAmount - aggregatedStats.penaltyAmount
+
       reply.send({
         success: true,
         dailyCoinStats,
+        totalSupply,
+        totalStaked,
       })
       return
     }
@@ -1309,13 +1324,10 @@ const start = async (): Promise<void> => {
 
   server.get('/api/stats/network', async (_request, reply) => {
     try {
-      const stats = await DailyNetworkStatsDB.queryNetworkStats()
+      const stats = await DailyNetworkStatsDB.queryLatestDailyNetworkStats(1)
       reply.send({
         success: true,
-        transactionFeeUsd: stats.transactionFeeUsd,
-        nodeRewardAmountUsd: stats.nodeRewardAmountUsd,
-        stakeRequiredUsd: stats.stakeRequiredUsd,
-        activeNodes: stats.activeNodes,
+        ...stats[0],
       })
     } catch (e) {
       reply.send({
