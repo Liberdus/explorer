@@ -3,7 +3,7 @@ import Highcharts from 'highcharts'
 import HighchartsExporting from 'highcharts/modules/exporting'
 import HighchartsReact from 'highcharts-react-official'
 import { useRouter } from 'next/router'
-import { CycleLineMarker } from '../../../charts/ChartDetail/ChartDetail'
+import { CycleLineMarker } from '../../../charts/DetailChart/ChartDetail'
 
 declare module 'highcharts' {
   interface Chart {
