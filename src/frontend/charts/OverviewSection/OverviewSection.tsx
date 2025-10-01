@@ -33,7 +33,8 @@ export const OverviewSection: React.FC = () => {
     totalNewUserTxsChange,
     totalNewTransactionFee,
     totalNewBurntFee,
-    totalNewNodeReward,
+    totalNewMintedCoin,
+    totalNewSupply,
     totalSupply,
     totalStaked,
     stabilityFactorStr,
@@ -42,6 +43,8 @@ export const OverviewSection: React.FC = () => {
     stakeRequiredUsdStr,
     activeNodes,
     standbyNodes,
+    activeBalanceAccounts,
+    activeAccounts,
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
@@ -73,7 +76,7 @@ export const OverviewSection: React.FC = () => {
     {
       title: 'Transactions (Total)',
       value: totalUserTxs,
-      ...formatPercentage(totalUserTxsChange),
+      // ...formatPercentage(totalUserTxsChange),
     },
     {
       title: 'New Addresses (24H)',
@@ -131,13 +134,27 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: '$Network Exp (24H)',
-      value: `$${(totalNewNodeReward * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+      value: `$${(totalNewMintedCoin * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
     },
     {
       title: 'SA Ratio',
       value: `${standbyNodes} :  ${activeNodes}`,
+    },
+    {
+      title: 'LIB Supply (24H)',
+      value: `${totalNewSupply.toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      })}`,
+    },
+    {
+      title: 'Accounts (Total)',
+      value: activeBalanceAccounts,
+    },
+    {
+      title: 'Daily Active Accounts (24H)',
+      value: activeAccounts,
     },
   ]
 

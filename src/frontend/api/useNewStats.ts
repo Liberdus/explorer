@@ -11,13 +11,14 @@ type StatsResult = {
   totalNewAccounts: number // accounts created in the last 24 hours
   totalUserTxs: number
   totalNewUserTxs: number // transactions created in the last 24 hours
-  totalAccountsChange: number // percentage change in total accounts (7-day comparison)
+  totalAccountsChange: number // percentage change: today's new addresses / yesterday's cumulative total * 100
   totalNewAccountsChange: number // percentage change in new accounts (day-to-day comparison)
   totalUserTxsChange: number // percentage change in total transactions (7-day comparison)
   totalNewUserTxsChange: number // percentage change in new transactions (day-to-day comparison)
   totalNewTransactionFee: number // total transaction fee in the last 24 hours
   totalNewBurntFee: number // total burnt fee in the last 24 hours
-  totalNewNodeReward: number // total node rewards (network expense 24h)
+  totalNewMintedCoin: number // total minted coins in the last 24 hours + node rewards (24 hours)
+  totalNewSupply: number // total LIB supply created in the last 24 hours
   totalSupply: number // total LIB supply
   totalStaked: number // total staked amount
   stabilityFactorStr: string // LIB Pric in USD
@@ -26,6 +27,8 @@ type StatsResult = {
   stakeRequiredUsdStr: string // stake required amount in USD
   activeNodes: number // number of active nodes count in the last 24 hours
   standbyNodes: number // number of standby nodes count in the last 24 hours
+  activeBalanceAccounts: number // accounts with balance > 0 (from latest daily stats)
+  activeAccounts: number // accounts that made transactions in the last 24 hours
 }
 
 export const useNewStats = (query: {
@@ -58,6 +61,8 @@ export const useNewStats = (query: {
     totalNewAccounts: number
     totalAccountsChange: number
     totalNewAccountsChange: number
+    activeBalanceAccounts: number
+    activeAccounts: number
   }>(accountStatsQuery, fetcher, swrOptions)
 
   const transactionStatsResponse = useSWR<{
@@ -80,50 +85,50 @@ export const useNewStats = (query: {
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
     'totalAccounts' in accountStatsResponse.data
-      ? Number(accountStatsResponse.data.totalAccounts)
+      ? accountStatsResponse.data.totalAccounts
       : 0
   const totalNewAccounts =
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
     'totalNewAccounts' in accountStatsResponse.data
-      ? Number(accountStatsResponse.data.totalNewAccounts)
+      ? accountStatsResponse.data.totalNewAccounts
       : 0
 
   const totalUserTxs =
     typeof transactionStatsResponse.data === 'object' &&
     transactionStatsResponse.data != null &&
     'totalUserTxs' in transactionStatsResponse.data
-      ? Number(transactionStatsResponse.data.totalUserTxs)
+      ? transactionStatsResponse.data.totalUserTxs
       : 0
   const totalNewUserTxs =
     typeof transactionStatsResponse.data === 'object' &&
     transactionStatsResponse.data != null &&
     'totalNewUserTxs' in transactionStatsResponse.data
-      ? Number(transactionStatsResponse.data.totalNewUserTxs)
+      ? transactionStatsResponse.data.totalNewUserTxs
       : 0
   const totalAccountsChange =
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
     'totalAccountsChange' in accountStatsResponse.data
-      ? Number(accountStatsResponse.data.totalAccountsChange)
+      ? accountStatsResponse.data.totalAccountsChange
       : 0
   const totalNewAccountsChange =
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
     'totalNewAccountsChange' in accountStatsResponse.data
-      ? Number(accountStatsResponse.data.totalNewAccountsChange)
+      ? accountStatsResponse.data.totalNewAccountsChange
       : 0
   const totalUserTxsChange =
     typeof transactionStatsResponse.data === 'object' &&
     transactionStatsResponse.data != null &&
     'totalUserTxsChange' in transactionStatsResponse.data
-      ? Number(transactionStatsResponse.data.totalUserTxsChange)
+      ? transactionStatsResponse.data.totalUserTxsChange
       : 0
   const totalNewUserTxsChange =
     typeof transactionStatsResponse.data === 'object' &&
     transactionStatsResponse.data != null &&
     'totalNewUserTxsChange' in transactionStatsResponse.data
-      ? Number(transactionStatsResponse.data.totalNewUserTxsChange)
+      ? transactionStatsResponse.data.totalNewUserTxsChange
       : 0
   const totalNewTransactionFee =
     typeof coinStatsResponse.data === 'object' &&
@@ -131,7 +136,7 @@ export const useNewStats = (query: {
     'dailyCoinStats' in coinStatsResponse.data &&
     Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
     coinStatsResponse.data.dailyCoinStats.length > 0
-      ? Number(coinStatsResponse.data.dailyCoinStats[0].transactionFee)
+      ? coinStatsResponse.data.dailyCoinStats[0].transactionFee
       : 0
   const totalNewBurntFee =
     typeof coinStatsResponse.data === 'object' &&
@@ -139,30 +144,45 @@ export const useNewStats = (query: {
     'dailyCoinStats' in coinStatsResponse.data &&
     Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
     coinStatsResponse.data.dailyCoinStats.length > 0
-      ? Number(coinStatsResponse.data.dailyCoinStats[0].burntFee)
+      ? coinStatsResponse.data.dailyCoinStats[0].burntFee +
+        coinStatsResponse.data.dailyCoinStats[0].penaltyAmount
       : 0
 
-  const totalNewNodeReward =
+  const totalNewMintedCoin =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
     'dailyCoinStats' in coinStatsResponse.data &&
     Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
     coinStatsResponse.data.dailyCoinStats.length > 0
-      ? Number(coinStatsResponse.data.dailyCoinStats[0].rewardAmountUnrealized)
+      ? coinStatsResponse.data.dailyCoinStats[0].mintedCoin +
+        coinStatsResponse.data.dailyCoinStats[0].rewardAmountUnrealized
+      : 0
+
+  const totalNewSupply =
+    typeof coinStatsResponse.data === 'object' &&
+    coinStatsResponse.data != null &&
+    'dailyCoinStats' in coinStatsResponse.data &&
+    Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
+    coinStatsResponse.data.dailyCoinStats.length > 0
+      ? coinStatsResponse.data.dailyCoinStats[0].mintedCoin +
+        coinStatsResponse.data.dailyCoinStats[0].rewardAmountRealized -
+        coinStatsResponse.data.dailyCoinStats[0].transactionFee -
+        coinStatsResponse.data.dailyCoinStats[0].burntFee -
+        coinStatsResponse.data.dailyCoinStats[0].penaltyAmount
       : 0
 
   const totalSupply =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
     'totalSupply' in coinStatsResponse.data
-      ? Number(coinStatsResponse.data.totalSupply)
+      ? coinStatsResponse.data.totalSupply
       : 0
 
   const totalStaked =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
     'totalStaked' in coinStatsResponse.data
-      ? Number(coinStatsResponse.data.totalStaked)
+      ? coinStatsResponse.data.totalStaked
       : 0
 
   const stabilityFactorStr =
@@ -197,14 +217,28 @@ export const useNewStats = (query: {
     typeof networkStatsResponse.data === 'object' &&
     networkStatsResponse.data != null &&
     'activeNodes' in networkStatsResponse.data
-      ? Number(networkStatsResponse.data.activeNodes)
+      ? networkStatsResponse.data.activeNodes
       : 0
 
   const standbyNodes =
     typeof networkStatsResponse.data === 'object' &&
     networkStatsResponse.data != null &&
     'standbyNodes' in networkStatsResponse.data
-      ? Number(networkStatsResponse.data.standbyNodes)
+      ? networkStatsResponse.data.standbyNodes
+      : 0
+
+  const activeBalanceAccounts =
+    typeof accountStatsResponse.data === 'object' &&
+    accountStatsResponse.data != null &&
+    'activeBalanceAccounts' in accountStatsResponse.data
+      ? accountStatsResponse.data.activeBalanceAccounts
+      : 0
+
+  const activeAccounts =
+    typeof accountStatsResponse.data === 'object' &&
+    accountStatsResponse.data != null &&
+    'activeAccounts' in accountStatsResponse.data
+      ? accountStatsResponse.data.activeAccounts
       : 0
 
   return {
@@ -218,7 +252,8 @@ export const useNewStats = (query: {
     totalNewUserTxsChange,
     totalNewTransactionFee,
     totalNewBurntFee,
-    totalNewNodeReward,
+    totalNewMintedCoin,
+    totalNewSupply,
     totalSupply,
     totalStaked,
     stabilityFactorStr,
@@ -227,5 +262,7 @@ export const useNewStats = (query: {
     stakeRequiredUsdStr,
     activeNodes,
     standbyNodes,
+    activeBalanceAccounts,
+    activeAccounts,
   }
 }
