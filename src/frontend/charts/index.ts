@@ -1,5 +1,3 @@
-export { StatsDashboard } from './StatsDashboard'
-export { CardDetail } from './CardDetail'
-export { ChartDetail } from './ChartDetail'
 export { ChartsPage } from './ChartsPage'
+export { DailyTransactionChart } from './DetailChart'
 export { OverviewSection } from './OverviewSection'

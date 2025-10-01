@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 import { useNewStats } from '../../api'
 import styles from './OverviewSection.module.scss'
 
@@ -7,19 +8,33 @@ interface StatsCardProps {
   value: string | number
   change?: string
   changeType?: 'positive' | 'negative' | 'neutral'
+  route?: string
 }
 
-const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, changeType = 'neutral' }) => (
-  <div className={styles.statsCard}>
-    <div className={styles.cardHeader}>
-      <div className={styles.cardTitle}>{title}</div>
+const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, changeType = 'neutral', route }) => {
+  const cardContent = (
+    <div className={`${styles.statsCard} ${route ? styles.clickable : ''}`}>
+      <div className={styles.cardHeader}>
+        <div className={styles.cardTitle}>{title}</div>
+        {route && <div className={styles.arrowIcon}>↗</div>}
+      </div>
+      <div className={styles.cardValue}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+        {change && <span className={`${styles.cardChange} ${styles[changeType]}`}>({change})</span>}
+      </div>
     </div>
-    <div className={styles.cardValue}>
-      {typeof value === 'number' ? value.toLocaleString() : value}
-      {change && <span className={`${styles.cardChange} ${styles[changeType]}`}>({change})</span>}
-    </div>
-  </div>
-)
+  )
+
+  if (route) {
+    return (
+      <Link href={route} className={styles.cardLink}>
+        {cardContent}
+      </Link>
+    )
+  }
+
+  return cardContent
+}
 
 export const OverviewSection: React.FC = () => {
   const {
@@ -78,6 +93,7 @@ export const OverviewSection: React.FC = () => {
       title: 'Transactions (Total)',
       value: totalUserTxs,
       // ...formatPercentage(totalUserTxsChange),
+      route: '/charts/daily_transactions',
     },
     {
       title: 'New Addresses (24H)',
@@ -107,7 +123,7 @@ export const OverviewSection: React.FC = () => {
     { title: 'Node Reward / Hr', value: `$${nodeRewardAmountUsdStr}` },
     { title: 'Stake Required Amount', value: `$${stakeRequiredUsdStr}` },
     { title: 'Active Nodes', value: activeNodes },
-    { title: 'LIB Price ', value: `$${stabilityFactorStr}` },
+    { title: 'LIB Price Set', value: `$${stabilityFactorStr}` },
     {
       title: 'LIB Supply',
       value: `${totalSupply.toLocaleString(undefined, {
@@ -173,7 +189,14 @@ export const OverviewSection: React.FC = () => {
       {/* Network Statistics Grid */}
       <div className={styles.statsGrid}>
         {stats.map((s, i) => (
-          <StatsCard key={i} title={s.title} value={s.value} change={s?.change} changeType={s?.changeType} />
+          <StatsCard
+            key={i}
+            title={s.title}
+            value={s.value}
+            change={s?.change}
+            changeType={s?.changeType}
+            route={s?.route}
+          />
         ))}
       </div>
     </div>

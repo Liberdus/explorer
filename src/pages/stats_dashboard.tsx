@@ -1,1 +1,1 @@
-export { StatsDashboard as default } from '../frontend/charts'
+export { StatsDashboard as default } from '../frontend/stats-dashboard'
