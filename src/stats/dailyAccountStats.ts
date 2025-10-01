@@ -89,6 +89,8 @@ export async function queryAccountStats(): Promise<{
   totalNewAccounts: number
   totalAccountsChange: number
   totalNewAccountsChange: number
+  activeBalanceAccounts: number
+  activeAccounts: number
 }> {
   try {
     // Get sum of all newAccounts from daily_accounts table
@@ -96,9 +98,20 @@ export async function queryAccountStats(): Promise<{
     const totalResult: { totalAccounts: number } = await db.get(dailyAccountStatsDatabase, totalSql)
 
     // Get the newAccounts from the latest entry (most recent entry by dateStartTime)
-    const latestSql =
-      'SELECT newAccounts as totalNewAccounts FROM daily_accounts ORDER BY dateStartTime DESC LIMIT 1'
-    const latestResult: { totalNewAccounts: number } = await db.get(dailyAccountStatsDatabase, latestSql)
+    const latestSql = `
+      SELECT
+        newAccounts as totalNewAccounts,
+        activeBalanceAccounts,
+        activeAccounts
+      FROM daily_accounts
+      ORDER BY dateStartTime DESC
+      LIMIT 1
+    `
+    const latestResult: {
+      totalNewAccounts: number
+      activeBalanceAccounts: number
+      activeAccounts: number
+    } = await db.get(dailyAccountStatsDatabase, latestSql)
 
     // Calculate percentage changes
     const totalAccountsChange = await calculateTotalAccountsChange()
@@ -109,6 +122,8 @@ export async function queryAccountStats(): Promise<{
       totalNewAccounts: latestResult?.totalNewAccounts || 0,
       totalAccountsChange,
       totalNewAccountsChange,
+      activeBalanceAccounts: latestResult?.activeBalanceAccounts || 0,
+      activeAccounts: latestResult?.activeAccounts || 0,
     }
   } catch (e) {
     console.log(e)
@@ -117,37 +132,36 @@ export async function queryAccountStats(): Promise<{
       totalNewAccounts: 0,
       totalAccountsChange: 0,
       totalNewAccountsChange: 0,
+      activeBalanceAccounts: 0,
+      activeAccounts: 0,
     }
   }
 }
 
 async function calculateTotalAccountsChange(): Promise<number> {
   try {
-    // // Get total accounts for the last 7 days and previous 7 days to compare
-    // const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000)
-    // const fourteenDaysAgo = Date.now() - (14 * 24 * 60 * 60 * 1000)
+    // Get today's new addresses and yesterday's cumulative total
+    // Formula: (today's new addresses / yesterday's cumulative total) * 100
 
-    // Get total accounts for the last 1 days and previous 1 days to compare
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-    const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
+    const latestTwoDaysSql = `
+      SELECT newAccounts,
+             (SELECT SUM(newAccounts) FROM daily_accounts WHERE dateStartTime < d.dateStartTime) as previousTotal
+      FROM daily_accounts d
+      ORDER BY dateStartTime DESC
+      LIMIT 1
+    `
+    const result: { newAccounts: number; previousTotal: number } = await db.get(
+      dailyAccountStatsDatabase,
+      latestTwoDaysSql
+    )
 
-    const last7DaysSql = 'SELECT SUM(newAccounts) as total FROM daily_accounts WHERE dateStartTime >= ?'
-    const previous7DaysSql =
-      'SELECT SUM(newAccounts) as total FROM daily_accounts WHERE dateStartTime >= ? AND dateStartTime < ?'
+    if (!result) return 0
 
-    const last7DaysResult: { total: number } = await db.get(dailyAccountStatsDatabase, last7DaysSql, [
-      sevenDaysAgo,
-    ])
-    const previous7DaysResult: { total: number } = await db.get(dailyAccountStatsDatabase, previous7DaysSql, [
-      fourteenDaysAgo,
-      sevenDaysAgo,
-    ])
+    const todayNewAddresses = result.newAccounts || 0
+    const yesterdayCumulativeTotal = result.previousTotal || 0
 
-    const current = last7DaysResult?.total || 0
-    const previous = previous7DaysResult?.total || 0
-
-    if (previous === 0) return current > 0 ? 100 : 0
-    return ((current - previous) / previous) * 100
+    if (yesterdayCumulativeTotal === 0) return todayNewAddresses > 0 ? 100 : 0
+    return (todayNewAddresses / yesterdayCumulativeTotal) * 100
   } catch (e) {
     console.log('Error calculating total accounts change:', e)
     return 0
