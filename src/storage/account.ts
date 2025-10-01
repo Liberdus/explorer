@@ -72,11 +72,14 @@ export async function updateCreatedTimestamp(accountId: string, createdTimestamp
   }
 }
 
-export async function queryAccountCount(
-  startCycleNumber?: number,
-  endCycleNumber?: number,
+type QueryAccountCountParams = {
+  startCycleNumber?: number
+  endCycleNumber?: number
   type?: AccountSearchType
-): Promise<number> {
+}
+
+export async function queryAccountCount(query: QueryAccountCountParams | null = null): Promise<number> {
+  const { startCycleNumber, endCycleNumber, type } = query ?? {}
   let accounts: { 'COUNT(*)': number } = { 'COUNT(*)': 0 }
   try {
     let sql = `SELECT COUNT(*) FROM accounts`
@@ -101,13 +104,13 @@ export async function queryAccountCount(
   return accounts['COUNT(*)'] || 0
 }
 
-export async function queryAccounts(
-  skip = 0,
-  limit = 10,
-  startCycleNumber?: number,
-  endCycleNumber?: number,
-  type?: AccountSearchType
-): Promise<Account[]> {
+type QueryAccountsParams = QueryAccountCountParams & {
+  skip?: number
+  limit?: number /* default 10, set 0 for all */
+}
+
+export async function queryAccounts(query: QueryAccountsParams): Promise<Account[]> {
+  const { skip = 0, limit = 10, startCycleNumber, endCycleNumber, type } = query
   let accounts: DbAccount[] = []
   try {
     let sql = `SELECT * FROM accounts`
@@ -123,9 +126,15 @@ export async function queryAccounts(
       values.push(startCycleNumber, endCycleNumber)
     }
     if (startCycleNumber || endCycleNumber) {
-      sql += ` ORDER BY cycleNumber ASC, timestamp ASC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY cycleNumber ASC, timestamp ASC`
     } else {
-      sql += ` ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY cycleNumber DESC, timestamp DESC`
+    }
+    if (limit > 0) {
+      sql += ` LIMIT ${limit}`
+    }
+    if (skip > 0) {
+      sql += ` OFFSET ${skip}`
     }
     accounts = (await db.all(accountDatabase, sql, values)) as DbAccount[]
     accounts.forEach((account: DbAccount) => {

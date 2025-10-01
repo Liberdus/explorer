@@ -105,7 +105,12 @@ export const OverviewSection: React.FC = () => {
     { title: 'Stake Required Amount', value: `$${stakeRequiredUsdStr}` },
     { title: 'Active Nodes', value: activeNodes },
     { title: 'LIB Price ', value: `$${stabilityFactorStr}` },
-    { title: 'LIB Supply', value: `${totalSupply} LIB` },
+    {
+      title: 'LIB Supply',
+      value: `${totalSupply.toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      })}`,
+    },
     {
       title: 'LIB MarketCap',
       value: `$${(totalSupply * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {

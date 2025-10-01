@@ -244,12 +244,18 @@ export async function queryReceiptByReceiptId(receiptId: string): Promise<Receip
   return null
 }
 
-export async function queryReceipts(
-  skip = 0,
-  limit = 100,
-  startCycleNumber?: number,
+type QueryReceiptCountParams = {
+  startCycleNumber?: number
   endCycleNumber?: number
-): Promise<Receipt[]> {
+}
+
+type QueryReceiptsParams = QueryReceiptCountParams & {
+  skip?: number
+  limit?: number /* default 10, set 0 for all */
+}
+
+export async function queryReceipts(query: QueryReceiptsParams): Promise<Receipt[]> {
+  const { skip = 0, limit = 10, startCycleNumber, endCycleNumber } = query
   let receipts: DbReceipt[] = []
   try {
     let sql = `SELECT * FROM receipts`
@@ -259,9 +265,15 @@ export async function queryReceipts(
       values.push(startCycleNumber, endCycleNumber)
     }
     if (startCycleNumber || endCycleNumber) {
-      sql += ` ORDER BY cycle ASC, timestamp ASC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY cycle ASC, timestamp ASC`
     } else {
-      sql += ` ORDER BY cycle DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY cycle DESC, timestamp DESC`
+    }
+    if (limit > 0) {
+      sql += ` LIMIT ${limit}`
+    }
+    if (skip > 0) {
+      sql += ` OFFSET ${skip}`
     }
     receipts = (await db.all(receiptDatabase, sql, values)) as DbReceipt[]
     receipts.forEach((receipt: DbReceipt) => deserializeDbReceipt(receipt))
@@ -273,14 +285,15 @@ export async function queryReceipts(
   return receipts
 }
 
-export async function queryReceiptCount(startCycle?: number, endCycle?: number): Promise<number> {
+export async function queryReceiptCount(query: QueryReceiptCountParams | null = null): Promise<number> {
+  const { startCycleNumber, endCycleNumber } = query ?? {}
   let receipts: { 'COUNT(*)': number } = { 'COUNT(*)': 0 }
   try {
     let sql = `SELECT COUNT(*) FROM receipts`
     const values: unknown[] = []
-    if (startCycle || endCycle) {
+    if (startCycleNumber || endCycleNumber) {
       sql += ` WHERE cycle BETWEEN ? AND ?`
-      values.push(startCycle, endCycle)
+      values.push(startCycleNumber, endCycleNumber)
     }
     receipts = (await db.get(receiptDatabase, sql, values)) as { 'COUNT(*)': number }
   } catch (e) {

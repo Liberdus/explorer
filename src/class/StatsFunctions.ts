@@ -521,16 +521,11 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
     // ----- Daily Coin Stats -----
 
     // Query transactions directly by timestamp
-    const transactions = await TransactionDB.queryTransactions(
-      0,
-      0,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
+    const transactions = await TransactionDB.queryTransactions({
+      limit: 0,
       beforeTimestamp,
-      afterTimestamp
-    )
+      afterTimestamp,
+    })
 
     // Filter transactions
     const depositStakeTransactions = transactions.filter(
@@ -646,32 +641,24 @@ export const recordTotalAccountBalances = async (cycleNumber: number): Promise<T
 
     // Calculate the sum of all user account balances
     let totalBalance = BigInt(0)
-    const totalUserAccounts = await AccountDB.queryAccountCount(undefined, undefined, AccountType.UserAccount)
 
-    const accounts = await AccountDB.queryAccounts(
-      0,
-      totalUserAccounts,
-      undefined,
-      undefined,
-      AccountType.UserAccount
-    )
+    const userAccounts = await AccountDB.queryAccounts({
+      limit: 0,
+      type: AccountType.UserAccount,
+    })
 
-    for (const account of accounts) {
+    for (const account of userAccounts) {
       totalBalance += account.data.data.balance
       if (account.data?.operatorAccountInfo?.stake) totalBalance += account.data?.operatorAccountInfo?.stake
     }
 
     // Calculate the sum of the toll amount of all chat accounts
     let totalToll = BigInt(0)
-    const totalChatAccounts = await AccountDB.queryAccountCount(undefined, undefined, AccountType.ChatAccount)
 
-    const chatAccounts = await AccountDB.queryAccounts(
-      0,
-      totalChatAccounts,
-      undefined,
-      undefined,
-      AccountType.ChatAccount
-    )
+    const chatAccounts = await AccountDB.queryAccounts({
+      limit: 0,
+      type: AccountType.ChatAccount,
+    })
 
     for (const account of chatAccounts) {
       totalToll +=
@@ -695,9 +682,10 @@ export const recordTotalAccountBalances = async (cycleNumber: number): Promise<T
 
     // console.log('calculatedSupply', calculatedSupply, totalBalance > calculatedSupply)
 
-    const totalRegisterTxs = await TransactionDB.queryTransactionCount(TransactionType.register)
-
-    const registerTxs = await TransactionDB.queryTransactions(0, totalRegisterTxs, TransactionType.register)
+    const registerTxs = await TransactionDB.queryTransactions({
+      limit: 0,
+      txType: TransactionType.register,
+    })
 
     const successRegisterTxs = registerTxs.filter(
       (a) => a.transactionType === TransactionType.register && a.data.success === true
@@ -705,7 +693,7 @@ export const recordTotalAccountBalances = async (cycleNumber: number): Promise<T
 
     calculatedSupply +=
       DEFAULT_ACCOUNT_BALANCE *
-      BigInt(totalUserAccounts - successRegisterTxs.length - GENESIS_ACCOUNT_BALANCES.length)
+      BigInt(userAccounts.length - successRegisterTxs.length - GENESIS_ACCOUNT_BALANCES.length)
     // console.log('calculatedSupply', calculatedSupply, totalBalance > calculatedSupply)
 
     // Calculate difference and percentage
@@ -727,7 +715,7 @@ export const recordTotalAccountBalances = async (cycleNumber: number): Promise<T
       difference: weiBNToEth(difference).toString(),
       differencePercentage,
       isWithinTolerance,
-      accountsProcessed: accounts.length,
+      accountsProcessed: userAccounts.length,
     }
 
     // if it's not within tolerance, log the result

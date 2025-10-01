@@ -82,13 +82,23 @@ export async function processOriginalTxData(
   if (combineOriginalTxsData.length > 0) await bulkInsertOriginalTxsData(combineOriginalTxsData)
 }
 
-export async function queryOriginalTxDataCount(
-  accountId?: string,
-  startCycle?: number,
-  endCycle?: number,
-  txType?: TransactionSearchType,
+type QueryOriginalTxDataCountParams = {
+  accountId?: string
+  startCycle?: number
+  endCycle?: number
+  txType?: TransactionSearchType
   afterTimestamp?: number
+}
+
+type QueryOriginalTxsDataParams = QueryOriginalTxDataCountParams & {
+  skip?: number
+  limit?: number /* default 10, set 0 for all */
+}
+
+export async function queryOriginalTxDataCount(
+  query: QueryOriginalTxDataCountParams | null = null
 ): Promise<number> {
+  const { accountId, startCycle, endCycle, txType, afterTimestamp } = query ?? {}
   let originalTxsData: { 'COUNT(*)': number } = { 'COUNT(*)': 0 }
   try {
     let sql = `SELECT COUNT(*) FROM originalTxsData`
@@ -121,15 +131,8 @@ export async function queryOriginalTxDataCount(
   return originalTxsData['COUNT(*)'] || 0
 }
 
-export async function queryOriginalTxsData(
-  skip = 0,
-  limit = 10,
-  accountId?: string,
-  startCycle?: number,
-  endCycle?: number,
-  txType?: TransactionSearchType,
-  afterTimestamp?: number
-): Promise<OriginalTxData[]> {
+export async function queryOriginalTxsData(query: QueryOriginalTxsDataParams): Promise<OriginalTxData[]> {
+  const { skip = 0, limit = 10, accountId, startCycle, endCycle, txType, afterTimestamp } = query
   let originalTxsData: DbOriginalTxData[] = []
   try {
     let sql = `SELECT * FROM originalTxsData`
@@ -155,9 +158,15 @@ export async function queryOriginalTxsData(
       values.push(afterTimestamp)
     }
     if (startCycle || endCycle) {
-      sql += ` ORDER BY cycle ASC, timestamp ASC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY cycle ASC, timestamp ASC`
     } else {
-      sql += ` ORDER BY cycle DESC, timestamp DESC LIMIT ${limit} OFFSET ${skip}`
+      sql += ` ORDER BY cycle DESC, timestamp DESC`
+    }
+    if (limit > 0) {
+      sql += ` LIMIT ${limit}`
+    }
+    if (skip > 0) {
+      sql += ` OFFSET ${skip}`
     }
     originalTxsData = (await db.all(originalTxDataDatabase, sql, values)) as DbOriginalTxData[]
     for (const originalTxData of originalTxsData) {

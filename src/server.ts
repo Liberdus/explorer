@@ -320,8 +320,11 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      res.accounts = await AccountDB.queryAccounts(0, count, null, null, accountSearchType)
-      res.totalAccounts = await AccountDB.queryAccountCount(null, null, accountSearchType)
+      res.accounts = await AccountDB.queryAccounts({
+        limit: count,
+        type: accountSearchType,
+      })
+      res.totalAccounts = await AccountDB.queryAccountCount({ type: accountSearchType })
       reply.send(res)
       return
     } else if (query.accountId) {
@@ -365,7 +368,11 @@ const start = async (): Promise<void> => {
       }
     }
     if (startCycle > 0 || endCycle > 0 || page > 0) {
-      totalAccounts = await AccountDB.queryAccountCount(startCycle, endCycle, accountSearchType)
+      totalAccounts = await AccountDB.queryAccountCount({
+        startCycleNumber: startCycle,
+        endCycleNumber: endCycle,
+        type: accountSearchType,
+      })
       res.totalAccounts = totalAccounts
     }
     totalPages = Math.ceil(totalAccounts / itemsPerPage)
@@ -377,13 +384,11 @@ const start = async (): Promise<void> => {
     }
     res.totalPages = totalPages
     if (totalAccounts > 0) {
-      res.accounts = await AccountDB.queryAccounts(
-        (page - 1) * itemsPerPage,
-        itemsPerPage,
-        null,
-        null,
-        accountSearchType
-      )
+      res.accounts = await AccountDB.queryAccounts({
+        skip: (page - 1) * itemsPerPage,
+        limit: itemsPerPage,
+        type: accountSearchType,
+      })
     }
     reply.send(res)
   })
@@ -482,8 +487,11 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      res.transactions = await TransactionDB.queryTransactions(0, count, txSearchType)
-      res.totalTransactions = await TransactionDB.queryTransactionCount(txSearchType)
+      res.transactions = await TransactionDB.queryTransactions({
+        limit: count,
+        txType: txSearchType,
+      })
+      res.totalTransactions = await TransactionDB.queryTransactionCount({ txType: txSearchType })
       reply.send(res)
       return
     } else if (query.txId) {
@@ -531,10 +539,14 @@ const start = async (): Promise<void> => {
       return
     } else if (query.totalTxsDetail === 'true') {
       const totalTransactions = await TransactionDB.queryTransactionCount()
-      const totalTransferTxs = await TransactionDB.queryTransactionCount(TransactionType.transfer)
-      const totalMessageTxs = await TransactionDB.queryTransactionCount(TransactionType.message)
-      const totalDepositStakeTxs = await TransactionDB.queryTransactionCount(TransactionType.deposit_stake)
-      const totalWithdrawStakeTxs = await TransactionDB.queryTransactionCount(TransactionType.withdraw_stake)
+      const totalTransferTxs = await TransactionDB.queryTransactionCount({ txType: TransactionType.transfer })
+      const totalMessageTxs = await TransactionDB.queryTransactionCount({ txType: TransactionType.message })
+      const totalDepositStakeTxs = await TransactionDB.queryTransactionCount({
+        txType: TransactionType.deposit_stake,
+      })
+      const totalWithdrawStakeTxs = await TransactionDB.queryTransactionCount({
+        txType: TransactionType.withdraw_stake,
+      })
       const totalTxsDetail = {
         totalTransactions,
         totalTransferTxs,
@@ -598,14 +610,14 @@ const start = async (): Promise<void> => {
       }
     }
     if (accountId || startCycle > 0 || endCycle > 0 || page > 0 || txSearchType) {
-      totalTransactions = await TransactionDB.queryTransactionCount(
-        txSearchType,
+      totalTransactions = await TransactionDB.queryTransactionCount({
+        txType: txSearchType,
         accountId,
-        startCycle,
-        endCycle,
+        startCycleNumber: startCycle,
+        endCycleNumber: endCycle,
         beforeTimestamp,
-        afterTimestamp
-      )
+        afterTimestamp,
+      })
       res.totalTransactions = totalTransactions
     }
     totalPages = Math.ceil(totalTransactions / itemsPerPage)
@@ -617,16 +629,16 @@ const start = async (): Promise<void> => {
     }
     res.totalPages = totalPages
     if (totalTransactions > 0) {
-      res.transactions = await TransactionDB.queryTransactions(
-        (page - 1) * itemsPerPage,
-        itemsPerPage,
-        txSearchType,
+      res.transactions = await TransactionDB.queryTransactions({
+        skip: (page - 1) * itemsPerPage,
+        limit: itemsPerPage,
+        txType: txSearchType,
         accountId,
-        startCycle,
-        endCycle,
+        startCycleNumber: startCycle,
+        endCycleNumber: endCycle,
         beforeTimestamp,
-        afterTimestamp
-      )
+        afterTimestamp,
+      })
     }
     reply.send(res)
   })
@@ -688,7 +700,9 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      res.receipts = await ReceiptDB.queryReceipts(0, count)
+      res.receipts = await ReceiptDB.queryReceipts({
+        limit: count,
+      })
       res.totalReceipts = await ReceiptDB.queryReceiptCount()
       reply.send(res)
       return
@@ -738,7 +752,10 @@ const start = async (): Promise<void> => {
       }
     }
     if (startCycle > 0 || endCycle > 0 || page > 0) {
-      totalReceipts = await ReceiptDB.queryReceiptCount(startCycle, endCycle)
+      totalReceipts = await ReceiptDB.queryReceiptCount({
+        startCycleNumber: startCycle,
+        endCycleNumber: endCycle,
+      })
       res.totalReceipts = totalReceipts
     }
     totalPages = Math.ceil(totalReceipts / itemsPerPage)
@@ -750,12 +767,12 @@ const start = async (): Promise<void> => {
     }
     res.totalPages = totalPages
     if (totalReceipts > 0) {
-      res.receipts = await ReceiptDB.queryReceipts(
-        (page - 1) * itemsPerPage,
-        itemsPerPage,
-        startCycle,
-        endCycle
-      )
+      res.receipts = await ReceiptDB.queryReceipts({
+        skip: (page - 1) * itemsPerPage,
+        limit: itemsPerPage,
+        startCycleNumber: startCycle,
+        endCycleNumber: endCycle,
+      })
     }
     reply.send(res)
   })
@@ -828,7 +845,9 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      res.originalTxs = await OriginalTxDataDB.queryOriginalTxsData(0, count)
+      res.originalTxs = await OriginalTxDataDB.queryOriginalTxsData({
+        limit: count,
+      })
       res.totalOriginalTxs = await OriginalTxDataDB.queryOriginalTxDataCount()
       reply.send(res)
       return
@@ -885,7 +904,11 @@ const start = async (): Promise<void> => {
       }
     }
     if (accountId || startCycle > 0 || endCycle > 0 || page > 0) {
-      totalOriginalTxs = await OriginalTxDataDB.queryOriginalTxDataCount(accountId, startCycle, endCycle)
+      totalOriginalTxs = await OriginalTxDataDB.queryOriginalTxDataCount({
+        accountId,
+        startCycle,
+        endCycle,
+      })
       res.totalOriginalTxs = totalOriginalTxs
     }
     totalPages = Math.ceil(totalOriginalTxs / itemsPerPage)
@@ -897,13 +920,13 @@ const start = async (): Promise<void> => {
     }
     res.totalPages = totalPages
     if (totalOriginalTxs > 0) {
-      res.originalTxs = await OriginalTxDataDB.queryOriginalTxsData(
-        (page - 1) * itemsPerPage,
-        itemsPerPage,
+      res.originalTxs = await OriginalTxDataDB.queryOriginalTxsData({
+        skip: (page - 1) * itemsPerPage,
+        limit: itemsPerPage,
         accountId,
         startCycle,
-        endCycle
-      )
+        endCycle,
+      })
     }
     reply.send(res)
   })

@@ -13,7 +13,10 @@ const start = async (): Promise<void> => {
   const bucketSize = 1000
   for (let i = 0; i < receiptsCount; i += limit) {
     console.log(i, i + limit)
-    const receipts = await ReceiptDB.queryReceipts(i, limit)
+    const receipts = await ReceiptDB.queryReceipts({
+      skip: i,
+      limit,
+    })
     let accountHistoryStateList: AccountHistoryStateDB.AccountHistoryState[] = []
     for (const receipt of receipts) {
       const { signedReceipt, globalModification, receiptId } = receipt
@@ -28,7 +31,9 @@ const start = async (): Promise<void> => {
           }
           if (accountMap.has(accountHistoryState.accountId)) {
             if (accountMap.get(accountHistoryState.accountId) !== accountHistoryState.beforeStateHash) {
-              console.log(`accountId ${accountHistoryState.accountId} in receipt ${receiptId} has different beforeStateHash`)
+              console.log(
+                `accountId ${accountHistoryState.accountId} in receipt ${receiptId} has different beforeStateHash`
+              )
             }
           }
           accountMap.set(accountHistoryState.accountId, accountHistoryState.afterStateHash)
