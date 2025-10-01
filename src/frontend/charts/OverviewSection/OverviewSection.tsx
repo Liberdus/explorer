@@ -45,6 +45,7 @@ export const OverviewSection: React.FC = () => {
     standbyNodes,
     activeBalanceAccounts,
     activeAccounts,
+    newActiveBalanceAccounts,
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
@@ -88,11 +89,11 @@ export const OverviewSection: React.FC = () => {
       value: totalNewUserTxs,
       ...formatPercentage(totalNewUserTxsChange),
     },
-    // Avg tx fee would be total_tx_fee_24h / transactions_24h
     {
       title: 'Total Transaction Fee (24H)',
       value: `$${totalNewTransactionFee * parseFloat(stabilityFactorStr)}`,
     },
+    // Avg tx fee would be total_tx_fee_24h / transactions_24h
     {
       title: 'Avg Transaction Fee (24H)',
       value: `$${(totalNewTransactionFee / totalNewUserTxs) * parseFloat(stabilityFactorStr)}`,
@@ -151,6 +152,10 @@ export const OverviewSection: React.FC = () => {
     {
       title: 'Accounts (Total)',
       value: activeBalanceAccounts,
+    },
+    {
+      title: 'Accounts (24H)',
+      value: newActiveBalanceAccounts,
     },
     {
       title: 'Daily Active Accounts (24H)',

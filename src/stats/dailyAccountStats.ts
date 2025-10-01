@@ -5,10 +5,11 @@ import { dailyAccountStatsDatabase } from '.'
 
 export interface BaseDailyAccountStats {
   dateStartTime: number
-  newAccounts: number
-  newUserAccounts: number
+  newAccounts: number // new accounts created in the 24 hour period
+  newUserAccounts: number // new user accounts created in the 24 hour period
   activeAccounts: number // user accounts that make at least one transaction with txFee > 0
   activeBalanceAccounts: number // user accounts with balance > 0
+  newActiveBalanceAccounts: number // user accounts that were involved in transactions in the last 24 hours and have latest balance > 0
 }
 
 export type DailyAccountStats = BaseDailyAccountStats
@@ -91,6 +92,7 @@ export async function queryAccountStats(): Promise<{
   totalNewAccountsChange: number
   activeBalanceAccounts: number
   activeAccounts: number
+  newActiveBalanceAccounts: number
 }> {
   try {
     // Get sum of all newAccounts from daily_accounts table
@@ -102,7 +104,8 @@ export async function queryAccountStats(): Promise<{
       SELECT
         newAccounts as totalNewAccounts,
         activeBalanceAccounts,
-        activeAccounts
+        activeAccounts,
+        newActiveBalanceAccounts
       FROM daily_accounts
       ORDER BY dateStartTime DESC
       LIMIT 1
@@ -111,6 +114,7 @@ export async function queryAccountStats(): Promise<{
       totalNewAccounts: number
       activeBalanceAccounts: number
       activeAccounts: number
+      newActiveBalanceAccounts: number
     } = await db.get(dailyAccountStatsDatabase, latestSql)
 
     // Calculate percentage changes
@@ -124,6 +128,7 @@ export async function queryAccountStats(): Promise<{
       totalNewAccountsChange,
       activeBalanceAccounts: latestResult?.activeBalanceAccounts || 0,
       activeAccounts: latestResult?.activeAccounts || 0,
+      newActiveBalanceAccounts: latestResult?.newActiveBalanceAccounts || 0,
     }
   } catch (e) {
     console.log(e)
@@ -134,6 +139,7 @@ export async function queryAccountStats(): Promise<{
       totalNewAccountsChange: 0,
       activeBalanceAccounts: 0,
       activeAccounts: 0,
+      newActiveBalanceAccounts: 0,
     }
   }
 }
