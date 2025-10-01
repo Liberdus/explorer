@@ -9,7 +9,10 @@ const start = async (): Promise<void> => {
   const limit = 1000
   for (let i = 0; i < receiptsCount; i += limit) {
     console.log(i, i + limit)
-    const receipts = await ReceiptDB.queryReceipts(i, limit)
+    const receipts = await ReceiptDB.queryReceipts({
+      skip: i,
+      limit,
+    })
     await ReceiptDB.processReceiptData(receipts, true)
   }
   await Storage.closeDatabase()

@@ -16,8 +16,7 @@ export async function insertTransaction(transaction: Transaction): Promise<void>
     const values = db.extractValues(transaction)
     const sql = 'INSERT OR REPLACE INTO transactions (' + fields + ') VALUES (' + placeholders + ')'
     await db.run(transactionDatabase, sql, values)
-    if (config.verbose)
-      console.log('Successfully inserted Transaction', transaction.txId)
+    if (config.verbose) console.log('Successfully inserted Transaction', transaction.txId)
   } catch (e) {
     console.log(e)
     console.log('Unable to insert Transaction or it is already stored in to database', transaction.txId)
@@ -50,8 +49,7 @@ export async function updateTransaction(_txId: string, transaction: Partial<Tran
       $txFee: transaction.txFee,
       $txId: transaction.txId,
     })
-    if (config.verbose)
-      console.log('Successfully Updated Transaction', transaction.txId)
+    if (config.verbose) console.log('Successfully Updated Transaction', transaction.txId)
   } catch (e) {
     /* prettier-ignore */ if (config.verbose) console.log(e);
     console.log('Unable to update Transaction', transaction.txId)
@@ -90,14 +88,20 @@ export async function processTransactionData(transactions: Transaction[]): Promi
   if (combineTransactions.length > 0) await bulkInsertTransactions(combineTransactions)
 }
 
-export async function queryTransactionCount(
-  txType?: TransactionSearchType,
-  accountId?: string,
-  startCycleNumber?: number,
-  endCycleNumber?: number,
-  beforeTimestamp?: number,
+type QueryTransactionCountParams = {
+  txType?: TransactionSearchType
+  accountId?: string
+  startCycleNumber?: number
+  endCycleNumber?: number
+  beforeTimestamp?: number
   afterTimestamp?: number
+}
+
+export async function queryTransactionCount(
+  query: QueryTransactionCountParams | null = null
 ): Promise<number> {
+  const params: QueryTransactionCountParams = query ?? {}
+  const { txType, accountId, startCycleNumber, endCycleNumber, beforeTimestamp, afterTimestamp } = params
   let transactions: { 'COUNT(*)': number } = { 'COUNT(*)': 0 }
   try {
     let sql = `SELECT COUNT(*) FROM transactions`
@@ -141,16 +145,22 @@ export async function queryTransactionCount(
   return transactions['COUNT(*)'] || 0
 }
 
-export async function queryTransactions(
-  skip = 0,
-  limit = 10,
-  txType?: TransactionSearchType,
-  accountId?: string,
-  startCycleNumber?: number,
-  endCycleNumber?: number,
-  beforeTimestamp?: number,
-  afterTimestamp?: number
-): Promise<DbTransaction[]> {
+type QueryTransactionsParams = QueryTransactionCountParams & {
+  skip?: number
+  limit?: number /* default 10, set 0 for all */
+}
+
+export async function queryTransactions(query: QueryTransactionsParams): Promise<DbTransaction[]> {
+  const {
+    skip = 0,
+    limit = 10,
+    txType,
+    accountId,
+    startCycleNumber,
+    endCycleNumber,
+    beforeTimestamp,
+    afterTimestamp,
+  } = query
   let transactions: DbTransaction[] = []
   try {
     let sql = `SELECT * FROM transactions`
@@ -230,7 +240,6 @@ export async function queryTransactionByTxId(txId: string): Promise<Transaction 
   }
   return null
 }
-
 
 export async function queryTransactionCountByCycles(
   start: number,

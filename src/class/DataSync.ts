@@ -310,8 +310,14 @@ export const downloadAndSyncGenesisAccounts = async (): Promise<void> => {
 
   let totalGenesisAccounts = 0
   let totalGenesisTransactionReceipts = 0
-  const totalExistingGenesisAccounts = await AccountDB.queryAccountCount(0, 5)
-  const totalExistingGenesisTransactionReceipts = await TransactionDB.queryTransactionCount(null, null, 0, 5)
+  const totalExistingGenesisAccounts = await AccountDB.queryAccountCount({
+    startCycleNumber: 0,
+    endCycleNumber: 5,
+  })
+  const totalExistingGenesisTransactionReceipts = await TransactionDB.queryTransactionCount({
+    startCycleNumber: 0,
+    endCycleNumber: 5,
+  })
   if (totalExistingGenesisAccounts > 0 && totalExistingGenesisTransactionReceipts > 0) {
     // Let's assume it has synced data for now, update to sync account count between them
     return
