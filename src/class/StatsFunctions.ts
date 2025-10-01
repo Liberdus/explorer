@@ -10,7 +10,7 @@ import {
   DailyCoinStatsDB,
   TotalAccountBalanceDB,
 } from '../stats'
-import { AccountDB, CycleDB, TransactionDB } from '../storage'
+import { AccountDB, CycleDB, TransactionDB, AccountHistoryStateDB } from '../storage'
 import { TransactionType, AccountType } from '../types'
 import { P2P } from '@shardus/types'
 import { config, NetworkAccountId } from '../config/index'
@@ -450,11 +450,15 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       0
     )
 
+    // Query user accounts with balance > 0 from AccountHistoryState at the end of this time period
+    const activeBalanceAccounts = await AccountHistoryStateDB.queryActiveBalanceAccountsCount(beforeTimestamp)
+
     const dailyAccountStats: DailyAccountStatsDB.DbDailyAccountStats = {
       dateStartTime: startTimestamp,
       newAccounts,
       newUserAccounts,
       activeAccounts,
+      activeBalanceAccounts,
     }
 
     await DailyAccountStatsDB.insertDailyAccountStats(dailyAccountStats)

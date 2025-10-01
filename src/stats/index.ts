@@ -69,7 +69,16 @@ export const initializeStatsDB = async (): Promise<void> => {
 
   await runCreate(
     validatorStatsDatabase,
-    'CREATE TABLE if not exists `validators` (`cycle` NUMBER NOT NULL UNIQUE PRIMARY KEY, `active` NUMBER NOT NULL, `activated` NUMBER NOT NULL, `syncing` NUMBER NOT NULL, `joined` NUMBER NOT NULL, `removed` NUMBER NOT NULL, `apoped` NUMBER NOT NULL, `timestamp` BIGINT NOT NULL)'
+    `CREATE TABLE if not exists validators (
+      cycle NUMBER NOT NULL UNIQUE PRIMARY KEY,
+      active NUMBER NOT NULL,
+      activated NUMBER NOT NULL,
+      syncing NUMBER NOT NULL,
+      joined NUMBER NOT NULL,
+      removed NUMBER NOT NULL,
+      apoped NUMBER NOT NULL,
+      timestamp BIGINT NOT NULL
+    )`
   )
   // await runCreate(validatorStatsDatabase, 'Drop INDEX if exists `validators_idx`')
   await runCreate(
@@ -78,8 +87,7 @@ export const initializeStatsDB = async (): Promise<void> => {
   )
   await runCreate(
     transactionStatsDatabase,
-    `
-    CREATE TABLE if not exists transactions (
+    `CREATE TABLE if not exists transactions (
       cycle NUMBER NOT NULL UNIQUE PRIMARY KEY,
       timestamp BIGINT NOT NULL,
       totalTxs NUMBER NOT NULL DEFAULT 0,
@@ -93,8 +101,7 @@ export const initializeStatsDB = async (): Promise<void> => {
   )
   await runCreate(
     dailyTransactionStatsDatabase,
-    `
-    CREATE TABLE if not exists daily_transactions (
+    `CREATE TABLE if not exists daily_transactions (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       totalTxs NUMBER NOT NULL,
       totalUserTxs NUMBER NOT NULL DEFAULT 0,
@@ -104,19 +111,18 @@ export const initializeStatsDB = async (): Promise<void> => {
 
   await runCreate(
     dailyAccountStatsDatabase,
-    `
-    CREATE TABLE if not exists daily_accounts (
+    `CREATE TABLE if not exists daily_accounts (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       newAccounts NUMBER NOT NULL,
       newUserAccounts NUMBER NOT NULL,
-      activeAccounts NUMBER NOT NULL
+      activeAccounts NUMBER NOT NULL,
+      activeBalanceAccounts NUMBER NOT NULL DEFAULT 0
     )`
   )
 
   await runCreate(
     dailyNetworkStatsDatabase,
-    `
-    CREATE TABLE if not exists daily_network (
+    `CREATE TABLE if not exists daily_network (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       stabilityFactorStr TEXT NOT NULL,
       transactionFeeUsdStr TEXT NOT NULL,
@@ -132,8 +138,7 @@ export const initializeStatsDB = async (): Promise<void> => {
 
   await runCreate(
     dailyCoinStatsDatabase,
-    `
-    CREATE TABLE if not exists daily_coin_stats (
+    `CREATE TABLE if not exists daily_coin_stats (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       mintedCoin BIGINT NOT NULL DEFAULT 0,
       transactionFee BIGINT NOT NULL DEFAULT 0,
@@ -153,7 +158,14 @@ export const initializeStatsDB = async (): Promise<void> => {
   // )
   await runCreate(
     coinStatsDatabase,
-    'CREATE TABLE if not exists `coin_stats` (`cycle` NUMBER NOT NULL UNIQUE PRIMARY KEY, `totalSupplyChange` BIGINT NOT NULL, `totalStakeChange` BIGINT NOT NULL, `transactionFee` BIGINT NOT NULL DEFAULT 0, `networkCommission` BIGINT NOT NULL DEFAULT 0, `timestamp` BIGINT NOT NULL)'
+    `CREATE TABLE if not exists coin_stats (
+      cycle NUMBER NOT NULL UNIQUE PRIMARY KEY,
+      totalSupplyChange BIGINT NOT NULL,
+      totalStakeChange BIGINT NOT NULL,
+      transactionFee BIGINT NOT NULL DEFAULT 0,
+      networkCommission BIGINT NOT NULL DEFAULT 0,
+      timestamp BIGINT NOT NULL
+    )`
   )
   // await runCreate(coinStatsDatabase, 'Drop INDEX if exists `coin_stats_idx`');
   await runCreate(

@@ -192,12 +192,23 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
         signedReceipt.proposal.accountIDs.length > 0
       ) {
         for (let i = 0; i < signedReceipt.proposal.accountIDs.length; i++) {
+          const accountId = signedReceipt.proposal.accountIDs[i]
+          // Find the corresponding account in afterStates to get balance
+          const afterStateAccount = afterStates.find((acc) => acc.accountId === accountId)
+          let balance = 0
+          if (afterStateAccount) {
+            // Extract balance from account data - only UserAccounts have balance
+            if (afterStateAccount.data?.data?.balance !== undefined) {
+              balance = weiBNToEth(afterStateAccount.data.data.balance)
+            }
+          }
           const accountHistoryState = {
-            accountId: signedReceipt.proposal.accountIDs[i],
+            accountId,
             beforeStateHash: signedReceipt.proposal.beforeStateHashes[i],
             afterStateHash: signedReceipt.proposal.afterStateHashes[i],
             timestamp,
             receiptId: tx.txId,
+            balance,
           }
           accountHistoryStateList.push(accountHistoryState)
         }

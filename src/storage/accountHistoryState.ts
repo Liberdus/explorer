@@ -10,6 +10,7 @@ export interface AccountHistoryState {
   afterStateHash: string
   timestamp: number
   receiptId: string
+  balance: number
 }
 
 export async function insertAccountHistoryState(accountHistoryState: AccountHistoryState): Promise<void> {
@@ -116,4 +117,30 @@ export async function queryAccountHistoryStateCount(): Promise<number> {
   }
   if (config.verbose) console.log('AccountHistoryState count', accountHistoryStates)
   return accountHistoryStates['COUNT(*)'] || 0
+}
+
+export async function queryActiveBalanceAccountsCount(beforeTimestamp: number): Promise<number> {
+  let count: { count: number } = { count: 0 }
+  try {
+    // Get the latest state for each account before the given timestamp and count those with balance > 0
+    const sql = `
+      SELECT COUNT(DISTINCT accountId) as count
+      FROM (
+        SELECT accountId, balance
+        FROM accountHistoryState
+        WHERE (accountId, timestamp) IN (
+          SELECT accountId, MAX(timestamp)
+          FROM accountHistoryState
+          WHERE timestamp < ?
+          GROUP BY accountId
+        )
+      )
+      WHERE balance > 0
+    `
+    count = (await db.get(accountHistoryStateDatabase, sql, [beforeTimestamp])) as { count: number }
+  } catch (e) {
+    console.log(e)
+  }
+  if (config.verbose) console.log('Active balance accounts count from history', count)
+  return count?.count || 0
 }

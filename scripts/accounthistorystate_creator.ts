@@ -1,6 +1,7 @@
 import * as Storage from '../src/storage'
 import * as ReceiptDB from '../src/storage/receipt'
 import * as AccountHistoryStateDB from '../src/storage/accountHistoryState'
+import { weiBNToEth } from '../src/class/StatsFunctions'
 
 const start = async (): Promise<void> => {
   await Storage.initializeDB()
@@ -22,12 +23,19 @@ const start = async (): Promise<void> => {
       const { signedReceipt, globalModification, receiptId } = receipt
       if (globalModification === false && signedReceipt.proposal.accountIDs.length > 0) {
         for (let i = 0; i < receipt.afterStates!.length; i++) {
+          const afterStateAccount = receipt.afterStates!.at(i)!
+          // Extract balance from account data - only UserAccounts have balance
+          let balance = 0
+          if (afterStateAccount.data?.data?.balance !== undefined) {
+            balance = weiBNToEth(afterStateAccount.data.data.balance)
+          }
           const accountHistoryState: AccountHistoryStateDB.AccountHistoryState = {
-            accountId: receipt.afterStates!.at(i)!.accountId,
+            accountId: afterStateAccount.accountId,
             beforeStateHash: signedReceipt.proposal.beforeStateHashes.at(i)!,
             afterStateHash: signedReceipt.proposal.afterStateHashes.at(i)!,
             timestamp: receipt.timestamp,
             receiptId,
+            balance,
           }
           if (accountMap.has(accountHistoryState.accountId)) {
             if (accountMap.get(accountHistoryState.accountId) !== accountHistoryState.beforeStateHash) {

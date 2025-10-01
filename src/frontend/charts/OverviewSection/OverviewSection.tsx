@@ -1,7 +1,6 @@
 import React from 'react'
 import { useNewStats } from '../../api'
 import styles from './OverviewSection.module.scss'
-import { parse } from 'path'
 
 interface StatsCardProps {
   title: string

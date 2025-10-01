@@ -333,24 +333,19 @@ export async function queryActiveAccountsCountByTxFee(
   afterTimestamp: number,
   minTxFee = 0
 ): Promise<number> {
-  let activeAccounts: { 'COUNT(DISTINCT account)': number } = { 'COUNT(DISTINCT account)': 0 }
+  let activeAccounts: { 'COUNT(DISTINCT txFrom)': number } = { 'COUNT(DISTINCT txFrom)': 0 }
   try {
     const sql = `
-      SELECT COUNT(DISTINCT account) FROM (
-        SELECT txFrom as account FROM transactions
-        WHERE timestamp < ? AND timestamp > ? AND txFee > ?
-        UNION
-        SELECT txTo as account FROM transactions
-        WHERE timestamp < ? AND timestamp > ? AND txFee > ?
-      )
+      SELECT COUNT(DISTINCT txFrom) FROM transactions
+      WHERE timestamp < ? AND timestamp > ? AND txFee > ?
     `
-    const values = [beforeTimestamp, afterTimestamp, minTxFee, beforeTimestamp, afterTimestamp, minTxFee]
-    activeAccounts = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(DISTINCT account)': number }
+    const values = [beforeTimestamp, afterTimestamp, minTxFee]
+    activeAccounts = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(DISTINCT txFrom)': number }
   } catch (e) {
     console.log('Error querying active accounts by txFee:', e)
   }
   if (config.verbose) console.log('Active accounts count by txFee', activeAccounts)
-  return activeAccounts['COUNT(DISTINCT account)'] || 0
+  return activeAccounts['COUNT(DISTINCT txFrom)'] || 0
 }
 
 export async function queryTransactionCountByTxFee(
