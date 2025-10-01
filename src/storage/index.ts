@@ -41,14 +41,28 @@ export const initializeDB = async (): Promise<void> => {
   )
   await runCreate(
     cycleDatabase,
-    'CREATE TABLE if not exists `cycles` (`cycleMarker` TEXT NOT NULL UNIQUE PRIMARY KEY, `counter` NUMBER NOT NULL, `start` BIGINT NOT NULL, `cycleRecord` JSON NOT NULL)'
+    `CREATE TABLE if not exists cycles (
+      cycleMarker TEXT NOT NULL UNIQUE PRIMARY KEY,
+      counter NUMBER NOT NULL,
+      start BIGINT NOT NULL,
+      cycleRecord JSON NOT NULL
+    )`
   )
   // await runCreate(cycleDatabase, 'Drop INDEX if exists `cycles_idx`');
   await runCreate(cycleDatabase, 'CREATE INDEX if not exists `cycles_idx` ON `cycles` (`counter` DESC)')
   await runCreate(cycleDatabase, 'CREATE INDEX if not exists `cycles_start_idx` ON `cycles` (`start` DESC)')
   await runCreate(
     accountDatabase,
-    'CREATE TABLE if not exists `accounts` (`accountId` TEXT NOT NULL UNIQUE PRIMARY KEY, `data` JSON NOT NULL, `timestamp` BIGINT NOT NULL, `hash` TEXT NOT NULL, `cycleNumber` NUMBER NOT NULL, `createdTimestamp` BIGINT NOT NULL, `isGlobal` BOOLEAN NOT NULL, `accountType` TEXT NOT NULL)'
+    `CREATE TABLE if not exists accounts (
+      accountId TEXT NOT NULL UNIQUE PRIMARY KEY,
+      data JSON NOT NULL,
+      timestamp BIGINT NOT NULL,
+      hash TEXT NOT NULL,
+      cycleNumber NUMBER NOT NULL,
+      createdTimestamp BIGINT NOT NULL,
+      isGlobal BOOLEAN NOT NULL,
+      accountType TEXT NOT NULL
+    )`
   )
 
   /**
@@ -93,7 +107,17 @@ export const initializeDB = async (): Promise<void> => {
   // be sure to adjust the data types of `transactionType`, `txFrom`, `txTo` as needed
   await runCreate(
     transactionDatabase,
-    'CREATE TABLE if not exists `transactions` (`txId` TEXT NOT NULL UNIQUE PRIMARY KEY, `timestamp` BIGINT NOT NULL, `cycleNumber` NUMBER NOT NULL, `transactionType` TEXT, `txFrom` TEXT, `txTo` TEXT, `txFee` BIGINT NOT NULL DEFAULT 0, `data` JSON NOT NULL, `originalTxData` JSON NOT NULL)'
+    `CREATE TABLE if not exists transactions (
+      txId TEXT NOT NULL UNIQUE PRIMARY KEY,
+      timestamp BIGINT NOT NULL,
+      cycleNumber NUMBER NOT NULL,
+      transactionType TEXT,
+      txFrom TEXT,
+      txTo TEXT,
+      txFee BIGINT NOT NULL DEFAULT 0,
+      data JSON NOT NULL,
+      originalTxData JSON NOT NULL
+    )`
   )
   await runCreate(
     transactionDatabase,
@@ -125,7 +149,19 @@ export const initializeDB = async (): Promise<void> => {
   )
   await runCreate(
     receiptDatabase,
-    'CREATE TABLE if not exists `receipts` (`receiptId` TEXT NOT NULL UNIQUE PRIMARY KEY, `tx` JSON NOT NULL, `cycle` NUMBER NOT NULL, `applyTimestamp` BIGINT NOT NULL, `timestamp` BIGINT NOT NULL, `signedReceipt` JSON NOT NULL, `afterStates` JSON, `beforeStates` JSON, `appReceiptData` JSON, `executionShardKey` TEXT NOT NULL, `globalModification` BOOLEAN NOT NULL)'
+    `CREATE TABLE if not exists receipts (
+      receiptId TEXT NOT NULL UNIQUE PRIMARY KEY,
+      tx JSON NOT NULL,
+      cycle NUMBER NOT NULL,
+      applyTimestamp BIGINT NOT NULL,
+      timestamp BIGINT NOT NULL,
+      signedReceipt JSON NOT NULL,
+      afterStates JSON,
+      beforeStates JSON,
+      appReceiptData JSON,
+      executionShardKey TEXT NOT NULL,
+      globalModification BOOLEAN NOT NULL
+    )`
   )
   await runCreate(
     receiptDatabase,
@@ -139,7 +175,16 @@ export const initializeDB = async (): Promise<void> => {
   // be sure to adjust the data types of `transactionType`, `txFrom`, `txTo` as needed
   await runCreate(
     originalTxDataDatabase,
-    'CREATE TABLE if not exists `originalTxsData` (`txId` TEXT NOT NULL, `timestamp` BIGINT NOT NULL, `cycle` NUMBER NOT NULL, `originalTxData` JSON NOT NULL, `transactionType` TEXT, `txFrom` TEXT, `txTo` TEXT, PRIMARY KEY (`txId`, `timestamp`))'
+    `CREATE TABLE if not exists originalTxsData (
+      txId TEXT NOT NULL,
+      timestamp BIGINT NOT NULL,
+      cycle NUMBER NOT NULL,
+      originalTxData JSON NOT NULL,
+      transactionType TEXT,
+      txFrom TEXT,
+      txTo TEXT,
+      PRIMARY KEY (txId, timestamp)
+    )`
   )
   await runCreate(
     originalTxDataDatabase,
@@ -167,7 +212,15 @@ export const initializeDB = async (): Promise<void> => {
   )
   await runCreate(
     accountHistoryStateDatabase,
-    'CREATE TABLE if not exists `accountHistoryState` (`accountId` TEXT NOT NULL, `beforeStateHash` TEXT NOT NULL, `afterStateHash` TEXT NOT NULL, `timestamp` BIGINT NOT NULL, `receiptId` TEXT NOT NULL, PRIMARY KEY (`accountId`, `timestamp`))'
+    `CREATE TABLE if not exists accountHistoryState (
+      accountId TEXT NOT NULL,
+      beforeStateHash TEXT NOT NULL,
+      afterStateHash TEXT NOT NULL,
+      timestamp BIGINT NOT NULL,
+      receiptId TEXT NOT NULL,
+      balance BIGINT NOT NULL DEFAULT 0,
+      PRIMARY KEY (accountId, timestamp)
+    )`
   )
 }
 

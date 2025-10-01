@@ -7,7 +7,8 @@ export interface BaseDailyAccountStats {
   dateStartTime: number
   newAccounts: number
   newUserAccounts: number
-  activeAccounts: number
+  activeAccounts: number // user accounts that make at least one transaction with txFee > 0
+  activeBalanceAccounts: number // user accounts with balance > 0
 }
 
 export type DailyAccountStats = BaseDailyAccountStats
