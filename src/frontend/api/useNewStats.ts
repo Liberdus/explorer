@@ -27,8 +27,9 @@ type StatsResult = {
   stakeRequiredUsdStr: string // stake required amount in USD
   activeNodes: number // number of active nodes count in the last 24 hours
   standbyNodes: number // number of standby nodes count in the last 24 hours
-  activeBalanceAccounts: number // accounts with balance > 0 (from latest daily stats)
-  activeAccounts: number // accounts that made transactions in the last 24 hours
+  activeBalanceAccounts: number // accounts with balance > 0
+  activeAccounts: number // user accounts that made fee paying transactions in the last 24 hours
+  newActiveBalanceAccounts: number // user accounts that were involved in transactions in the last 24 hours and have latest balance > 0
 }
 
 export const useNewStats = (query: {
@@ -63,6 +64,7 @@ export const useNewStats = (query: {
     totalNewAccountsChange: number
     activeBalanceAccounts: number
     activeAccounts: number
+    newActiveBalanceAccounts: number
   }>(accountStatsQuery, fetcher, swrOptions)
 
   const transactionStatsResponse = useSWR<{
@@ -241,6 +243,13 @@ export const useNewStats = (query: {
       ? accountStatsResponse.data.activeAccounts
       : 0
 
+  const newActiveBalanceAccounts =
+    typeof accountStatsResponse.data === 'object' &&
+    accountStatsResponse.data != null &&
+    'newActiveBalanceAccounts' in accountStatsResponse.data
+      ? accountStatsResponse.data.newActiveBalanceAccounts
+      : 0
+
   return {
     totalAccounts,
     totalNewAccounts,
@@ -264,5 +273,6 @@ export const useNewStats = (query: {
     standbyNodes,
     activeBalanceAccounts,
     activeAccounts,
+    newActiveBalanceAccounts,
   }
 }

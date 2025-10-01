@@ -453,12 +453,19 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
     // Query user accounts with balance > 0 from AccountHistoryState at the end of this time period
     const activeBalanceAccounts = await AccountHistoryStateDB.queryActiveBalanceAccountsCount(beforeTimestamp)
 
+    // Query user accounts with balance > 0 from AccountHistoryState within the 24-hour period
+    const newActiveBalanceAccounts = await AccountHistoryStateDB.queryNewActiveBalanceAccountsCount(
+      beforeTimestamp,
+      afterTimestamp
+    )
+
     const dailyAccountStats: DailyAccountStatsDB.DbDailyAccountStats = {
       dateStartTime: startTimestamp,
       newAccounts,
       newUserAccounts,
       activeAccounts,
       activeBalanceAccounts,
+      newActiveBalanceAccounts,
     }
 
     await DailyAccountStatsDB.insertDailyAccountStats(dailyAccountStats)

@@ -144,3 +144,31 @@ export async function queryActiveBalanceAccountsCount(beforeTimestamp: number): 
   if (config.verbose) console.log('Active balance accounts count from history', count)
   return count?.count || 0
 }
+
+export async function queryNewActiveBalanceAccountsCount(
+  beforeTimestamp: number,
+  afterTimestamp: number
+): Promise<number> {
+  let count: { count: number } = { count: 0 }
+  try {
+    // Count accounts whose latest balance state within the 24-hour period is > 0
+    const sql = `
+      SELECT COUNT(DISTINCT accountId) as count
+      FROM accountHistoryState
+      WHERE (accountId, timestamp) IN (
+        SELECT accountId, MAX(timestamp)
+        FROM accountHistoryState
+        WHERE timestamp > ? AND timestamp < ?
+        GROUP BY accountId
+      )
+      AND balance > 0
+    `
+    count = (await db.get(accountHistoryStateDatabase, sql, [afterTimestamp, beforeTimestamp])) as {
+      count: number
+    }
+  } catch (e) {
+    console.log(e)
+  }
+  if (config.verbose) console.log('New active balance accounts count from history', count)
+  return count?.count || 0
+}

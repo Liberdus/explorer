@@ -116,7 +116,8 @@ export const initializeStatsDB = async (): Promise<void> => {
       newAccounts NUMBER NOT NULL,
       newUserAccounts NUMBER NOT NULL,
       activeAccounts NUMBER NOT NULL,
-      activeBalanceAccounts NUMBER NOT NULL DEFAULT 0
+      activeBalanceAccounts NUMBER NOT NULL DEFAULT 0,
+      newActiveBalanceAccounts NUMBER NOT NULL DEFAULT 0
     )`
   )
 
