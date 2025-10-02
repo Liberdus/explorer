@@ -96,7 +96,7 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
       showInNavigator: false,
       type: 'line',
       lineWidth: 2,
-      color: '#000000', // Black line for Total Txs
+      color: '#3498db', // Blue line for Total Txs
       marker: {
         enabled: false,
         states: {

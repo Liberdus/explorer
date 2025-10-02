@@ -6,9 +6,12 @@ import { DailyTransactionChart as DailyTransactionChartComponent } from '../../.
 import styles from './DailyTransactionChart.module.scss'
 import { useStats } from '../../../api'
 import { convertTransactionStatsToDailyData } from '../../../utils/transformChartData'
+import { breadcrumbsList } from '../../../types/routes'
 
 export const DailyTransactionChart: React.FC = () => {
   const height = 600
+
+  const breadcrumbs = [breadcrumbsList.chart]
 
   const transactionResponseType = 'array'
 
@@ -17,20 +20,95 @@ export const DailyTransactionChart: React.FC = () => {
     allDailyTxsReport: true,
   })
 
+  // Calculate highest and lowest transactions
+  const getHighestLowest = (): {
+    highest: { date: string; value: number } | null
+    lowest: { date: string; value: number } | null
+  } => {
+    if (!transactionStats || transactionStats.length === 0) {
+      return { highest: null, lowest: null }
+    }
+
+    let highest = { date: '', value: 0 }
+    let lowest = { date: '', value: Infinity }
+
+    transactionStats.forEach((stat: any) => {
+      const timestamp = stat.timestamp || stat[0]
+      const total = stat.totalTxs || stat[1]
+      const date = new Date(timestamp).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+
+      if (total > highest.value) {
+        highest = { date, value: total }
+      }
+      if (total < lowest.value && total > 0) {
+        lowest = { date, value: total }
+      }
+    })
+
+    return { highest, lowest }
+  }
+
+  const { highest, lowest } = getHighestLowest()
+
   return (
     <div className={styles.DailyTransactionChart}>
-      <ContentLayout title="Daily Transactions">
-        {loading ? (
-          <div className={styles.loading}>Loading...</div>
-        ) : (
-          <DailyTransactionChartComponent
-            title="Daily Transactions Chart"
-            subTitle="Historical daily transaction data with breakdown by transaction type"
-            height={height}
-            data={convertTransactionStatsToDailyData(transactionStats)}
-            name="Daily Transactions"
-          />
-        )}
+      <ContentLayout title="Daily Transactions" breadcrumbItems={breadcrumbs} showBackButton>
+        <div className={styles.chartContainer}>
+          <div className={styles.chartWrapper}>
+            {loading ? (
+              <div className={styles.loading}>Loading...</div>
+            ) : (
+              <DailyTransactionChartComponent
+                title="Liberdus Daily Transactions Chart"
+                subTitle="Historical daily transaction data with breakdown by transaction type"
+                height={height}
+                data={convertTransactionStatsToDailyData(transactionStats)}
+                name="Daily Transactions"
+              />
+            )}
+          </div>
+          <div className={styles.infoPanel}>
+            <div className={styles.infoPanelHeader}>
+              <h3>About</h3>
+            </div>
+            <div className={styles.infoPanelContent}>
+              <p>
+                The chart highlights the total number of transactions on the Liberdus blockchain with daily
+                individual breakdown for average difficulty, estimated hash rate, average block time and size,
+                total block and uncle block count and total new address seen.
+              </p>
+              {highest && (
+                <div className={styles.highlight}>
+                  <div className={styles.highlightIcon}>📍</div>
+                  <div className={styles.highlightContent}>
+                    <div className={styles.highlightLabel}>HIGHLIGHT</div>
+                    <div className={styles.highlightText}>
+                      Highest number of <strong>{highest.value.toLocaleString()}</strong> transactions on{' '}
+                      {highest.date}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {lowest && lowest.value !== Infinity && (
+                <div className={styles.highlight}>
+                  <div className={styles.highlightIcon}>📍</div>
+                  <div className={styles.highlightContent}>
+                    <div className={styles.highlightLabel}>HIGHLIGHT</div>
+                    <div className={styles.highlightText}>
+                      Lowest number of <strong>{lowest.value.toLocaleString()}</strong> transactions on{' '}
+                      {lowest.date}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </ContentLayout>
     </div>
   )
