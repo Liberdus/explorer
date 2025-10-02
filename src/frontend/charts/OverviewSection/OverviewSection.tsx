@@ -93,7 +93,7 @@ export const OverviewSection: React.FC = () => {
       title: 'Transactions (Total)',
       value: totalUserTxs,
       // ...formatPercentage(totalUserTxsChange),
-      route: '/charts/daily_transactions',
+      route: '/charts/tx',
     },
     {
       title: 'New Addresses (24H)',

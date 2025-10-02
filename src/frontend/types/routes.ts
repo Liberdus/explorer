@@ -6,4 +6,5 @@ export const breadcrumbsList = {
   transaction: { to: '/transaction', label: 'Transaction' },
   log: { to: '/log', label: 'Log' },
   token: { to: '/token', label: 'Token' },
+  chart: { to: '/charts', label: 'Chart' },
 }

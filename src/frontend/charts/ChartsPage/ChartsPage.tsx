@@ -1,15 +1,17 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { ContentLayout } from '../../components'
 import { OverviewSection } from '../OverviewSection'
+import { BlockchainDataSection } from '../BlockchainDataSection'
 import { breadcrumbsList } from '../../types'
 
 import styles from './ChartsPage.module.scss'
+import { MarketDataSection } from '../MarketDataSection'
 
 export type ChartsSectionType =
   | 'overview'
-  | 'charts'
+  | 'market'
+  | 'blockchain-data'
   | 'network-stats'
-  | 'validator-stats'
   | 'transaction-stats'
   | 'transaction-charts'
   | 'validator-charts'
@@ -19,11 +21,10 @@ export const ChartsPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<ChartsSectionType>('overview')
   const [isScrolling, setIsScrolling] = useState(false)
 
-  const mainContentRef = useRef<HTMLDivElement>(null)
   const overviewRef = useRef<HTMLDivElement>(null)
-  const chartsRef = useRef<HTMLDivElement>(null)
+  const marketRef = useRef<HTMLDivElement>(null)
+  const blockchainDataRef = useRef<HTMLDivElement>(null)
   const networkStatsRef = useRef<HTMLDivElement>(null)
-  const validatorStatsRef = useRef<HTMLDivElement>(null)
   const transactionStatsRef = useRef<HTMLDivElement>(null)
   const transactionChartsRef = useRef<HTMLDivElement>(null)
   const validatorChartsRef = useRef<HTMLDivElement>(null)
@@ -34,9 +35,9 @@ export const ChartsPage: React.FC = () => {
   const scrollToSection = (sectionId: ChartsSectionType): void => {
     const refs = {
       overview: overviewRef,
-      charts: chartsRef,
+      market: marketRef,
+      'blockchain-data': blockchainDataRef,
       'network-stats': networkStatsRef,
-      'validator-stats': validatorStatsRef,
       'transaction-stats': transactionStatsRef,
       'transaction-charts': transactionChartsRef,
       'validator-charts': validatorChartsRef,
@@ -44,22 +45,25 @@ export const ChartsPage: React.FC = () => {
     }
 
     const ref = refs[sectionId] as React.RefObject<HTMLDivElement> | undefined
-    const mainContent = mainContentRef.current
 
-    if (ref?.current && mainContent) {
+    if (ref?.current) {
       setIsScrolling(true)
-      setActiveSection(sectionId) // Set immediately to prevent flicker
+      setActiveSection(sectionId)
 
-      const elementTop = ref.current.offsetTop
-      mainContent.scrollTo({
+      const elementTop = ref.current.getBoundingClientRect().top + window.scrollY - 20 // Subtract 20px for top spacing
+      const startPosition = window.scrollY
+      const distance = Math.abs(elementTop - startPosition)
+
+      const duration = Math.min(1000, Math.max(300, distance / 2))
+
+      window.scrollTo({
         top: elementTop,
         behavior: 'smooth',
       })
 
-      // Reset scrolling flag after animation completes
       setTimeout(() => {
         setIsScrolling(false)
-      }, 800) // Slightly longer than typical smooth scroll duration
+      }, duration + 100)
     }
   }
 
@@ -68,34 +72,29 @@ export const ChartsPage: React.FC = () => {
   }
 
   useEffect(() => {
-    const mainContent = mainContentRef.current
-    if (!mainContent) return
-
     const handleScroll = (): void => {
       // Don't update active section during programmatic scrolling
       if (isScrolling) return
 
       const sections = [
         { id: 'overview' as ChartsSectionType, ref: overviewRef },
-        { id: 'charts' as ChartsSectionType, ref: chartsRef },
+        { id: 'market' as ChartsSectionType, ref: marketRef },
+        { id: 'blockchain-data' as ChartsSectionType, ref: blockchainDataRef },
         { id: 'network-stats' as ChartsSectionType, ref: networkStatsRef },
-        { id: 'validator-stats' as ChartsSectionType, ref: validatorStatsRef },
         { id: 'transaction-stats' as ChartsSectionType, ref: transactionStatsRef },
         { id: 'transaction-charts' as ChartsSectionType, ref: transactionChartsRef },
         { id: 'validator-charts' as ChartsSectionType, ref: validatorChartsRef },
         { id: 'network-charts' as ChartsSectionType, ref: networkChartsRef },
       ]
 
-      // Use the scroll position of the mainContent container
-      const scrollPosition = mainContent.scrollTop + 150
+      const scrollPosition = window.scrollY + 150 // Changed to window.scrollY
       let activeId: ChartsSectionType = 'overview'
 
       for (let i = sections.length - 1; i >= 0; i--) {
         const section = sections[i]
         if (section.ref.current) {
           const element = section.ref.current
-          // Get position relative to the mainContent container
-          const elementTop = element.offsetTop - mainContent.offsetTop
+          const elementTop = element.getBoundingClientRect().top + window.scrollY // Changed calculation
 
           if (scrollPosition >= elementTop) {
             activeId = section.id
@@ -111,12 +110,11 @@ export const ChartsPage: React.FC = () => {
       requestAnimationFrame(handleScroll)
     }
 
-    // Listen to scroll events on the mainContent container, not window
-    mainContent.addEventListener('scroll', throttledHandleScroll, { passive: true })
-    handleScroll() // Call once on mount
+    window.addEventListener('scroll', throttledHandleScroll, { passive: true }) // Changed to window
+    handleScroll()
 
-    return () => mainContent.removeEventListener('scroll', throttledHandleScroll)
-  }, [isScrolling]) // Add isScrolling to dependency array
+    return () => window.removeEventListener('scroll', throttledHandleScroll) // Changed cleanup
+  }, [isScrolling])
 
   return (
     <div className={styles.ChartsPage}>
@@ -139,15 +137,30 @@ export const ChartsPage: React.FC = () => {
             </div>
             <div className={styles.sidebarItem}>
               <button
-                className={`${styles.sidebarButton} ${activeSection === 'charts' ? styles.active : ''}`}
-                onClick={() => handleSectionChange('charts')}
+                className={`${styles.sidebarButton} ${activeSection === 'market' ? styles.active : ''}`}
+                onClick={() => handleSectionChange('market')}
                 style={{
-                  backgroundColor: activeSection === 'charts' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'charts' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'charts' ? '600' : '500',
+                  backgroundColor: activeSection === 'market' ? '#e7f3ff' : 'transparent',
+                  color: activeSection === 'market' ? '#0066cc' : '#6c757d',
+                  fontWeight: activeSection === 'market' ? '600' : '500',
                 }}
               >
-                Charts & Stats
+                Market Data
+              </button>
+            </div>
+            <div className={styles.sidebarItem}>
+              <button
+                className={`${styles.sidebarButton} ${
+                  activeSection === 'blockchain-data' ? styles.active : ''
+                }`}
+                onClick={() => handleSectionChange('blockchain-data')}
+                style={{
+                  backgroundColor: activeSection === 'blockchain-data' ? '#e7f3ff' : 'transparent',
+                  color: activeSection === 'blockchain-data' ? '#0066cc' : '#6c757d',
+                  fontWeight: activeSection === 'blockchain-data' ? '600' : '500',
+                }}
+              >
+                Blockchain Data
               </button>
             </div>
             <div className={styles.sidebarItem}>
@@ -163,21 +176,6 @@ export const ChartsPage: React.FC = () => {
                 }}
               >
                 Network Statistics
-              </button>
-            </div>
-            <div className={styles.sidebarItem}>
-              <button
-                className={`${styles.sidebarButton} ${
-                  activeSection === 'validator-stats' ? styles.active : ''
-                }`}
-                onClick={() => handleSectionChange('validator-stats')}
-                style={{
-                  backgroundColor: activeSection === 'validator-stats' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'validator-stats' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'validator-stats' ? '600' : '500',
-                }}
-              >
-                Validator Overview
               </button>
             </div>
             <div className={styles.sidebarItem}>
@@ -243,29 +241,23 @@ export const ChartsPage: React.FC = () => {
           </div>
 
           {/* Main Scrollable Content */}
-          <div ref={mainContentRef} className={styles.mainContent}>
+          <div className={styles.mainContent}>
             <div ref={overviewRef} className={styles.section} id="overview">
               <OverviewSection />
             </div>
 
-            <div ref={chartsRef} className={styles.section} id="charts">
-              <div className={styles.sectionPlaceholder}>
-                <h3>Charts & Stats</h3>
-                <p>Charts & Stats section will be added here</p>
-              </div>
+            <div ref={marketRef} className={styles.section} id="market">
+              <MarketDataSection />
+            </div>
+
+            <div ref={blockchainDataRef} className={styles.section} id="blockchain-data">
+              <BlockchainDataSection />
             </div>
 
             <div ref={networkStatsRef} className={styles.section} id="network-stats">
               <div className={styles.sectionPlaceholder}>
                 <h3>Network Statistics</h3>
                 <p>Network statistics section will be added here</p>
-              </div>
-            </div>
-
-            <div ref={validatorStatsRef} className={styles.section} id="validator-stats">
-              <div className={styles.sectionPlaceholder}>
-                <h3>Validator Overview</h3>
-                <p>Validator statistics section will be added here</p>
               </div>
             </div>
 

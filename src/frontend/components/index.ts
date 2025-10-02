@@ -21,3 +21,5 @@ export { ExpandableList } from './ExpandableList'
 export { Tab } from './Tab'
 export { Table } from './TableComp'
 export { Notification } from './Notification'
+export { ChartSVG, chartSVGTypes } from './ChartSVG'
+

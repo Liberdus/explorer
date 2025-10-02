@@ -13,8 +13,8 @@ import { debounce } from '../../utils/debounce'
 import { useRouter } from 'next/router'
 
 export interface ChartDetailProps {
-  validatorStats: ValidatorStats[]
-  transactionStats: TransactionStats[]
+  validatorStats: ValidatorStats[] | number[][]
+  transactionStats: TransactionStats[] | number[][]
 }
 
 export interface CycleLineMarker {
