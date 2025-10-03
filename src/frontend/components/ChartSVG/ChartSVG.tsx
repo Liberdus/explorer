@@ -78,7 +78,5 @@ export const ChartSVG: FC<ChartSvgProps> = ({ name, ...props }): React.ReactElem
   // eslint-disable-next-line security/detect-object-injection
   const ChartComponent = chartSVGTypes[name]
 
-  console.log(ChartComponent)
-
   return ChartComponent ? <ChartComponent {...props} /> : null
 }

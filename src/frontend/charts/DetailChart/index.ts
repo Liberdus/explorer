@@ -1,3 +1,6 @@
 export { DailyTransactionChart } from './DailyTransactionChart'
 export { DailyNewAddressChart } from './DailyNewAddressChart'
 export { DailyActiveAddressChart } from './DailyActiveAddressChart'
+export { DailyPriceChart } from './DailyPriceChart'
+export { DailyMarketCapChart } from './DailyMarketCapChart'
+export { DailySupplyGrowthChart } from './DailySupplyGrowthChart'

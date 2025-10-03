@@ -10,7 +10,6 @@ interface ChartCardProps {
 }
 
 const ChartCard: React.FC<ChartCardProps> = ({ title, chartSvgName, route }) => {
-  console.log('chartSvgName', chartSvgName)
   return (
     <Link href={route} className={styles.cardLink}>
       <div className={styles.chartCard}>

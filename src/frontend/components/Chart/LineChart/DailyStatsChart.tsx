@@ -10,7 +10,7 @@ if (typeof Highcharts === 'object') {
 interface DataPoint {
   x: number
   y: number
-  cycle: number
+  cycle?: number
   [key: string]: any // Allow additional properties
 }
 
@@ -31,11 +31,20 @@ interface DailyStatsChartProps {
   height?: number
   name?: string
   yAxisTitle?: string
+  yAxisDecimals?: number
   tooltipFormatter?: TooltipFormatter
 }
 
 export const DailyStatsChart: React.FC<DailyStatsChartProps> = (props: DailyStatsChartProps) => {
-  const { title, subTitle, data, height = 300, yAxisTitle = 'Value', tooltipFormatter } = props
+  const {
+    title,
+    subTitle,
+    data,
+    height = 300,
+    yAxisTitle = 'Value',
+    yAxisDecimals = 0,
+    tooltipFormatter,
+  } = props
 
   const getPlotOptions = (): object => {
     return {
@@ -60,7 +69,7 @@ export const DailyStatsChart: React.FC<DailyStatsChartProps> = (props: DailyStat
     }
   }
 
-  const defaultTooltipFormatter = function () {
+  const defaultTooltipFormatter = function (): string {
     const timestamp = this.x
     const xDate = new Date(timestamp)
     const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
@@ -105,7 +114,6 @@ export const DailyStatsChart: React.FC<DailyStatsChartProps> = (props: DailyStat
       margin: 15,
     },
     series: data.map((row) => ({
-      ...row,
       data: row.data
         .filter((point: DataPoint) => point.x != null && point.y != null)
         .map((point: DataPoint) => ({
@@ -177,6 +185,10 @@ export const DailyStatsChart: React.FC<DailyStatsChartProps> = (props: DailyStat
         align: 'right',
         x: -10,
         formatter: function () {
+          // Format with specified decimals, then remove trailing zeros
+          if (yAxisDecimals > 0) {
+            return parseFloat(this.value.toFixed(yAxisDecimals)).toString()
+          }
           return Highcharts.numberFormat(this.value, 0)
         },
       },

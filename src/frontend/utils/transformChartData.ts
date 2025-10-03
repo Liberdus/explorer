@@ -1,19 +1,45 @@
+import { config } from '../../config'
+import { DailyAccountStats } from '../../stats/dailyAccountStats'
+import { DailyCoinStats, DailyCoinStatsWithPrice } from '../../stats/dailyCoinStats'
 import { TransactionStats } from '../../stats/transactionStats'
 import { ValidatorStats } from '../../stats/validatorStats'
 
-interface DataPoint {
+export interface DataPoint {
   x: number
   y: number
-  cycle: number
+  cycle?: number
   // Additional properties for tooltip data
-  transferTxs?: number
-  messageTxs?: number
-  depositStakeTxs?: number
-  withdrawStakeTxs?: number
-  cumulativeTotal?: number
+  newAddressChartData?: NewAddressChartData
+  marketCapChartData?: MarketCapChartData
+  supplyGrowthChartData?: SupplyGrowthChartData
+  dailyTxsChartData?: DailyTxsChartData
 }
 
-interface SeriesData {
+export interface NewAddressChartData {
+  dailyIncrease: number
+}
+
+export interface MarketCapChartData {
+  priceUSD: number
+}
+
+export interface SupplyGrowthChartData {
+  mintedCoin: number
+  rewardAmountRealized: number
+  transactionFee: number
+  burntFee: number
+  penaltyAmount: number
+  totalSupplyChange: number
+}
+
+export interface DailyTxsChartData {
+  transferTxs: number
+  messageTxs: number
+  depositStakeTxs: number
+  withdrawStakeTxs: number
+}
+
+export interface SeriesData {
   name: string
   data: DataPoint[]
   zIndex: number
@@ -168,7 +194,7 @@ export function convertTransactionStatsToSeriesData(
 
 export function convertValidatorStatsToSeriesData(
   validatorStats: ValidatorStats[] | number[][],
-  validatorResponseType?: string
+  validatorResponseType = 'array'
 ): SeriesData[] {
   const seriesData: SeriesData[] = [
     { name: 'Active', data: [], zIndex: 5, tooltip: 'Count of all currently active validators' },
@@ -222,107 +248,120 @@ export function convertValidatorStatsToSeriesData(
   return seriesData
 }
 
-export function convertTransactionStatsToDailyData(
-  transactionStats: TransactionStats[] | number[][]
-): SeriesData[] {
-  if (!transactionStats || transactionStats.length === 0) {
-    return [
-      { name: 'Total Txs', data: [], zIndex: 1, tooltip: 'Total transactions per day', visible: true },
-    ]
+export function convertDailyTransactionStatsToSeriesData(
+  transactionStats: TransactionStats[] | number[][],
+  transactionResponseType = 'array'
+): {
+  seriesData: SeriesData[]
+  stats: {
+    highest: { timestamp: number; value: number } | null
+    lowest: { timestamp: number; value: number } | null
   }
-
-  // Initialize series data array - only Total Txs
+} {
   const seriesData: SeriesData[] = [
     { name: 'Total Txs', data: [], zIndex: 1, tooltip: 'Total transactions per day', visible: true },
   ]
+  let highest = { timestamp: 0, value: 0 }
+  let lowest = { timestamp: 0, value: Infinity }
+  if (!transactionStats || transactionStats.length === 0) {
+    return { seriesData, stats: { highest, lowest } }
+  }
 
-  transactionStats
-    .sort((a, b) => {
-      if (Array.isArray(a) && Array.isArray(b)) {
-        return a[0] - b[0] // Sort by dateStartTime (index 0 in array format for daily stats)
-      }
-      return (a as TransactionStats).timestamp - (b as TransactionStats).timestamp
-    })
-    .forEach((transactionStat) => {
-      let timestamp: number
-      let totalTxs: number
+  transactionStats.forEach((stat) => {
+    let timestamp: number
+    let totalTxs: number
+    // Extract transaction type data for tooltip
+    let transferTxs = 0
+    let messageTxs = 0
+    let depositStakeTxs = 0
+    let withdrawStakeTxs = 0
 
-      if (Array.isArray(transactionStat)) {
-        // Array format for daily stats: [dateStartTime, totalTxs, ...]
-        timestamp = transactionStat[0] // dateStartTime is already in milliseconds
-        totalTxs = transactionStat[1] || 0
-      } else {
-        // Object format
-        timestamp = transactionStat.timestamp * 1000
-        totalTxs = transactionStat.totalTxs || 0
-      }
+    if (transactionResponseType === 'array') {
+      // Array format for daily stats: [dateStartTime, totalTxs, ...]
+      const transactionStat = stat as number[]
+      timestamp = transactionStat[0] // dateStartTime is already in milliseconds
+      totalTxs = transactionStat[1] || 0
+      transferTxs = transactionStat[2] || 0 // Transfer index in daily stats
+      messageTxs = transactionStat[3] || 0 // Message index in daily stats
+      depositStakeTxs = transactionStat[4] || 0 // Deposit Stake index in daily stats
+      withdrawStakeTxs = transactionStat[5] || 0 // Withdraw Stake index in daily stats
+    } else {
+      const transactionStat = stat as TransactionStats
+      timestamp = transactionStat.timestamp * 1000
+      totalTxs = transactionStat.totalTxs || 0
+      transferTxs = transactionStat.totalTransferTxs || 0
+      messageTxs = transactionStat.totalMessageTxs || 0
+      depositStakeTxs = transactionStat.totalDepositStakeTxs || 0
+      withdrawStakeTxs = transactionStat.totalWithdrawStakeTxs || 0
+    }
 
-      // Extract transaction type data for tooltip
-      let transferTxs = 0
-      let messageTxs = 0
-      let depositStakeTxs = 0
-      let withdrawStakeTxs = 0
+    if (totalTxs > highest.value) {
+      highest = { timestamp, value: totalTxs }
+    }
+    if (totalTxs < lowest.value && totalTxs > 0) {
+      lowest = { timestamp, value: totalTxs }
+    }
 
-      if (Array.isArray(transactionStat)) {
-        // For daily stats array format: [dateStartTime, totalTxs, totalTransferTxs, totalMessageTxs, totalDepositStakeTxs, totalWithdrawStakeTxs]
-        transferTxs = transactionStat[2] || 0 // Transfer index in daily stats
-        messageTxs = transactionStat[3] || 0 // Message index in daily stats
-        depositStakeTxs = transactionStat[4] || 0 // Deposit Stake index in daily stats
-        withdrawStakeTxs = transactionStat[5] || 0 // Withdraw Stake index in daily stats
-      } else {
-        // Object format
-        transferTxs = transactionStat.totalTransferTxs || 0
-        messageTxs = transactionStat.totalMessageTxs || 0
-        depositStakeTxs = transactionStat.totalDepositStakeTxs || 0
-        withdrawStakeTxs = transactionStat.totalWithdrawStakeTxs || 0
-      }
-
-      // Add data point for Total Txs with transaction type breakdown for tooltip
-      seriesData[0].data.push({
-        x: timestamp,
-        y: totalTxs,
-        cycle: 0,
+    // Add data point for Total Txs with transaction type breakdown for tooltip
+    seriesData[0].data.push({
+      x: timestamp,
+      y: totalTxs,
+      dailyTxsChartData: {
         transferTxs,
         messageTxs,
         depositStakeTxs,
         withdrawStakeTxs,
-      })
+      },
     })
+  })
 
-  return seriesData
+  return { seriesData, stats: { highest, lowest } }
 }
 
-export function convertAccountStatsToDailyData(accountStats: any[] | number[][]): SeriesData[] {
-  if (!accountStats || accountStats.length === 0) {
-    return [
-      { name: 'New Addresses', data: [], zIndex: 1, tooltip: 'New addresses per day', visible: true },
-    ]
+export function convertDailyAccountStatsToSeriesData(
+  dailyAccountStats: DailyAccountStats[] | number[][],
+  accountResponseType = 'array',
+  queryType: {
+    newAddress: boolean
+    activeAddress: boolean
+  }
+): {
+  seriesData: SeriesData[]
+  stats: {
+    highest: { timestamp: number; value: number } | null
+    lowest: { timestamp: number; value: number } | null
+  }
+} {
+  if (!queryType.newAddress && !queryType.activeAddress) {
+    throw new Error('No query type selected for daily account stats')
+  }
+  const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
+  let highest = { timestamp: 0, value: 0 }
+  let lowest = { timestamp: 0, value: Infinity }
+  if (queryType.newAddress) {
+    seriesData[0].name = 'New Addresses'
+    seriesData[0].tooltip = 'New addresses per day'
+  } else if (queryType.activeAddress) {
+    seriesData[0].name = 'Active Addresses'
+    seriesData[0].tooltip = 'Active addresses per day'
   }
 
-  // Initialize series data array - only New Addresses
-  const seriesData: SeriesData[] = [
-    { name: 'New Addresses', data: [], zIndex: 1, tooltip: 'New addresses per day', visible: true },
-  ]
+  if (!dailyAccountStats || dailyAccountStats.length === 0) {
+    return { seriesData, stats: { highest, lowest } }
+  }
 
   let cumulativeTotal = 0
-
-  accountStats
-    .sort((a, b) => {
-      if (Array.isArray(a) && Array.isArray(b)) {
-        return a[0] - b[0] // Sort by dateStartTime (index 0 in array format for daily stats)
-      }
-      return a.dateStartTime - b.dateStartTime
-    })
-    .forEach((accountStat) => {
-      let timestamp: number
+  dailyAccountStats.forEach((stat) => {
+    let timestamp: number
+    if (queryType.newAddress) {
       let newAccounts: number
-
-      if (Array.isArray(accountStat)) {
+      if (accountResponseType === 'array') {
         // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, ...]
+        const accountStat = stat as number[]
         timestamp = accountStat[0] // dateStartTime is already in milliseconds
         newAccounts = accountStat[1] || 0
       } else {
-        // Object format
+        const accountStat = stat as DailyAccountStats
         timestamp = accountStat.dateStartTime
         newAccounts = accountStat.newAccounts || 0
       }
@@ -330,58 +369,251 @@ export function convertAccountStatsToDailyData(accountStats: any[] | number[][])
       // Calculate cumulative total
       cumulativeTotal += newAccounts
 
+      if (newAccounts > highest.value) {
+        highest = { timestamp, value: newAccounts }
+      }
+      if (newAccounts < lowest.value && newAccounts > 0) {
+        lowest = { timestamp, value: newAccounts }
+      }
+
       // Add data point for New Addresses with cumulative total
       seriesData[0].data.push({
         x: timestamp,
-        y: newAccounts,
-        cycle: 0,
-        cumulativeTotal: cumulativeTotal,
+        y: cumulativeTotal,
+        newAddressChartData: {
+          dailyIncrease: newAccounts,
+        },
       })
-    })
-
-  return seriesData
-}
-
-export function convertActiveAccountStatsToDailyData(accountStats: any[] | number[][]): SeriesData[] {
-  if (!accountStats || accountStats.length === 0) {
-    return [
-      { name: 'Active Addresses', data: [], zIndex: 1, tooltip: 'Active addresses per day', visible: true },
-    ]
-  }
-
-  // Initialize series data array - only Active Addresses
-  const seriesData: SeriesData[] = [
-    { name: 'Active Addresses', data: [], zIndex: 1, tooltip: 'Active addresses per day', visible: true },
-  ]
-
-  accountStats
-    .sort((a, b) => {
-      if (Array.isArray(a) && Array.isArray(b)) {
-        return a[0] - b[0] // Sort by dateStartTime (index 0 in array format for daily stats)
-      }
-      return a.dateStartTime - b.dateStartTime
-    })
-    .forEach((accountStat) => {
-      let timestamp: number
+    } else if (queryType.activeAddress) {
       let activeAccounts: number
-
-      if (Array.isArray(accountStat)) {
-        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, activeAccounts, ...]
+      if (accountResponseType === 'array') {
+        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, ...]
+        const accountStat = stat as number[]
         timestamp = accountStat[0] // dateStartTime is already in milliseconds
-        activeAccounts = accountStat[3] || 0 // activeAccounts is at index 3
+        activeAccounts = accountStat[3] || 0
       } else {
-        // Object format
+        const accountStat = stat as DailyAccountStats
         timestamp = accountStat.dateStartTime
         activeAccounts = accountStat.activeAccounts || 0
       }
 
+      if (activeAccounts > highest.value) {
+        highest = { timestamp, value: activeAccounts }
+      }
+      if (activeAccounts < lowest.value) {
+        lowest = { timestamp, value: activeAccounts }
+      }
       // Add data point for Active Addresses
       seriesData[0].data.push({
         x: timestamp,
         y: activeAccounts,
-        cycle: 0,
       })
-    })
+    }
+  })
 
-  return seriesData
+  return { seriesData, stats: { highest, lowest } }
+}
+
+export function convertDailyCoinStatsToSeriesData(
+  dailyCoinStats: DailyCoinStats[] | number[][],
+  coinResponseType = 'array',
+  queryType: {
+    dailyPrice?: boolean
+    dailyMarketCap?: boolean
+    dailySupplyGrowth?: boolean
+  }
+): {
+  seriesData: SeriesData[]
+  stats: {
+    highest: { timestamp: number; value: number } | null
+    lowest: { timestamp: number; value: number } | null
+    current: number | null
+  }
+} {
+  if (!queryType.dailyPrice && !queryType.dailyMarketCap && !queryType.dailySupplyGrowth) {
+    throw new Error('No query type selected for daily account stats')
+  }
+  const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
+  let highest = { timestamp: 0, value: 0 }
+  let lowest = { timestamp: 0, value: Infinity }
+  let current = 0
+  if (queryType.dailyPrice) {
+    seriesData[0].name = 'LIB Price (USD)'
+    seriesData[0].tooltip = 'LIB Price in USD'
+  } else if (queryType.dailyMarketCap) {
+    seriesData[0].name = 'Market Cap (USD)'
+    seriesData[0].tooltip = 'LIB Market Capitalization in USD'
+  } else if (queryType.dailySupplyGrowth) {
+    seriesData[0].name = 'LIB Supply'
+    seriesData[0].tooltip = 'Total LIB Supply'
+  }
+  if (!dailyCoinStats || dailyCoinStats.length === 0) {
+    return { seriesData, stats: { highest, lowest, current } }
+  }
+
+  let cumulativeTotal = config.genesisLIBSupply
+
+  // Convert price data for chart
+  dailyCoinStats.forEach((stat) => {
+    if (queryType.dailyPrice) {
+      let timestamp: number
+      let priceUSD: number
+      if (coinResponseType === 'array') {
+        // Array format for daily stats: [dateStartTime, priceUSD, ...]
+        const coinStat = stat as number[]
+        timestamp = coinStat[0] // dateStartTime is already in milliseconds
+        priceUSD = coinStat[9]
+      } else {
+        const coinStat = stat as DailyCoinStatsWithPrice
+        timestamp = coinStat.dateStartTime
+        priceUSD = coinStat.stabilityFactor
+      }
+
+      if (priceUSD > highest.value) {
+        highest = { timestamp, value: priceUSD }
+      }
+      if (priceUSD < lowest.value && priceUSD > 0) {
+        lowest = { timestamp, value: priceUSD }
+      }
+
+      current = priceUSD
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: priceUSD,
+      })
+    } else if (queryType.dailyMarketCap) {
+      // Convert market cap data for chart
+
+      let timestamp: number
+      let priceUSD = 0
+      if (coinResponseType === 'array') {
+        const dailyCoinStat = stat as number[]
+        timestamp = dailyCoinStat[0]
+        priceUSD = dailyCoinStat[9]
+        const mintedCoin = dailyCoinStat[1]
+        const rewardAmountRealized = dailyCoinStat[6]
+        const transactionFee = dailyCoinStat[3]
+        const burntFee = dailyCoinStat[4]
+        const penaltyAmount = dailyCoinStat[8]
+
+        const totalSupplyChange = calculateTotalSupplyChange(
+          mintedCoin,
+          rewardAmountRealized,
+          transactionFee,
+          burntFee,
+          penaltyAmount
+        )
+
+        cumulativeTotal = cumulativeTotal + totalSupplyChange
+      } else {
+        const dailyCoinStat = stat as DailyCoinStatsWithPrice
+        timestamp = dailyCoinStat.dateStartTime
+        priceUSD = dailyCoinStat.stabilityFactor
+        const totalSupplyChange = calculateTotalSupplyChange(
+          dailyCoinStat.mintedCoin,
+          dailyCoinStat.rewardAmountRealized,
+          dailyCoinStat.transactionFee,
+          dailyCoinStat.burntFee,
+          dailyCoinStat.penaltyAmount
+        )
+
+        cumulativeTotal = cumulativeTotal + totalSupplyChange
+      }
+
+      const marketCap = priceUSD * cumulativeTotal
+      if (marketCap > highest.value) {
+        highest = { timestamp, value: marketCap }
+      }
+      if (marketCap < lowest.value && marketCap > 0) {
+        lowest = { timestamp, value: marketCap }
+      }
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: marketCap,
+        marketCapChartData: {
+          priceUSD,
+        },
+      })
+    } else if (queryType.dailySupplyGrowth) {
+      // Convert supply growth data for chart
+      let timestamp: number
+      let mintedCoin = 0
+      let rewardAmountRealized = 0
+      let transactionFee = 0
+      let burntFee = 0
+      let penaltyAmount = 0
+      let totalSupplyChange = 0
+      if (coinResponseType === 'array') {
+        const dailyCoinStat = stat as number[]
+        timestamp = dailyCoinStat[0]
+        mintedCoin = dailyCoinStat[1]
+        rewardAmountRealized = dailyCoinStat[6]
+        transactionFee = dailyCoinStat[3]
+        burntFee = dailyCoinStat[4]
+        penaltyAmount = dailyCoinStat[8]
+
+        totalSupplyChange = calculateTotalSupplyChange(
+          mintedCoin,
+          rewardAmountRealized,
+          transactionFee,
+          burntFee,
+          penaltyAmount
+        )
+
+        cumulativeTotal = cumulativeTotal + totalSupplyChange
+      } else {
+        const dailyCoinStat = stat as DailyCoinStatsWithPrice
+        timestamp = dailyCoinStat.dateStartTime
+        mintedCoin = dailyCoinStat.mintedCoin
+        rewardAmountRealized = dailyCoinStat.rewardAmountRealized
+        transactionFee = dailyCoinStat.transactionFee
+        burntFee = dailyCoinStat.burntFee
+        penaltyAmount = dailyCoinStat.penaltyAmount
+        totalSupplyChange = calculateTotalSupplyChange(
+          mintedCoin,
+          rewardAmountRealized,
+          transactionFee,
+          burntFee,
+          penaltyAmount
+        )
+
+        cumulativeTotal = cumulativeTotal + totalSupplyChange
+      }
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: cumulativeTotal,
+        supplyGrowthChartData: {
+          mintedCoin,
+          rewardAmountRealized,
+          transactionFee,
+          burntFee,
+          penaltyAmount,
+          totalSupplyChange,
+        },
+      })
+    }
+  })
+
+  return { seriesData, stats: { highest, lowest, current } }
+}
+
+export function calculateTotalSupplyChange(
+  mintedCoin: number,
+  rewardAmountRealized: number,
+  transactionFee: number,
+  burntFee: number,
+  penaltyAmount: number
+): number {
+  return mintedCoin + rewardAmountRealized - transactionFee - burntFee - penaltyAmount
+}
+
+export function calculateTotalStakeChange(
+  stakeAmount: number,
+  unStakeAmount: number,
+  penaltyAmount: number
+): number {
+  return stakeAmount - unStakeAmount - penaltyAmount
 }

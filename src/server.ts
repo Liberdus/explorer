@@ -1133,7 +1133,9 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(14)
+      transactionStats = (await DailyTransactionStatsDB.queryLatestDailyTransactionStats(14)).sort(
+        (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
+      )
     } else if (query.allDailyTxsReport) {
       if (query.allDailyTxsReport !== 'true') {
         reply.send({
@@ -1142,7 +1144,9 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      transactionStats = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(0)
+      transactionStats = (await DailyTransactionStatsDB.queryLatestDailyTransactionStats(0)).sort(
+        (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
+      )
     } else if (query.fetchTransactionStats) {
       if (query.fetchTransactionStats !== 'true') {
         reply.send({
@@ -1211,7 +1215,7 @@ const start = async (): Promise<void> => {
       })
       return
     }
-    let accountStats: DailyAccountStats[] = []
+    let dailyAccountStats: DailyAccountStats[] = []
     if (query.count) {
       const count: number = parseInt(query.count)
       if (count <= 0 || Number.isNaN(count)) {
@@ -1225,7 +1229,7 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(count)
+      dailyAccountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(count)
     } else if (query.fetchAccountStats) {
       if (query.fetchAccountStats !== 'true') {
         reply.send({
@@ -1248,11 +1252,13 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      accountStats = await DailyAccountStatsDB.queryLatestDailyAccountStats(0)
+      dailyAccountStats = (await DailyAccountStatsDB.queryLatestDailyAccountStats(0)).sort(
+        (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
+      )
     }
     if (query.responseType && query.responseType === 'array') {
       const temp_array = []
-      accountStats.forEach((item: DailyAccountStats) =>
+      dailyAccountStats.forEach((item: DailyAccountStats) =>
         temp_array.push([
           item.dateStartTime,
           item.newAccounts,
@@ -1262,11 +1268,11 @@ const start = async (): Promise<void> => {
           item.newActiveBalanceAccounts,
         ])
       )
-      accountStats = temp_array as any
+      dailyAccountStats = temp_array as any
     }
     const res = {
       success: true,
-      accountStats,
+      dailyAccountStats,
     }
     reply.send(res)
   })
@@ -1274,12 +1280,16 @@ const start = async (): Promise<void> => {
   type CoinStatsRequest = FastifyRequest<{
     Querystring: {
       count: string
+      allDailyCoinReport: string
+      responseType: string
     }
   }>
 
   server.get('/api/stats/coin', async (_request: CoinStatsRequest, reply) => {
     const err = utils.validateTypes(_request.query, {
       count: 's?',
+      allDailyCoinReport: 's?',
+      responseType: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -1287,6 +1297,62 @@ const start = async (): Promise<void> => {
     }
 
     const query = _request.query
+
+    // Handle allDailyCoinReport query - returns all daily coin stats with price from network stats
+    if (query.allDailyCoinReport === 'true') {
+      try {
+        const dailyCoinStats = (await DailyCoinStatsDB.queryLatestDailyCoinStats(0)).sort(
+          (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
+        )
+        const dailyNetworkStats = (await DailyNetworkStatsDB.queryLatestDailyNetworkStats(0)).sort(
+          (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
+        )
+
+        // Create a map of network stats by dateStartTime for quick lookup
+        const networkStatsMap: Map<number, number> = new Map()
+        dailyNetworkStats.forEach((stat) => {
+          networkStatsMap.set(stat.dateStartTime, parseFloat(stat.stabilityFactorStr))
+        })
+
+        const dailyCoinStatsWithPrice = dailyCoinStats.map((coinStat) => {
+          const stabilityFactorStr = networkStatsMap.get(coinStat.dateStartTime) || '0'
+
+          if (query.responseType === 'array') {
+            return [
+              coinStat.dateStartTime,
+              coinStat.mintedCoin,
+              coinStat.transactionFee,
+              coinStat.burntFee,
+              coinStat.stakeAmount,
+              coinStat.unStakeAmount,
+              coinStat.rewardAmountRealized,
+              coinStat.rewardAmountUnrealized,
+              coinStat.penaltyAmount,
+              stabilityFactorStr,
+            ]
+          }
+
+          return {
+            dateStartTime: coinStat.dateStartTime,
+            ...coinStat,
+            stabilityFactorStr,
+          }
+        })
+
+        reply.send({
+          success: true,
+          dailyCoinStats: dailyCoinStatsWithPrice,
+          highestPoint: {},
+        })
+        return
+      } catch (e) {
+        reply.send({
+          success: false,
+          error: 'Unable to query daily coin report',
+        })
+        return
+      }
+    }
 
     let dailyCoinStats: DailyCoinStats[] = []
     if (query.count) {
@@ -1308,13 +1374,19 @@ const start = async (): Promise<void> => {
       const aggregatedStats = await DailyCoinStatsDB.queryAggregatedDailyCoinStats()
       const totalSupply =
         config.genesisLIBSupply +
-        aggregatedStats.mintedCoin +
-        aggregatedStats.rewardAmountRealized +
-        aggregatedStats.transactionFee -
-        aggregatedStats.burntFee -
+        DailyCoinStatsDB.calculateTotalSupplyChange(
+          aggregatedStats.mintedCoin,
+          aggregatedStats.rewardAmountRealized,
+          aggregatedStats.transactionFee,
+          aggregatedStats.burntFee,
+          aggregatedStats.penaltyAmount
+        )
+
+      const totalStaked = DailyCoinStatsDB.calculateTotalStakeChange(
+        aggregatedStats.stakeAmount,
+        aggregatedStats.unStakeAmount,
         aggregatedStats.penaltyAmount
-      const totalStaked =
-        aggregatedStats.stakeAmount - aggregatedStats.unStakeAmount - aggregatedStats.penaltyAmount
+      )
 
       reply.send({
         success: true,
@@ -1352,7 +1424,68 @@ const start = async (): Promise<void> => {
     reply.send(res)
   })
 
-  server.get('/api/stats/network', async (_request, reply) => {
+  type NetworkStatsRequest = FastifyRequest<{
+    Querystring: {
+      allDailyNetworkReport: string
+      responseType: string
+    }
+  }>
+
+  server.get('/api/stats/network', async (_request: NetworkStatsRequest, reply) => {
+    const err = utils.validateTypes(_request.query, {
+      allDailyNetworkReport: 's?',
+      responseType: 's?',
+    })
+    if (err) {
+      reply.send({ success: false, error: err })
+      return
+    }
+
+    const query = _request.query
+
+    // Handle allDailyNetworkReport query - returns all daily network stats
+    if (query.allDailyNetworkReport === 'true') {
+      try {
+        const dailyNetworkStats = (await DailyNetworkStatsDB.queryLatestDailyNetworkStats(0)).sort(
+          (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
+        )
+
+        if (query.responseType === 'array') {
+          const dailyNetworkStatsArray = dailyNetworkStats.map((stat) => [
+            stat.dateStartTime,
+            stat.stabilityFactorStr,
+            stat.transactionFeeUsdStr,
+            stat.stakeRequiredUsdStr,
+            stat.nodeRewardAmountUsdStr,
+            stat.nodePenaltyUsdStr,
+            stat.defaultTollUsdStr,
+            stat.minTollUsdStr,
+            stat.activeNodes,
+            stat.standbyNodes,
+          ])
+
+          reply.send({
+            success: true,
+            dailyNetworkStats: dailyNetworkStatsArray,
+          })
+          return
+        }
+
+        reply.send({
+          success: true,
+          dailyNetworkStats: dailyNetworkStats,
+        })
+        return
+      } catch (e) {
+        reply.send({
+          success: false,
+          error: 'Unable to query daily network report',
+        })
+        return
+      }
+    }
+
+    // Default behavior - return latest network stats
     try {
       const stats = await DailyNetworkStatsDB.queryLatestDailyNetworkStats(1)
       reply.send({
