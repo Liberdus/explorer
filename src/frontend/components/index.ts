@@ -13,7 +13,14 @@ export { TopBarDropdown } from './TopBarDropdown'
 export { ContentLayout } from './ContentLayout'
 export { Spacer } from './Spacer'
 export { Breadcrumb } from './Breadcrumb'
-export { LineChart, LineStockChart, StackedLineChart, StackedLineStockChart, BarChart } from './Chart'
+export {
+  LineChart,
+  LineStockChart,
+  StackedLineChart,
+  StackedLineStockChart,
+  BarChart,
+  DailyStatsChart,
+} from './Chart'
 export { AnchorLink } from './AnchorLink'
 export { NavDropdown } from './NavDropdown'
 export { Dropdownt } from './Dropdownt'
@@ -22,4 +29,3 @@ export { Tab } from './Tab'
 export { Table } from './TableComp'
 export { Notification } from './Notification'
 export { ChartSVG, chartSVGTypes } from './ChartSVG'
-

@@ -5,10 +5,12 @@ import { fetcher } from './fetcher'
 import { PATHS } from './paths'
 import { ValidatorStats } from '../../stats/validatorStats'
 import { TransactionStats } from '../../stats/transactionStats'
+import { DailyAccountStats } from '../../stats/dailyAccountStats'
 
 type StatsResult = {
   validatorStats: ValidatorStats[] | number[][]
   transactionStats: TransactionStats[] | number[][]
+  accountStats: DailyAccountStats[] | number[][]
   totalLIB: number
   totalStakedLIB: number
   loading: boolean
@@ -19,9 +21,11 @@ export const useStats = (query: {
   transactionStatsCount?: number
   last14DaysTxsReport?: boolean
   allDailyTxsReport?: boolean
+  allDailyAccountReport?: boolean
   fetchCoinStats?: boolean
   transactionResponseType?: string | undefined
   validatorResponseType?: string | undefined
+  accountResponseType?: string | undefined
   refreshEnabled?: boolean
 }): StatsResult => {
   const {
@@ -29,9 +33,11 @@ export const useStats = (query: {
     transactionStatsCount,
     last14DaysTxsReport,
     allDailyTxsReport,
+    allDailyAccountReport,
     fetchCoinStats,
     transactionResponseType,
     validatorResponseType,
+    accountResponseType,
     refreshEnabled,
   } = query
 
@@ -45,6 +51,9 @@ export const useStats = (query: {
     ? `${PATHS.STATS_TRANSACTION}?last14DaysTxsReport=true&responseType=${transactionResponseType}`
     : allDailyTxsReport
     ? `${PATHS.STATS_TRANSACTION}?allDailyTxsReport=true&responseType=${transactionResponseType}`
+    : null
+  const accountStatsQuery = allDailyAccountReport
+    ? `${PATHS.STATS_ACCOUNT}?allDailyAccountReport=true&responseType=${accountResponseType}`
     : null
   const coinStatsQuery = fetchCoinStats ? `${PATHS.STATS_COIN}` : null
 
@@ -65,6 +74,7 @@ export const useStats = (query: {
     fetcher,
     swrOptions
   )
+  const accountStatsResponse = useSWR<{ accountStats: any[] }>(accountStatsQuery, fetcher, swrOptions)
   const coinStatsResponse = useSWR<{ totalSupply: number; totalStaked: number }>(
     coinStatsQuery,
     fetcher,
@@ -84,6 +94,12 @@ export const useStats = (query: {
     'transactionStats' in transactionStatsResponse.data
       ? transactionStatsResponse.data.transactionStats
       : []
+  const accountStats =
+    typeof accountStatsResponse.data === 'object' &&
+    accountStatsResponse.data != null &&
+    'accountStats' in accountStatsResponse.data
+      ? accountStatsResponse.data.accountStats
+      : []
   const totalLIB =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
@@ -100,11 +116,13 @@ export const useStats = (query: {
   return {
     validatorStats,
     transactionStats,
+    accountStats,
     totalLIB,
     totalStakedLIB,
     loading:
       validatorStatsResponse?.isValidating ||
       transactionStatsResponse?.isValidating ||
+      accountStatsResponse?.isValidating ||
       coinStatsResponse?.isValidating,
   }
 }
