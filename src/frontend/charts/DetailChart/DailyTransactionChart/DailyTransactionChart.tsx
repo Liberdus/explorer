@@ -1,7 +1,6 @@
 import React from 'react'
 
-import { ContentLayout } from '../../../components'
-import { DailyTransactionChart as DailyTransactionChartComponent } from '../../../components/Chart/LineChart/DailyTransactionChart'
+import { ContentLayout, DailyStatsChart } from '../../../components'
 
 import styles from './DailyTransactionChart.module.scss'
 import { useStats } from '../../../api'
@@ -55,6 +54,58 @@ export const DailyTransactionChart: React.FC = () => {
 
   const { highest, lowest } = getHighestLowest()
 
+  // Tooltip formatter for transactions
+  const tooltipFormatter = (timestamp: number, point: any, Highcharts: any) => {
+    const xDate = new Date(timestamp)
+    const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
+    const value = point.y || 0
+
+    // Extract transaction type data from the point
+    const pointData = point.point || point
+    const transferTxs = pointData.transferTxs || 0
+    const messageTxs = pointData.messageTxs || 0
+    const depositStakeTxs = pointData.depositStakeTxs || 0
+    const withdrawStakeTxs = pointData.withdrawStakeTxs || 0
+
+    return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
+      <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
+        ${xDateString}
+      </div>
+      <div style="margin-bottom: 4px;">
+        <span style="color: #666;">Total Txs:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
+          value,
+          0
+        )}</span>
+      </div>
+      <div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">
+        <div style="margin-bottom: 2px;">
+          <span style="color: #666;">Transfer:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+            transferTxs,
+            0
+          )}</span>
+        </div>
+        <div style="margin-bottom: 2px;">
+          <span style="color: #666;">Message:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+            messageTxs,
+            0
+          )}</span>
+        </div>
+        <div style="margin-bottom: 2px;">
+          <span style="color: #666;">Deposit Stake:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+            depositStakeTxs,
+            0
+          )}</span>
+        </div>
+        <div>
+          <span style="color: #666;">Withdraw Stake:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+            withdrawStakeTxs,
+            0
+          )}</span>
+        </div>
+      </div>
+    </div>`
+  }
+
   return (
     <div className={styles.DailyTransactionChart}>
       <ContentLayout title="Daily Transactions" breadcrumbItems={breadcrumbs} showBackButton>
@@ -63,12 +114,13 @@ export const DailyTransactionChart: React.FC = () => {
             {loading ? (
               <div className={styles.loading}>Loading...</div>
             ) : (
-              <DailyTransactionChartComponent
+              <DailyStatsChart
                 title="Liberdus Daily Transactions Chart"
                 subTitle="Historical daily transaction data with breakdown by transaction type"
                 height={height}
                 data={convertTransactionStatsToDailyData(transactionStats)}
-                name="Daily Transactions"
+                yAxisTitle="Transactions Per Day"
+                tooltipFormatter={tooltipFormatter}
               />
             )}
           </div>

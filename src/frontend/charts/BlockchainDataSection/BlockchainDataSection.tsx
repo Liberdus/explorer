@@ -70,7 +70,7 @@ export const BlockchainDataSection: React.FC = () => {
     {
       title: 'Unique Addresses Chart',
       chartSvgName: 'uniqueAddress',
-      route: '/charts/unique_addresses',
+      route: '/charts/address',
     },
     {
       title: 'Daily Active Addresses Chart',

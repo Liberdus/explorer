@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import Highcharts from 'highcharts/highstock'
 import HighchartsReact from 'highcharts-react-official'
 import HighchartsBoost from 'highcharts/modules/boost'
@@ -11,6 +11,7 @@ interface DataPoint {
   x: number
   y: number
   cycle: number
+  [key: string]: any // Allow additional properties
 }
 
 interface SeriesData {
@@ -21,18 +22,20 @@ interface SeriesData {
   visible?: boolean
 }
 
-interface DailyTransactionChartProps {
+type TooltipFormatter = (timestamp: number, point: any, Highcharts: typeof import('highcharts')) => string
+
+interface DailyStatsChartProps {
   title: string
   subTitle?: string
   data: SeriesData[]
   height?: number
   name?: string
+  yAxisTitle?: string
+  tooltipFormatter?: TooltipFormatter
 }
 
-export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
-  props: DailyTransactionChartProps
-) => {
-  const { title, subTitle, data, height = 300 } = props
+export const DailyStatsChart: React.FC<DailyStatsChartProps> = (props: DailyStatsChartProps) => {
+  const { title, subTitle, data, height = 300, yAxisTitle = 'Value', tooltipFormatter } = props
 
   const getPlotOptions = (): object => {
     return {
@@ -57,11 +60,31 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
     }
   }
 
+  const defaultTooltipFormatter = function () {
+    const timestamp = this.x
+    const xDate = new Date(timestamp)
+    const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
+    const point = this.points ? this.points[0] : this
+    const value = point.y || 0
+
+    return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
+      <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
+        ${xDateString}
+      </div>
+      <div>
+        <span style="color: #666;">Value:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
+          value,
+          0
+        )}</span>
+      </div>
+    </div>`
+  }
+
   const option = {
     title: {
       text: title,
-      align: 'left', // Always align to left
-      x: 20, // Add some padding from the left edge
+      align: 'left',
+      x: 20,
       style: {
         fontSize: '20px',
         fontWeight: '600',
@@ -72,8 +95,8 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
     },
     subtitle: {
       text: subTitle || undefined,
-      align: 'left', // Align subtitle to left as well
-      x: 20, // Same padding as title
+      align: 'left',
+      x: 20,
       style: {
         fontSize: '14px',
         color: '#6c757d',
@@ -86,17 +109,14 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
       data: row.data
         .filter((point: DataPoint) => point.x != null && point.y != null)
         .map((point: DataPoint) => ({
+          ...point,
           x: point.x,
           y: point.y,
-          transferTxs: point.transferTxs,
-          messageTxs: point.messageTxs,
-          depositStakeTxs: point.depositStakeTxs,
-          withdrawStakeTxs: point.withdrawStakeTxs,
         })),
       showInNavigator: false,
       type: 'line',
       lineWidth: 2,
-      color: '#3498db', // Blue line for Total Txs
+      color: '#3498db',
       marker: {
         enabled: false,
         states: {
@@ -115,8 +135,8 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
     },
     xAxis: {
       type: 'datetime',
-      gridLineWidth: 0, // Remove vertical grid lines
-      lineWidth: 1, // Keep the axis line
+      gridLineWidth: 0,
+      lineWidth: 1,
       lineColor: '#e9ecef',
       labels: {
         style: {
@@ -139,7 +159,7 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
     },
     yAxis: {
       title: {
-        text: 'Transactions Per Day',
+        text: yAxisTitle,
         style: {
           color: '#666',
           fontSize: '12px',
@@ -160,7 +180,7 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
           return Highcharts.numberFormat(this.value, 0)
         },
       },
-      opposite: false, // This ensures the Y-axis is on the left side
+      opposite: false,
       zoomEnabled: true,
       min: 0,
     },
@@ -178,58 +198,13 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
       },
       shared: true,
       useHTML: true,
-      formatter: function () {
-        const timestamp = this.x
-        const xDate = new Date(timestamp)
-        const xDateString = Highcharts.dateFormat('%B %d, %Y', xDate.getTime())
-        const point = this.points ? this.points[0] : this
-        const value = point.y || 0
-
-        // Extract transaction type data from the point
-        const pointData = point.point || point
-        const transferTxs = pointData.transferTxs || 0
-        const messageTxs = pointData.messageTxs || 0
-        const depositStakeTxs = pointData.depositStakeTxs || 0
-        const withdrawStakeTxs = pointData.withdrawStakeTxs || 0
-
-        return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
-          <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
-            ${xDateString}
-          </div>
-          <div style="margin-bottom: 4px;">
-            <span style="color: #666;">Total Txs:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
-              value,
-              0
-            )}</span>
-          </div>
-          <div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">
-            <div style="margin-bottom: 2px;">
-              <span style="color: #666;">Transfer:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-                transferTxs,
-                0
-              )}</span>
-            </div>
-            <div style="margin-bottom: 2px;">
-              <span style="color: #666;">Message:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-                messageTxs,
-                0
-              )}</span>
-            </div>
-            <div style="margin-bottom: 2px;">
-              <span style="color: #666;">Deposit Stake:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-                depositStakeTxs,
-                0
-              )}</span>
-            </div>
-            <div>
-              <span style="color: #666;">Withdraw Stake:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-                withdrawStakeTxs,
-                0
-              )}</span>
-            </div>
-          </div>
-        </div>`
-      },
+      formatter: tooltipFormatter
+        ? function () {
+            const timestamp = this.x
+            const point = this.points ? this.points[0] : this
+            return tooltipFormatter(timestamp, point, Highcharts)
+          }
+        : defaultTooltipFormatter,
     },
     chart: {
       backgroundColor: '#ffffff',
@@ -238,8 +213,8 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
       borderRadius: 8,
       spacingTop: 30,
       spacingBottom: 20,
-      spacingLeft: 20, // Reduced space for Y-axis labels on the left
-      spacingRight: 20, // Less space on the right
+      spacingLeft: 20,
+      spacingRight: 20,
       height: height,
       zoomType: 'x',
     },
@@ -267,7 +242,7 @@ export const DailyTransactionChart: React.FC<DailyTransactionChartProps> = (
         color: 'silver',
         fontWeight: 'bold',
       },
-      selected: 4, // Select "All" by default
+      selected: 4,
       buttons: [
         {
           type: 'day',

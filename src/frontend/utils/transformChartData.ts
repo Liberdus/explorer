@@ -10,6 +10,7 @@ interface DataPoint {
   messageTxs?: number
   depositStakeTxs?: number
   withdrawStakeTxs?: number
+  cumulativeTotal?: number
 }
 
 interface SeriesData {
@@ -285,6 +286,100 @@ export function convertTransactionStatsToDailyData(
         messageTxs,
         depositStakeTxs,
         withdrawStakeTxs,
+      })
+    })
+
+  return seriesData
+}
+
+export function convertAccountStatsToDailyData(accountStats: any[] | number[][]): SeriesData[] {
+  if (!accountStats || accountStats.length === 0) {
+    return [
+      { name: 'New Addresses', data: [], zIndex: 1, tooltip: 'New addresses per day', visible: true },
+    ]
+  }
+
+  // Initialize series data array - only New Addresses
+  const seriesData: SeriesData[] = [
+    { name: 'New Addresses', data: [], zIndex: 1, tooltip: 'New addresses per day', visible: true },
+  ]
+
+  let cumulativeTotal = 0
+
+  accountStats
+    .sort((a, b) => {
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a[0] - b[0] // Sort by dateStartTime (index 0 in array format for daily stats)
+      }
+      return a.dateStartTime - b.dateStartTime
+    })
+    .forEach((accountStat) => {
+      let timestamp: number
+      let newAccounts: number
+
+      if (Array.isArray(accountStat)) {
+        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, ...]
+        timestamp = accountStat[0] // dateStartTime is already in milliseconds
+        newAccounts = accountStat[1] || 0
+      } else {
+        // Object format
+        timestamp = accountStat.dateStartTime
+        newAccounts = accountStat.newAccounts || 0
+      }
+
+      // Calculate cumulative total
+      cumulativeTotal += newAccounts
+
+      // Add data point for New Addresses with cumulative total
+      seriesData[0].data.push({
+        x: timestamp,
+        y: newAccounts,
+        cycle: 0,
+        cumulativeTotal: cumulativeTotal,
+      })
+    })
+
+  return seriesData
+}
+
+export function convertActiveAccountStatsToDailyData(accountStats: any[] | number[][]): SeriesData[] {
+  if (!accountStats || accountStats.length === 0) {
+    return [
+      { name: 'Active Addresses', data: [], zIndex: 1, tooltip: 'Active addresses per day', visible: true },
+    ]
+  }
+
+  // Initialize series data array - only Active Addresses
+  const seriesData: SeriesData[] = [
+    { name: 'Active Addresses', data: [], zIndex: 1, tooltip: 'Active addresses per day', visible: true },
+  ]
+
+  accountStats
+    .sort((a, b) => {
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a[0] - b[0] // Sort by dateStartTime (index 0 in array format for daily stats)
+      }
+      return a.dateStartTime - b.dateStartTime
+    })
+    .forEach((accountStat) => {
+      let timestamp: number
+      let activeAccounts: number
+
+      if (Array.isArray(accountStat)) {
+        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, activeAccounts, ...]
+        timestamp = accountStat[0] // dateStartTime is already in milliseconds
+        activeAccounts = accountStat[3] || 0 // activeAccounts is at index 3
+      } else {
+        // Object format
+        timestamp = accountStat.dateStartTime
+        activeAccounts = accountStat.activeAccounts || 0
+      }
+
+      // Add data point for Active Addresses
+      seriesData[0].data.push({
+        x: timestamp,
+        y: activeAccounts,
+        cycle: 0,
       })
     })
 
