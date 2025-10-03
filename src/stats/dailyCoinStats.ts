@@ -3,7 +3,7 @@ import { config } from '../config'
 import * as db from '../storage/sqlite3storage'
 import { dailyCoinStatsDatabase } from '.'
 
-export interface BaseDailyCoinStats {
+export interface DailyCoinStats {
   dateStartTime: number
   mintedCoin: number
   transactionFee: number
@@ -15,9 +15,16 @@ export interface BaseDailyCoinStats {
   penaltyAmount: number
 }
 
-export type DailyCoinStats = BaseDailyCoinStats
+export interface DailyCoinStatsWithSupply extends DailyCoinStats {
+  totalSupply: number
+  totalStake: number
+}
 
-export type DbDailyCoinStats = BaseDailyCoinStats
+export interface DailyCoinStatsWithPrice extends DailyCoinStats {
+  stabilityFactor: number
+}
+
+export type DbDailyCoinStats = DailyCoinStats
 
 export async function insertDailyCoinStats(dailyCoinStats: DbDailyCoinStats): Promise<void> {
   try {
@@ -112,4 +119,22 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
       mintedCoin: 0,
     }
   }
+}
+
+export function calculateTotalSupplyChange(
+  mintedCoin: number,
+  rewardAmountRealized: number,
+  transactionFee: number,
+  burntFee: number,
+  penaltyAmount: number
+): number {
+  return mintedCoin + rewardAmountRealized + transactionFee - burntFee - penaltyAmount
+}
+
+export function calculateTotalStakeChange(
+  stakeAmount: number,
+  unStakeAmount: number,
+  penaltyAmount: number
+): number {
+  return stakeAmount - unStakeAmount - penaltyAmount
 }

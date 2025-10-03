@@ -2,33 +2,36 @@ import React from 'react'
 
 import { ContentLayout, DailyStatsChart } from '../../../components'
 
-import styles from './DailyTransactionChart.module.scss'
+import styles from './DailyMarketCapChart.module.scss'
 import { useStats } from '../../../api'
 import {
-  convertDailyTransactionStatsToSeriesData,
-  DailyTxsChartData,
+  convertDailyCoinStatsToSeriesData,
   DataPoint,
+  MarketCapChartData,
 } from '../../../utils/transformChartData'
 import { breadcrumbsList } from '../../../types/routes'
 
-export const DailyTransactionChart: React.FC = () => {
+export const DailyMarketCapChart: React.FC = () => {
   const height = 600
+  const priceDecimalPoint = 4
 
   const breadcrumbs = [breadcrumbsList.chart]
 
-  const transactionResponseType = 'array'
+  const coinResponseType = 'array'
 
-  const { transactionStats, loading } = useStats({
-    transactionResponseType,
-    allDailyTxsReport: true,
+  const { dailyCoinStats, loading } = useStats({
+    coinResponseType,
+    allDailyCoinReport: true,
   })
 
   const {
     seriesData,
     stats: { highest, lowest },
-  } = convertDailyTransactionStatsToSeriesData(transactionStats)
+  } = convertDailyCoinStatsToSeriesData(dailyCoinStats, coinResponseType, {
+    dailyMarketCap: true,
+  })
 
-  // Tooltip formatter for transactions
+  // Tooltip formatter for market cap
   const tooltipFormatter = (
     timestamp: number,
     point: any,
@@ -36,67 +39,46 @@ export const DailyTransactionChart: React.FC = () => {
   ): string => {
     const xDate = new Date(timestamp)
     const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
-    const value = point.y || 0
-
-    const pointData = (point.point as DataPoint)?.dailyTxsChartData as DailyTxsChartData
-    const transferTxs = pointData.transferTxs || 0
-    const messageTxs = pointData.messageTxs || 0
-    const depositStakeTxs = pointData.depositStakeTxs || 0
-    const withdrawStakeTxs = pointData.withdrawStakeTxs || 0
+    const marketCap = point.y || 0
+    const pointData = (point.point as DataPoint).marketCapChartData as MarketCapChartData
+    const priceUSD = pointData?.priceUSD || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
       <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
         ${xDateString}
       </div>
       <div style="margin-bottom: 4px;">
-        <span style="color: #666;">Total Txs:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
-          value,
-          0
+        <span style="color: #666;">Total Value:</span> <span style="font-weight: 600; color: #000;">$${parseFloat(
+          marketCap.toFixed(priceDecimalPoint)
         )}</span>
       </div>
       <div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">
         <div style="margin-bottom: 2px;">
-          <span style="color: #666;">Transfer:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-            transferTxs,
-            0
-          )}</span>
-        </div>
-        <div style="margin-bottom: 2px;">
-          <span style="color: #666;">Message:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-            messageTxs,
-            0
-          )}</span>
-        </div>
-        <div style="margin-bottom: 2px;">
-          <span style="color: #666;">Deposit Stake:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-            depositStakeTxs,
-            0
+          <span style="color: #666;">Market Cap:</span> <span style="font-weight: 500; color: #000;">$${parseFloat(
+            marketCap.toFixed(2) // show 2 decimal points
           )}</span>
         </div>
         <div>
-          <span style="color: #666;">Withdraw Stake:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-            withdrawStakeTxs,
-            0
-          )}</span>
+          <span style="color: #666;">Avg Price/LIB:</span> <span style="font-weight: 500; color: #000;">$${priceUSD}</span>
         </div>
       </div>
     </div>`
   }
 
   return (
-    <div className={styles.DailyTransactionChart}>
-      <ContentLayout title="Daily Transactions" breadcrumbItems={breadcrumbs} showBackButton>
+    <div className={styles.DailyMarketCapChart}>
+      <ContentLayout title="LIB Market Cap (USD)" breadcrumbItems={breadcrumbs} showBackButton>
         <div className={styles.chartContainer}>
           <div className={styles.chartWrapper}>
             {loading ? (
               <div className={styles.loading}>Loading...</div>
             ) : (
               <DailyStatsChart
-                title="Liberdus Daily Transactions Chart"
-                subTitle="Historical daily transaction data with breakdown by transaction type"
+                title="LIB Market Capitalization Chart"
+                subTitle="Historical breakdown of LIB daily market capitalization and average price"
                 height={height}
                 data={seriesData}
-                yAxisTitle="Transactions Per Day"
+                yAxisTitle="Market Cap (USD)"
                 tooltipFormatter={tooltipFormatter}
               />
             )}
@@ -107,9 +89,8 @@ export const DailyTransactionChart: React.FC = () => {
             </div>
             <div className={styles.infoPanelContent}>
               <p>
-                The chart highlights the total number of transactions on the Liberdus blockchain with daily
-                individual breakdown for average difficulty, estimated hash rate, average block time and size,
-                total block and uncle block count and total new address seen.
+                The LIB Market Capitalization chart shows the historical breakdown of LIB daily market
+                capitalization and average price.
               </p>
               {highest && (
                 <div className={styles.highlight}>
@@ -117,7 +98,7 @@ export const DailyTransactionChart: React.FC = () => {
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Highest number of <strong>{highest.value.toLocaleString()}</strong> transactions on{' '}
+                      Highest market cap of <strong>${highest.value.toLocaleString()}</strong> on{' '}
                       {new Date(highest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
@@ -134,7 +115,7 @@ export const DailyTransactionChart: React.FC = () => {
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Lowest number of <strong>{lowest.value.toLocaleString()}</strong> transactions on{' '}
+                      Lowest market cap of <strong>${lowest.value.toLocaleString()}</strong> on
                       {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',

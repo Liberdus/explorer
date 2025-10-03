@@ -6,11 +6,15 @@ import { PATHS } from './paths'
 import { ValidatorStats } from '../../stats/validatorStats'
 import { TransactionStats } from '../../stats/transactionStats'
 import { DailyAccountStats } from '../../stats/dailyAccountStats'
+import { DailyCoinStats, DailyCoinStatsWithPrice } from '../../stats/dailyCoinStats'
+import { DailyNetworkStats } from '../../stats/dailyNetworkStats'
 
 type StatsResult = {
   validatorStats: ValidatorStats[] | number[][]
   transactionStats: TransactionStats[] | number[][]
-  accountStats: DailyAccountStats[] | number[][]
+  dailyAccountStats: DailyAccountStats[] | number[][]
+  dailyCoinStats: DailyCoinStats[] | number[][]
+  dailyNetworkStats: DailyNetworkStats[] | number[][]
   totalLIB: number
   totalStakedLIB: number
   loading: boolean
@@ -22,10 +26,14 @@ export const useStats = (query: {
   last14DaysTxsReport?: boolean
   allDailyTxsReport?: boolean
   allDailyAccountReport?: boolean
+  allDailyCoinReport?: boolean
+  allDailyNetworkReport?: boolean
   fetchCoinStats?: boolean
   transactionResponseType?: string | undefined
   validatorResponseType?: string | undefined
   accountResponseType?: string | undefined
+  coinResponseType?: string | undefined
+  networkResponseType?: string | undefined
   refreshEnabled?: boolean
 }): StatsResult => {
   const {
@@ -34,10 +42,14 @@ export const useStats = (query: {
     last14DaysTxsReport,
     allDailyTxsReport,
     allDailyAccountReport,
+    allDailyCoinReport,
+    allDailyNetworkReport,
     fetchCoinStats,
     transactionResponseType,
     validatorResponseType,
     accountResponseType,
+    coinResponseType,
+    networkResponseType,
     refreshEnabled,
   } = query
 
@@ -54,6 +66,12 @@ export const useStats = (query: {
     : null
   const accountStatsQuery = allDailyAccountReport
     ? `${PATHS.STATS_ACCOUNT}?allDailyAccountReport=true&responseType=${accountResponseType}`
+    : null
+  const dailyCoinStatsQuery = allDailyCoinReport
+    ? `${PATHS.STATS_COIN}?allDailyCoinReport=true&responseType=${coinResponseType}`
+    : null
+  const dailyNetworkStatsQuery = allDailyNetworkReport
+    ? `${PATHS.STATS_NETWORK}?allDailyNetworkReport=true&responseType=${networkResponseType}`
     : null
   const coinStatsQuery = fetchCoinStats ? `${PATHS.STATS_COIN}` : null
 
@@ -74,7 +92,21 @@ export const useStats = (query: {
     fetcher,
     swrOptions
   )
-  const accountStatsResponse = useSWR<{ accountStats: any[] }>(accountStatsQuery, fetcher, swrOptions)
+  const accountStatsResponse = useSWR<{ dailyAccountStats: DailyAccountStats[] }>(
+    accountStatsQuery,
+    fetcher,
+    swrOptions
+  )
+  const dailyCoinStatsResponse = useSWR<{ dailyCoinStats: DailyCoinStats[] }>(
+    dailyCoinStatsQuery,
+    fetcher,
+    swrOptions
+  )
+  const dailyNetworkStatsResponse = useSWR<{ dailyNetworkStats: DailyNetworkStats[] }>(
+    dailyNetworkStatsQuery,
+    fetcher,
+    swrOptions
+  )
   const coinStatsResponse = useSWR<{ totalSupply: number; totalStaked: number }>(
     coinStatsQuery,
     fetcher,
@@ -94,11 +126,23 @@ export const useStats = (query: {
     'transactionStats' in transactionStatsResponse.data
       ? transactionStatsResponse.data.transactionStats
       : []
-  const accountStats =
+  const dailyAccountStats =
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
-    'accountStats' in accountStatsResponse.data
-      ? accountStatsResponse.data.accountStats
+    'dailyAccountStats' in accountStatsResponse.data
+      ? accountStatsResponse.data.dailyAccountStats
+      : []
+  const dailyCoinStats =
+    typeof dailyCoinStatsResponse.data === 'object' &&
+    dailyCoinStatsResponse.data != null &&
+    'dailyCoinStats' in dailyCoinStatsResponse.data
+      ? dailyCoinStatsResponse.data.dailyCoinStats
+      : []
+  const dailyNetworkStats =
+    typeof dailyNetworkStatsResponse.data === 'object' &&
+    dailyNetworkStatsResponse.data != null &&
+    'dailyNetworkStats' in dailyNetworkStatsResponse.data
+      ? dailyNetworkStatsResponse.data.dailyNetworkStats
       : []
   const totalLIB =
     typeof coinStatsResponse.data === 'object' &&
@@ -116,13 +160,17 @@ export const useStats = (query: {
   return {
     validatorStats,
     transactionStats,
-    accountStats,
+    dailyAccountStats,
+    dailyCoinStats,
+    dailyNetworkStats,
     totalLIB,
     totalStakedLIB,
     loading:
       validatorStatsResponse?.isValidating ||
       transactionStatsResponse?.isValidating ||
       accountStatsResponse?.isValidating ||
+      dailyCoinStatsResponse?.isValidating ||
+      dailyNetworkStatsResponse?.isValidating ||
       coinStatsResponse?.isValidating,
   }
 }

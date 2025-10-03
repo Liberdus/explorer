@@ -1,32 +1,33 @@
 import React from 'react'
 
 import { ContentLayout, DailyStatsChart } from '../../../components'
-import styles from './DailyActiveAddressChart.module.scss'
+
+import styles from './DailyPriceChart.module.scss'
 import { useStats } from '../../../api'
-import { convertDailyAccountStatsToSeriesData } from '../../../utils/transformChartData'
+import { convertDailyCoinStatsToSeriesData, DataPoint } from '../../../utils/transformChartData'
 import { breadcrumbsList } from '../../../types/routes'
 
-export const DailyActiveAddressChart: React.FC = () => {
+export const DailyPriceChart: React.FC = () => {
   const height = 600
+  const priceDecimalPoint = 4
 
   const breadcrumbs = [breadcrumbsList.chart]
 
-  const accountResponseType = 'array'
+  const coinResponseType = 'array'
 
-  const { dailyAccountStats, loading } = useStats({
-    accountResponseType,
-    allDailyAccountReport: true,
+  const { dailyCoinStats, loading } = useStats({
+    coinResponseType,
+    allDailyCoinReport: true,
   })
 
   const {
     seriesData,
-    stats: { highest, lowest },
-  } = convertDailyAccountStatsToSeriesData(dailyAccountStats, accountResponseType, {
-    newAddress: false,
-    activeAddress: true,
+    stats: { highest, lowest, current },
+  } = convertDailyCoinStatsToSeriesData(dailyCoinStats, coinResponseType, {
+    dailyPrice: true,
   })
 
-  // Tooltip formatter for active addresses
+  // Tooltip formatter for price
   const tooltipFormatter = (
     timestamp: number,
     point: any,
@@ -34,35 +35,33 @@ export const DailyActiveAddressChart: React.FC = () => {
   ): string => {
     const xDate = new Date(timestamp)
     const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
-    const activeAddresses = point.y || 0
+    const price = point.y || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
       <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
         ${xDateString}
       </div>
       <div>
-        <span style="color: #666;">Active Liberdus Addresses:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
-          activeAddresses,
-          0
-        )}</span>
+        <span style="color: #666;">LIB Price:</span> <span style="font-weight: 600; color: #000;">$${price}</span>
       </div>
     </div>`
   }
 
   return (
-    <div className={styles.DailyActiveAddressChart}>
-      <ContentLayout title="Active Liberdus Addresses" breadcrumbItems={breadcrumbs} showBackButton>
+    <div className={styles.DailyPriceChart}>
+      <ContentLayout title="LIB Price (USD)" breadcrumbItems={breadcrumbs} showBackButton>
         <div className={styles.chartContainer}>
           <div className={styles.chartWrapper}>
             {loading ? (
               <div className={styles.loading}>Loading...</div>
             ) : (
               <DailyStatsChart
-                title="Active Liberdus Addresses"
-                subTitle=""
+                title="LIB Daily Price (USD) Chart"
+                subTitle="Historical daily LIB price in USD"
                 height={height}
                 data={seriesData}
-                yAxisTitle="Active Addresses"
+                yAxisTitle="Price (USD)"
+                yAxisDecimals={priceDecimalPoint}
                 tooltipFormatter={tooltipFormatter}
               />
             )}
@@ -72,17 +71,31 @@ export const DailyActiveAddressChart: React.FC = () => {
               <h3>About</h3>
             </div>
             <div className={styles.infoPanelContent}>
-              <p>
-                The Active Liberdus Address chart shows the daily number of unique addresses that were active
-                on the network as a sender.
-              </p>
+              <p>The LIB Daily Price (USD) chart shows the daily historical price for LIB in USD.</p>
+              {highest && (
+                <div className={styles.highlight}>
+                  <div className={styles.highlightIcon}>📍</div>
+                  <div className={styles.highlightContent}>
+                    <div className={styles.highlightLabel}>HIGHLIGHT</div>
+                    <div className={styles.highlightText}>
+                      Highest price of <strong>${highest.value}</strong> on{' '}
+                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
               {lowest && lowest.value !== Infinity && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Lowest number of <strong>{lowest.value.toLocaleString()}</strong> addresses on{' '}
+                      Lowest price of <strong>${lowest.value}</strong> on{' '}
                       {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
@@ -93,20 +106,11 @@ export const DailyActiveAddressChart: React.FC = () => {
                   </div>
                 </div>
               )}
-              {highest && (
-                <div className={styles.highlight}>
-                  <div className={styles.highlightIcon}>📍</div>
-                  <div className={styles.highlightContent}>
-                    <div className={styles.highlightLabel}>HIGHLIGHT</div>
-                    <div className={styles.highlightText}>
-                      Highest number of <strong>{highest.value.toLocaleString()}</strong> addresses on{' '}
-                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </div>
+              {current && current > 0 && (
+                <div className={styles.currentPrice}>
+                  <div className={styles.currentPriceLabel}>CURRENT LIB PRICE</div>
+                  <div className={styles.currentPriceValue}>
+                    ${parseFloat(current.toFixed(priceDecimalPoint))}
                   </div>
                 </div>
               )}

@@ -4,7 +4,11 @@ import { ContentLayout, DailyStatsChart } from '../../../components'
 
 import styles from './DailyNewAddressChart.module.scss'
 import { useStats } from '../../../api'
-import { convertAccountStatsToDailyData } from '../../../utils/transformChartData'
+import {
+  convertDailyAccountStatsToSeriesData,
+  DataPoint,
+  NewAddressChartData,
+} from '../../../utils/transformChartData'
 import { breadcrumbsList } from '../../../types/routes'
 
 export const DailyNewAddressChart: React.FC = () => {
@@ -14,53 +18,30 @@ export const DailyNewAddressChart: React.FC = () => {
 
   const accountResponseType = 'array'
 
-  const { accountStats, loading } = useStats({
+  const { dailyAccountStats, loading } = useStats({
     accountResponseType,
     allDailyAccountReport: true,
   })
 
-  // Calculate highest and lowest
-  const getStats = (): {
-    highest: { date: string; value: number } | null
-    lowest: { date: string; value: number } | null
-  } => {
-    if (!accountStats || accountStats.length === 0) {
-      return { highest: null, lowest: null }
-    }
-
-    let highest = { date: '', value: 0 }
-    let lowest = { date: '', value: Infinity }
-
-    accountStats.forEach((stat: any) => {
-      const timestamp = stat.dateStartTime || stat[0]
-      const newAccounts = stat.newAccounts || stat[1]
-      const date = new Date(timestamp).toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-
-      if (newAccounts > highest.value) {
-        highest = { date, value: newAccounts }
-      }
-      if (newAccounts < lowest.value && newAccounts > 0) {
-        lowest = { date, value: newAccounts }
-      }
-    })
-
-    return { highest, lowest }
-  }
-
-  const { highest, lowest } = getStats()
+  const {
+    seriesData,
+    stats: { highest, lowest },
+  } = convertDailyAccountStatsToSeriesData(dailyAccountStats, accountResponseType, {
+    newAddress: true,
+    activeAddress: false,
+  })
 
   // Tooltip formatter for new addresses
-  const tooltipFormatter = (timestamp: number, point: any, Highcharts: any) => {
+  const tooltipFormatter = (
+    timestamp: number,
+    point: any,
+    Highcharts: typeof import('highcharts')
+  ): string => {
     const xDate = new Date(timestamp)
     const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
-    const dailyIncrease = point.y || 0
-    const pointData = point.point || point
-    const cumulativeTotal = pointData.cumulativeTotal || 0
+    const cumulativeTotal = point.y || 0
+    const pointData = (point.point as DataPoint).newAddressChartData as NewAddressChartData
+    const dailyIncrease = pointData?.dailyIncrease || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
       <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
@@ -93,7 +74,7 @@ export const DailyNewAddressChart: React.FC = () => {
                 title="Liberdus Unique Addresses Chart"
                 subTitle=""
                 height={height}
-                data={convertAccountStatsToDailyData(accountStats)}
+                data={seriesData}
                 yAxisTitle="New Addresses Per Day"
                 tooltipFormatter={tooltipFormatter}
               />
@@ -116,7 +97,13 @@ export const DailyNewAddressChart: React.FC = () => {
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
                       Highest increase of <strong>{highest.value.toLocaleString()}</strong> new addresses was
-                      recorded on {highest.date}
+                      recorded on
+                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
                     </div>
                   </div>
                 </div>
@@ -128,7 +115,8 @@ export const DailyNewAddressChart: React.FC = () => {
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
                       Lowest increase of <strong>{lowest.value.toLocaleString()}</strong> new addresses was
-                      recorded on {lowest.date}
+                      recorded on
+                      {lowest.timestamp}
                     </div>
                   </div>
                 </div>

@@ -1,8 +1,7 @@
-import React from 'react'
 import { NextPage } from 'next'
 import Head from 'next/head'
 
-import { DailyActiveAddressChart } from '../../frontend/charts/DetailChart'
+import { DailyActiveAddressChart } from '../../frontend/charts'
 
 const DailyActiveAddressPage: NextPage = () => {
   return (
