@@ -7,7 +7,7 @@ export interface DailyCoinStats {
   dateStartTime: number
   mintedCoin: number
   transactionFee: number
-  burntFee: number // Additional other fees not included in transactionFee (e.g. network toll tax )
+  networkFee: number // Additional other fees not included in transactionFee (e.g. network toll tax )
   stakeAmount: number
   unStakeAmount: number
   rewardAmountRealized: number
@@ -75,7 +75,7 @@ export async function queryLatestDailyCoinStats(count: number): Promise<DailyCoi
 
 export async function queryAggregatedDailyCoinStats(): Promise<{
   transactionFee: number
-  burntFee: number
+  networkFee: number
   stakeAmount: number
   unStakeAmount: number
   penaltyAmount: number
@@ -87,7 +87,7 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
     const sql = `SELECT
       IFNULL(sum(mintedCoin), 0) as mintedCoin,
       IFNULL(sum(transactionFee), 0) as transactionFee,
-      IFNULL(sum(burntFee), 0) as burntFee,
+      IFNULL(sum(networkFee), 0) as networkFee,
       IFNULL(sum(stakeAmount), 0) as stakeAmount,
       IFNULL(sum(unStakeAmount), 0) as unStakeAmount,
       IFNULL(sum(rewardAmountRealized), 0) as rewardAmountRealized,
@@ -96,7 +96,7 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
       FROM daily_coin_stats`
     const dailyCoinStats: {
       transactionFee: number
-      burntFee: number
+      networkFee: number
       stakeAmount: number
       unStakeAmount: number
       penaltyAmount: number
@@ -110,7 +110,7 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
     console.log(e)
     return {
       transactionFee: 0,
-      burntFee: 0,
+      networkFee: 0,
       stakeAmount: 0,
       unStakeAmount: 0,
       penaltyAmount: 0,

@@ -42,7 +42,7 @@ export const DailySupplyGrowthChart: React.FC = () => {
     const mintedCoin = pointData?.mintedCoin || 0
     const rewardAmountRealized = pointData?.rewardAmountRealized || 0
     const transactionFee = pointData?.transactionFee || 0
-    const burntFee = pointData?.burntFee || 0
+    const networkFee = pointData?.networkFee || 0
     const penaltyAmount = pointData?.penaltyAmount || 0
     const totalSupplyChange = pointData?.totalSupplyChange || 0
 
@@ -76,8 +76,8 @@ export const DailySupplyGrowthChart: React.FC = () => {
           )} LIB</span>
         </div>
         <div style="margin-bottom: 2px; color: #dc3545;">
-          - <span style="color: #666;">Daily Burnt Fees:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-            burntFee,
+          - <span style="color: #666;">Daily Toll Tax Fees:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+            networkFee,
             2
           )} LIB</span>
         </div>

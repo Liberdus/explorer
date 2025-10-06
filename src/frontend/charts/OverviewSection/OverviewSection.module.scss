@@ -20,7 +20,7 @@
 
   .statsGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 8px;
     margin-bottom: 10px;
 
@@ -70,7 +70,7 @@
         font-weight: 500;
         color: #6c757d;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.2px;
         flex: 1;
       }
 

@@ -143,7 +143,7 @@ export const initializeStatsDB = async (): Promise<void> => {
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       mintedCoin BIGINT NOT NULL DEFAULT 0,
       transactionFee BIGINT NOT NULL DEFAULT 0,
-      burntFee BIGINT NOT NULL DEFAULT 0,
+      networkFee BIGINT NOT NULL DEFAULT 0,
       stakeAmount BIGINT NOT NULL DEFAULT 0,
       unStakeAmount BIGINT NOT NULL DEFAULT 0,
       rewardAmountRealized BIGINT NOT NULL DEFAULT 0,

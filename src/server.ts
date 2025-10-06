@@ -47,7 +47,6 @@ import { ValidatorStats } from './stats/validatorStats'
 import { TransactionStats, convertBaseTxStatsAsArray } from './stats/transactionStats'
 import { DailyTransactionStats } from './stats/dailyTransactionStats'
 import { DailyAccountStats } from './stats/dailyAccountStats'
-import { last } from 'lodash'
 import { DailyCoinStats } from './stats/dailyCoinStats'
 
 if (config.env == envEnum.DEV) {
@@ -1322,7 +1321,7 @@ const start = async (): Promise<void> => {
               coinStat.dateStartTime,
               coinStat.mintedCoin,
               coinStat.transactionFee,
-              coinStat.burntFee,
+              coinStat.networkFee,
               coinStat.stakeAmount,
               coinStat.unStakeAmount,
               coinStat.rewardAmountRealized,
@@ -1378,7 +1377,7 @@ const start = async (): Promise<void> => {
           aggregatedStats.mintedCoin,
           aggregatedStats.rewardAmountRealized,
           aggregatedStats.transactionFee,
-          aggregatedStats.burntFee,
+          aggregatedStats.networkFee,
           aggregatedStats.penaltyAmount
         )
 
