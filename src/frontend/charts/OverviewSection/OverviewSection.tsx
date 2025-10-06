@@ -122,7 +122,7 @@ export const OverviewSection: React.FC = () => {
     { title: 'Network Utilization (24H)', value: 0 },
     {
       title: 'Burnt Fees (24H)',
-      value: `$${(totalNewBurntFee) * parseFloat(stabilityFactorStr)}`,
+      value: `$${totalNewBurntFee * parseFloat(stabilityFactorStr)}`,
       route: '/charts/dailylibburnt',
     },
     { title: 'Tx Fee Set', value: `$${transactionFeeUsdStr}` },
@@ -162,6 +162,7 @@ export const OverviewSection: React.FC = () => {
       value: `$${(totalNewNetworkExpense * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      route: '/charts/dailylibdistributed',
     },
     {
       title: 'SA Ratio',
@@ -172,19 +173,22 @@ export const OverviewSection: React.FC = () => {
       value: `${totalNewSupply.toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      route: '/charts/libsupplygrowth',
     },
     {
       title: 'Accounts (Total)',
       value: activeBalanceAccounts,
+      route: '/charts/account',
     },
     {
       title: 'Accounts (24H)',
       value: newActiveBalanceAccounts,
+      route: '/charts/account',
     },
     {
       title: 'Daily Active Accounts (24H)',
       value: activeAccounts,
-      route: '/charts/active-address',
+      route: '/charts/active-account',
     },
   ]
 

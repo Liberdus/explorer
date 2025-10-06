@@ -8,10 +8,11 @@ import { TransactionStats } from '../../stats/transactionStats'
 import { DailyAccountStats } from '../../stats/dailyAccountStats'
 import { DailyCoinStats, DailyCoinStatsWithPrice } from '../../stats/dailyCoinStats'
 import { DailyNetworkStats } from '../../stats/dailyNetworkStats'
+import { DailyTransactionStats } from '../../stats/dailyTransactionStats'
 
 type StatsResult = {
   validatorStats: ValidatorStats[] | number[][]
-  transactionStats: TransactionStats[] | number[][]
+  transactionStats: TransactionStats[] | DailyTransactionStats[] | number[][]
   dailyAccountStats: DailyAccountStats[] | number[][]
   dailyCoinStats: DailyCoinStats[] | number[][]
   dailyNetworkStats: DailyNetworkStats[] | number[][]

@@ -2,6 +2,7 @@ import { config } from '../../config'
 import { DailyAccountStats } from '../../stats/dailyAccountStats'
 import { DailyCoinStats, DailyCoinStatsWithPrice } from '../../stats/dailyCoinStats'
 import { DailyNetworkStats } from '../../stats/dailyNetworkStats'
+import { DailyTransactionStats } from '../../stats/dailyTransactionStats'
 import { TransactionStats } from '../../stats/transactionStats'
 import { ValidatorStats } from '../../stats/validatorStats'
 
@@ -16,6 +17,8 @@ export interface DataPoint {
   dailyTxsChartData?: DailyTxsChartData
   avgTxFeeChartData?: AvgTxFeeChartData
   burntSupplyChartData?: BurntSupplyChartData
+  activeBalanceAccountsChartData?: ActiveBalanceAccountsChartData
+  distributedSupplyChartData?: DistributedSupplyChartData
 }
 
 export interface NewAddressChartData {
@@ -38,8 +41,8 @@ export interface SupplyGrowthChartData {
 export interface DailyTxsChartData {
   transferTxs: number
   messageTxs: number
-  depositStakeTxs: number
-  withdrawStakeTxs: number
+  stakingTxs: number
+  otherTxs: number
 }
 
 export interface AvgTxFeeChartData {
@@ -50,6 +53,16 @@ export interface BurntSupplyChartData {
   transactionFee: number
   networkFee: number
   penaltyAmount: number
+}
+
+export interface ActiveBalanceAccountsChartData {
+  newUserAccounts: number
+  newActiveBalanceAccounts: number
+}
+
+export interface DistributedSupplyChartData {
+  mintedCoin: number
+  rewardAmountRealized: number
 }
 
 export interface SeriesData {
@@ -262,7 +275,7 @@ export function convertValidatorStatsToSeriesData(
 }
 
 export function convertDailyTransactionStatsToSeriesData(
-  transactionStats: TransactionStats[] | number[][],
+  transactionStats: DailyTransactionStats[] | number[][],
   transactionResponseType = 'array'
 ): {
   seriesData: SeriesData[]
@@ -286,26 +299,26 @@ export function convertDailyTransactionStatsToSeriesData(
     // Extract transaction type data for tooltip
     let transferTxs = 0
     let messageTxs = 0
-    let depositStakeTxs = 0
-    let withdrawStakeTxs = 0
+    let stakingTxs = 0
+    let otherTxs = 0
 
     if (transactionResponseType === 'array') {
-      // Array format for daily stats: [dateStartTime, totalTxs, ...]
+      // Array format for daily stats: [dateStartTime, totalTxs,  ...]
       const transactionStat = stat as number[]
       timestamp = transactionStat[0] // dateStartTime is already in milliseconds
-      totalTxs = transactionStat[1] || 0
-      transferTxs = transactionStat[2] || 0 // Transfer index in daily stats
-      messageTxs = transactionStat[3] || 0 // Message index in daily stats
-      depositStakeTxs = transactionStat[4] || 0 // Deposit Stake index in daily stats
-      withdrawStakeTxs = transactionStat[5] || 0 // Withdraw Stake index in daily stats
+      totalTxs = transactionStat[2] || 0 // total User Txs index in daily stats
+      transferTxs = transactionStat[11] || 0 // Transfer index in daily stats
+      messageTxs = transactionStat[13] || 0 // Message index in daily stats
+      stakingTxs = transactionStat[46] + transactionStat[47] // Deposit Stake + Withdraw Stake txs
+      otherTxs = totalTxs - transferTxs - messageTxs - stakingTxs
     } else {
-      const transactionStat = stat as TransactionStats
-      timestamp = transactionStat.timestamp * 1000
-      totalTxs = transactionStat.totalTxs || 0
+      const transactionStat = stat as DailyTransactionStats
+      timestamp = transactionStat.dateStartTime * 1000
+      totalTxs = transactionStat.totalUserTxs || 0
       transferTxs = transactionStat.totalTransferTxs || 0
       messageTxs = transactionStat.totalMessageTxs || 0
-      depositStakeTxs = transactionStat.totalDepositStakeTxs || 0
-      withdrawStakeTxs = transactionStat.totalWithdrawStakeTxs || 0
+      stakingTxs = transactionStat.totalDepositStakeTxs + transactionStat.totalWithdrawStakeTxs
+      otherTxs = totalTxs - transferTxs - messageTxs - stakingTxs
     }
 
     if (totalTxs > highest.value) {
@@ -322,8 +335,8 @@ export function convertDailyTransactionStatsToSeriesData(
       dailyTxsChartData: {
         transferTxs,
         messageTxs,
-        depositStakeTxs,
-        withdrawStakeTxs,
+        stakingTxs,
+        otherTxs,
       },
     })
   })
@@ -335,8 +348,9 @@ export function convertDailyAccountStatsToSeriesData(
   dailyAccountStats: DailyAccountStats[] | number[][],
   accountResponseType = 'array',
   queryType: {
-    newAddress: boolean
-    activeAddress: boolean
+    newAddress?: boolean
+    activeAccount?: boolean
+    activeBalanceAccounts?: boolean
   }
 ): {
   seriesData: SeriesData[]
@@ -345,7 +359,7 @@ export function convertDailyAccountStatsToSeriesData(
     lowest: { timestamp: number; value: number } | null
   }
 } {
-  if (!queryType.newAddress && !queryType.activeAddress) {
+  if (!queryType.newAddress && !queryType.activeAccount && !queryType.activeBalanceAccounts) {
     throw new Error('No query type selected for daily account stats')
   }
   const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
@@ -354,9 +368,12 @@ export function convertDailyAccountStatsToSeriesData(
   if (queryType.newAddress) {
     seriesData[0].name = 'New Addresses'
     seriesData[0].tooltip = 'New addresses per day'
-  } else if (queryType.activeAddress) {
+  } else if (queryType.activeAccount) {
     seriesData[0].name = 'Active Addresses'
     seriesData[0].tooltip = 'Active addresses per day'
+  } else if (queryType.activeBalanceAccounts) {
+    seriesData[0].name = 'Active Balance Accounts'
+    seriesData[0].tooltip = 'Active balance accounts per day'
   }
 
   if (!dailyAccountStats || dailyAccountStats.length === 0) {
@@ -397,7 +414,7 @@ export function convertDailyAccountStatsToSeriesData(
           dailyIncrease: newAccounts,
         },
       })
-    } else if (queryType.activeAddress) {
+    } else if (queryType.activeAccount) {
       let activeAccounts: number
       if (accountResponseType === 'array') {
         // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, ...]
@@ -421,10 +438,100 @@ export function convertDailyAccountStatsToSeriesData(
         x: timestamp,
         y: activeAccounts,
       })
+    } else if (queryType.activeBalanceAccounts) {
+      let newUserAccounts: number
+      let activeBalanceAccounts: number
+      let newActiveBalanceAccounts: number
+      if (accountResponseType === 'array') {
+        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, activeAccounts, activeBalanceAccounts, newActiveBalanceAccounts]
+        const accountStat = stat as number[]
+        timestamp = accountStat[0] // dateStartTime is already in milliseconds
+        newUserAccounts = accountStat[2] || 0
+        activeBalanceAccounts = accountStat[4] || 0
+        newActiveBalanceAccounts = accountStat[5] || 0
+      } else {
+        const accountStat = stat as DailyAccountStats
+        timestamp = accountStat.dateStartTime
+        newUserAccounts = accountStat.newUserAccounts || 0
+        activeBalanceAccounts = accountStat.activeBalanceAccounts || 0
+        newActiveBalanceAccounts = accountStat.newActiveBalanceAccounts || 0
+      }
+
+      if (activeBalanceAccounts > highest.value) {
+        highest = { timestamp, value: activeBalanceAccounts }
+      }
+      if (activeBalanceAccounts < lowest.value) {
+        lowest = { timestamp, value: activeBalanceAccounts }
+      }
+      // Add data point for Active Balance Accounts
+      seriesData[0].data.push({
+        x: timestamp,
+        y: activeBalanceAccounts,
+        activeBalanceAccountsChartData: {
+          newUserAccounts,
+          newActiveBalanceAccounts,
+        },
+      })
     }
   })
 
   return { seriesData, stats: { highest, lowest } }
+}
+
+export function convertActiveBalanceAccountStatsToDailyData(accountStats: any[] | number[][]): SeriesData[] {
+  if (!accountStats || accountStats.length === 0) {
+    return [
+      {
+        name: 'Active Balance Accounts',
+        data: [],
+        zIndex: 1,
+        tooltip: 'Active balance accounts per day',
+        visible: true,
+      },
+    ]
+  }
+
+  // Initialize series data array - only Active Balance Accounts
+  const seriesData: SeriesData[] = [
+    {
+      name: 'Active Balance Accounts',
+      data: [],
+      zIndex: 1,
+      tooltip: 'Active balance accounts per day',
+      visible: true,
+    },
+  ]
+
+  accountStats
+    .sort((a, b) => {
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a[0] - b[0] // Sort by dateStartTime (index 0 in array format for daily stats)
+      }
+      return a.dateStartTime - b.dateStartTime
+    })
+    .forEach((accountStat) => {
+      let timestamp: number
+      let activeBalanceAccounts: number
+
+      if (Array.isArray(accountStat)) {
+        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, activeAccounts, activeBalanceAccounts, ...]
+        timestamp = accountStat[0] // dateStartTime is already in milliseconds
+        activeBalanceAccounts = accountStat[4] || 0 // activeBalanceAccounts is at index 4
+      } else {
+        // Object format
+        timestamp = accountStat.dateStartTime
+        activeBalanceAccounts = accountStat.activeBalanceAccounts || 0
+      }
+
+      // Add data point for Active Balance Accounts
+      seriesData[0].data.push({
+        x: timestamp,
+        y: activeBalanceAccounts,
+        cycle: 0,
+      })
+    })
+
+  return seriesData
 }
 
 export function convertDailyCoinStatsToSeriesData(
@@ -436,6 +543,7 @@ export function convertDailyCoinStatsToSeriesData(
     dailySupplyGrowth?: boolean
     dailyBurntSupply?: boolean
     dailyTransactionFee?: boolean
+    dailyDistributedSupply?: boolean
   }
 ): {
   seriesData: SeriesData[]
@@ -450,7 +558,8 @@ export function convertDailyCoinStatsToSeriesData(
     !queryType.dailyMarketCap &&
     !queryType.dailySupplyGrowth &&
     !queryType.dailyBurntSupply &&
-    !queryType.dailyTransactionFee
+    !queryType.dailyTransactionFee &&
+    !queryType.dailyDistributedSupply
   ) {
     throw new Error('No query type selected for daily coin stats')
   }
@@ -473,6 +582,9 @@ export function convertDailyCoinStatsToSeriesData(
   } else if (queryType.dailyTransactionFee) {
     seriesData[0].name = 'Txn Fee (LIB)'
     seriesData[0].tooltip = 'Transaction Fee in LIB'
+  } else if (queryType.dailyDistributedSupply) {
+    seriesData[0].name = 'Daily LIB Distributed'
+    seriesData[0].tooltip = 'Daily LIB Distributed'
   }
   if (!dailyCoinStats || dailyCoinStats.length === 0) {
     return { seriesData, stats: { highest, lowest, current } }
@@ -684,6 +796,41 @@ export function convertDailyCoinStatsToSeriesData(
       seriesData[0].data.push({
         x: timestamp,
         y: transactionFee,
+      })
+    } else if (queryType.dailyDistributedSupply) {
+      // Convert distributed supply data for chart
+      let timestamp: number
+      let mintedCoin = 0
+      let rewardAmountRealized = 0
+      if (coinResponseType === 'array') {
+        const dailyCoinStat = stat as number[]
+        timestamp = dailyCoinStat[0]
+        mintedCoin = dailyCoinStat[1] || 0
+        rewardAmountRealized = dailyCoinStat[6] || 0
+      } else {
+        const dailyCoinStat = stat as DailyCoinStats
+        timestamp = dailyCoinStat.dateStartTime
+        mintedCoin = dailyCoinStat.mintedCoin || 0
+        rewardAmountRealized = dailyCoinStat.rewardAmountRealized || 0
+      }
+
+      // Calculate total distributed (minted + rewards - penalties)
+      const totalDistributed = mintedCoin + rewardAmountRealized
+
+      if (totalDistributed > highest.value) {
+        highest = { timestamp, value: totalDistributed }
+      }
+      if (totalDistributed < lowest.value && totalDistributed > 0) {
+        lowest = { timestamp, value: totalDistributed }
+      }
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: totalDistributed,
+        distributedSupplyChartData: {
+          mintedCoin,
+          rewardAmountRealized,
+        },
       })
     }
   })

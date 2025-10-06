@@ -72,9 +72,14 @@ export const BlockchainDataSection: React.FC = () => {
       route: '/charts/address',
     },
     {
-      title: 'Daily Active Addresses Chart',
+      title: 'Daily Accounts Chart',
+      chartSvgName: 'dailyActiveErc20Address',
+      route: '/charts/account',
+    },
+    {
+      title: 'Daily Active Accounts Chart',
       chartSvgName: 'dailyActiveEthAddress',
-      route: '/charts/active-address',
+      route: '/charts/active-account',
     },
     {
       title: 'Network Transaction Fee Chart',
@@ -90,6 +95,11 @@ export const BlockchainDataSection: React.FC = () => {
       title: 'Daily LIB Burnt Chart',
       chartSvgName: 'dailyEthBurnt',
       route: '/charts/dailylibburnt',
+    },
+    {
+      title: 'Daily LIB Distributed Chart',
+      chartSvgName: 'dailyBlockRewards',
+      route: '/charts/dailylibdistributed',
     },
   ]
 

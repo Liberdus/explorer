@@ -1,12 +1,12 @@
 import React from 'react'
 
 import { ContentLayout, DailyStatsChart } from '../../../components'
-import styles from './DailyActiveAddressChart.module.scss'
+import styles from './DailyActiveAccountChart.module.scss'
 import { useStats } from '../../../api'
 import { convertDailyAccountStatsToSeriesData } from '../../../utils/transformChartData'
 import { breadcrumbsList } from '../../../types/routes'
 
-export const DailyActiveAddressChart: React.FC = () => {
+export const DailyActiveAccountChart: React.FC = () => {
   const height = 600
 
   const breadcrumbs = [breadcrumbsList.chart]
@@ -23,10 +23,10 @@ export const DailyActiveAddressChart: React.FC = () => {
     stats: { highest, lowest },
   } = convertDailyAccountStatsToSeriesData(dailyAccountStats, accountResponseType, {
     newAddress: false,
-    activeAddress: true,
+    activeAccount: true,
   })
 
-  // Tooltip formatter for active addresses
+  // Tooltip formatter for active accounts
   const tooltipFormatter = (
     timestamp: number,
     point: any,
@@ -34,15 +34,15 @@ export const DailyActiveAddressChart: React.FC = () => {
   ): string => {
     const xDate = new Date(timestamp)
     const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
-    const activeAddresses = point.y || 0
+    const activeAccounts = point.y || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
       <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
         ${xDateString}
       </div>
       <div>
-        <span style="color: #666;">Active Liberdus Addresses:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
-          activeAddresses,
+        <span style="color: #666;">Active Liberdus Accounts :</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
+          activeAccounts,
           0
         )}</span>
       </div>
@@ -50,19 +50,19 @@ export const DailyActiveAddressChart: React.FC = () => {
   }
 
   return (
-    <div className={styles.DailyActiveAddressChart}>
-      <ContentLayout title="Active Liberdus Addresses" breadcrumbItems={breadcrumbs} showBackButton>
+    <div className={styles.DailyActiveAccountChart}>
+      <ContentLayout title="Active Liberdus Accounts" breadcrumbItems={breadcrumbs} showBackButton>
         <div className={styles.chartContainer}>
           <div className={styles.chartWrapper}>
             {loading ? (
               <div className={styles.loading}>Loading...</div>
             ) : (
               <DailyStatsChart
-                title="Active Liberdus Addresses"
+                title="Active Liberdus Accounts"
                 subTitle=""
                 height={height}
                 data={seriesData}
-                yAxisTitle="Active Addresses"
+                yAxisTitle="Active Accounts"
                 tooltipFormatter={tooltipFormatter}
               />
             )}
@@ -73,8 +73,8 @@ export const DailyActiveAddressChart: React.FC = () => {
             </div>
             <div className={styles.infoPanelContent}>
               <p>
-                The Active Liberdus Address chart shows the daily number of unique addresses that were active
-                on the network as a sender.
+                The Active Liberdus Accounts chart shows the daily number of unique accounts that were active
+                on the network as a transaction sender.
               </p>
               {lowest && lowest.value !== Infinity && (
                 <div className={styles.highlight}>

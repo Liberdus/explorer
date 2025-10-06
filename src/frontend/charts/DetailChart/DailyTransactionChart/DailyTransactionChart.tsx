@@ -10,6 +10,7 @@ import {
   DataPoint,
 } from '../../../utils/transformChartData'
 import { breadcrumbsList } from '../../../types/routes'
+import { DailyTransactionStats } from '../../../../stats/dailyTransactionStats'
 
 export const DailyTransactionChart: React.FC = () => {
   const height = 600
@@ -26,7 +27,10 @@ export const DailyTransactionChart: React.FC = () => {
   const {
     seriesData,
     stats: { highest, lowest },
-  } = convertDailyTransactionStatsToSeriesData(transactionStats)
+  } = convertDailyTransactionStatsToSeriesData(
+    transactionStats as DailyTransactionStats[],
+    transactionResponseType
+  )
 
   // Tooltip formatter for transactions
   const tooltipFormatter = (
@@ -41,8 +45,8 @@ export const DailyTransactionChart: React.FC = () => {
     const pointData = (point.point as DataPoint)?.dailyTxsChartData as DailyTxsChartData
     const transferTxs = pointData.transferTxs || 0
     const messageTxs = pointData.messageTxs || 0
-    const depositStakeTxs = pointData.depositStakeTxs || 0
-    const withdrawStakeTxs = pointData.withdrawStakeTxs || 0
+    const stakingTxs = pointData.stakingTxs || 0
+    const otherTxs = pointData.otherTxs || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
       <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
@@ -56,26 +60,26 @@ export const DailyTransactionChart: React.FC = () => {
       </div>
       <div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">
         <div style="margin-bottom: 2px;">
-          <span style="color: #666;">Transfer:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+          <span style="color: #666;">Transfer Txs :  </span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
             transferTxs,
             0
           )}</span>
         </div>
         <div style="margin-bottom: 2px;">
-          <span style="color: #666;">Message:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+          <span style="color: #666;">Message Txs : </span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
             messageTxs,
             0
           )}</span>
         </div>
         <div style="margin-bottom: 2px;">
-          <span style="color: #666;">Deposit Stake:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-            depositStakeTxs,
+          <span style="color: #666;">Staking Txs : </span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+            stakingTxs,
             0
           )}</span>
         </div>
         <div>
-          <span style="color: #666;">Withdraw Stake:</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
-            withdrawStakeTxs,
+          <span style="color: #666;">Other Txs :</span> <span style="font-weight: 500; color: #000;">${Highcharts.numberFormat(
+            otherTxs,
             0
           )}</span>
         </div>
@@ -107,9 +111,8 @@ export const DailyTransactionChart: React.FC = () => {
             </div>
             <div className={styles.infoPanelContent}>
               <p>
-                The chart highlights the total number of transactions on the Liberdus blockchain with daily
-                individual breakdown for average difficulty, estimated hash rate, average block time and size,
-                total block and uncle block count and total new address seen.
+                The chart highlights the total number of transactions on the Liberdus network with daily
+                breakdown by transaction type (transfer, message, staking, others).
               </p>
               {highest && (
                 <div className={styles.highlight}>
