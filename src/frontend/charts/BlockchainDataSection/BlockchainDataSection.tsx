@@ -79,7 +79,7 @@ export const BlockchainDataSection: React.FC = () => {
     {
       title: 'Network Transaction Fee Chart',
       chartSvgName: 'networkTxnFee',
-      route: '/charts/txn-fee',
+      route: '/charts/transactionfee',
     },
     {
       title: 'Average Transaction Fee Chart',

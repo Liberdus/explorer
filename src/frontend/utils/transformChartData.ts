@@ -30,7 +30,7 @@ export interface SupplyGrowthChartData {
   mintedCoin: number
   rewardAmountRealized: number
   transactionFee: number
-  burntFee: number
+  networkFee: number
   penaltyAmount: number
   totalSupplyChange: number
 }
@@ -48,7 +48,7 @@ export interface AvgTxFeeChartData {
 
 export interface BurntSupplyChartData {
   transactionFee: number
-  tollTaxFee: number
+  networkFee: number
   penaltyAmount: number
 }
 
@@ -519,16 +519,16 @@ export function convertDailyCoinStatsToSeriesData(
         timestamp = dailyCoinStat[0]
         priceUSD = dailyCoinStat[9]
         const mintedCoin = dailyCoinStat[1]
+        const transactionFee = dailyCoinStat[2]
+        const networkFee = dailyCoinStat[3]
         const rewardAmountRealized = dailyCoinStat[6]
-        const transactionFee = dailyCoinStat[3]
-        const burntFee = dailyCoinStat[4]
         const penaltyAmount = dailyCoinStat[8]
 
         const totalSupplyChange = calculateTotalSupplyChange(
           mintedCoin,
           rewardAmountRealized,
           transactionFee,
-          burntFee,
+          networkFee,
           penaltyAmount
         )
 
@@ -541,7 +541,7 @@ export function convertDailyCoinStatsToSeriesData(
           dailyCoinStat.mintedCoin,
           dailyCoinStat.rewardAmountRealized,
           dailyCoinStat.transactionFee,
-          dailyCoinStat.burntFee,
+          dailyCoinStat.networkFee,
           dailyCoinStat.penaltyAmount
         )
 
@@ -569,7 +569,7 @@ export function convertDailyCoinStatsToSeriesData(
       let mintedCoin = 0
       let rewardAmountRealized = 0
       let transactionFee = 0
-      let burntFee = 0
+      let networkFee = 0
       let penaltyAmount = 0
       let totalSupplyChange = 0
       if (coinResponseType === 'array') {
@@ -577,15 +577,15 @@ export function convertDailyCoinStatsToSeriesData(
         timestamp = dailyCoinStat[0]
         mintedCoin = dailyCoinStat[1]
         rewardAmountRealized = dailyCoinStat[6]
-        transactionFee = dailyCoinStat[3]
-        burntFee = dailyCoinStat[4]
+        transactionFee = dailyCoinStat[2]
+        networkFee = dailyCoinStat[3]
         penaltyAmount = dailyCoinStat[8]
 
         totalSupplyChange = calculateTotalSupplyChange(
           mintedCoin,
           rewardAmountRealized,
           transactionFee,
-          burntFee,
+          networkFee,
           penaltyAmount
         )
 
@@ -596,13 +596,13 @@ export function convertDailyCoinStatsToSeriesData(
         mintedCoin = dailyCoinStat.mintedCoin
         rewardAmountRealized = dailyCoinStat.rewardAmountRealized
         transactionFee = dailyCoinStat.transactionFee
-        burntFee = dailyCoinStat.burntFee
+        networkFee = dailyCoinStat.networkFee
         penaltyAmount = dailyCoinStat.penaltyAmount
         totalSupplyChange = calculateTotalSupplyChange(
           mintedCoin,
           rewardAmountRealized,
           transactionFee,
-          burntFee,
+          networkFee,
           penaltyAmount
         )
 
@@ -616,7 +616,7 @@ export function convertDailyCoinStatsToSeriesData(
           mintedCoin,
           rewardAmountRealized,
           transactionFee,
-          burntFee,
+          networkFee,
           penaltyAmount,
           totalSupplyChange,
         },
@@ -625,24 +625,24 @@ export function convertDailyCoinStatsToSeriesData(
       // Convert burnt supply data for chart
       let timestamp: number
       let transactionFee = 0
-      let tollTaxFee = 0
+      let networkFee = 0
       let penaltyAmount = 0
       if (coinResponseType === 'array') {
         const dailyCoinStat = stat as number[]
         timestamp = dailyCoinStat[0]
         transactionFee = dailyCoinStat[2] || 0
-        tollTaxFee = dailyCoinStat[3] || 0
+        networkFee = dailyCoinStat[3] || 0
         penaltyAmount = dailyCoinStat[8] || 0
       } else {
         const dailyCoinStat = stat as DailyCoinStats
         timestamp = dailyCoinStat.dateStartTime
         transactionFee = dailyCoinStat.transactionFee || 0
-        tollTaxFee = dailyCoinStat.burntFee || 0
+        networkFee = dailyCoinStat.networkFee || 0
         penaltyAmount = dailyCoinStat.penaltyAmount || 0
       }
 
       // Calculate total burnt supply (transaction fees + toll tax fees + penalty amount)
-      const totalBurnt = transactionFee + tollTaxFee + penaltyAmount
+      const totalBurnt = transactionFee + networkFee + penaltyAmount
 
       if (totalBurnt > highest.value) {
         highest = { timestamp, value: totalBurnt }
@@ -656,7 +656,7 @@ export function convertDailyCoinStatsToSeriesData(
         y: totalBurnt,
         burntSupplyChartData: {
           transactionFee,
-          tollTaxFee,
+          networkFee,
           penaltyAmount,
         },
       })
@@ -695,10 +695,10 @@ export function calculateTotalSupplyChange(
   mintedCoin: number,
   rewardAmountRealized: number,
   transactionFee: number,
-  burntFee: number,
+  networkFee: number,
   penaltyAmount: number
 ): number {
-  return mintedCoin + rewardAmountRealized - transactionFee - burntFee - penaltyAmount
+  return mintedCoin + rewardAmountRealized - transactionFee - networkFee - penaltyAmount
 }
 
 export function calculateTotalStakeChange(

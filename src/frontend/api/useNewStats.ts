@@ -17,7 +17,7 @@ type StatsResult = {
   totalNewUserTxsChange: number // percentage change in new transactions (day-to-day comparison)
   totalNewTransactionFee: number // total transaction fee in the last 24 hours
   totalNewBurntFee: number // total burnt fee in the last 24 hours
-  totalNewMintedCoin: number // total minted coins in the last 24 hours + node rewards (24 hours)
+  totalNewNetworkExpense: number // total network expense ( minted coin + realized node rewards )  in the last 24 hours
   totalNewSupply: number // total LIB supply created in the last 24 hours
   totalSupply: number // total LIB supply
   totalStaked: number // total staked amount
@@ -146,18 +146,19 @@ export const useNewStats = (query: {
     'dailyCoinStats' in coinStatsResponse.data &&
     Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
     coinStatsResponse.data.dailyCoinStats.length > 0
-      ? coinStatsResponse.data.dailyCoinStats[0].burntFee +
+      ? coinStatsResponse.data.dailyCoinStats[0].transactionFee +
+        coinStatsResponse.data.dailyCoinStats[0].networkFee +
         coinStatsResponse.data.dailyCoinStats[0].penaltyAmount
       : 0
 
-  const totalNewMintedCoin =
+  const totalNewNetworkExpense =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
     'dailyCoinStats' in coinStatsResponse.data &&
     Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
     coinStatsResponse.data.dailyCoinStats.length > 0
       ? coinStatsResponse.data.dailyCoinStats[0].mintedCoin +
-        coinStatsResponse.data.dailyCoinStats[0].rewardAmountUnrealized
+        coinStatsResponse.data.dailyCoinStats[0].rewardAmountRealized
       : 0
 
   const totalNewSupply =
@@ -169,7 +170,7 @@ export const useNewStats = (query: {
       ? coinStatsResponse.data.dailyCoinStats[0].mintedCoin +
         coinStatsResponse.data.dailyCoinStats[0].rewardAmountRealized -
         coinStatsResponse.data.dailyCoinStats[0].transactionFee -
-        coinStatsResponse.data.dailyCoinStats[0].burntFee -
+        coinStatsResponse.data.dailyCoinStats[0].networkFee -
         coinStatsResponse.data.dailyCoinStats[0].penaltyAmount
       : 0
 
@@ -261,7 +262,7 @@ export const useNewStats = (query: {
     totalNewUserTxsChange,
     totalNewTransactionFee,
     totalNewBurntFee,
-    totalNewMintedCoin,
+    totalNewNetworkExpense,
     totalNewSupply,
     totalSupply,
     totalStaked,

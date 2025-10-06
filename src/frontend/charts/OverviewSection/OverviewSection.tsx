@@ -48,7 +48,7 @@ export const OverviewSection: React.FC = () => {
     totalNewUserTxsChange,
     totalNewTransactionFee,
     totalNewBurntFee,
-    totalNewMintedCoin,
+    totalNewNetworkExpense,
     totalNewSupply,
     totalSupply,
     totalStaked,
@@ -88,6 +88,7 @@ export const OverviewSection: React.FC = () => {
       title: 'Addresses (Total)',
       value: totalAccounts,
       ...formatPercentage(totalAccountsChange),
+      route: '/charts/address',
     },
     {
       title: 'Transactions (Total)',
@@ -99,42 +100,49 @@ export const OverviewSection: React.FC = () => {
       title: 'New Addresses (24H)',
       value: totalNewAccounts,
       ...formatPercentage(totalNewAccountsChange),
+      route: '/charts/address',
     },
     {
       title: 'Transactions (24H)',
       value: totalNewUserTxs,
       ...formatPercentage(totalNewUserTxsChange),
+      route: '/charts/tx',
     },
     {
       title: 'Total Transaction Fee (24H)',
       value: `$${totalNewTransactionFee * parseFloat(stabilityFactorStr)}`,
+      route: '/charts/transactionfee',
     },
     // Avg tx fee would be total_tx_fee_24h / transactions_24h
     {
       title: 'Avg Transaction Fee (24H)',
       value: `$${(totalNewTransactionFee / totalNewUserTxs) * parseFloat(stabilityFactorStr)}`,
+      route: '/charts/avg-txfee-usd',
     },
     { title: 'Network Utilization (24H)', value: 0 },
     {
       title: 'Burnt Fees (24H)',
-      value: `$${(totalNewTransactionFee + totalNewBurntFee) * parseFloat(stabilityFactorStr)}`,
+      value: `$${(totalNewBurntFee) * parseFloat(stabilityFactorStr)}`,
+      route: '/charts/dailylibburnt',
     },
     { title: 'Tx Fee Set', value: `$${transactionFeeUsdStr}` },
     { title: 'Node Reward / Hr', value: `$${nodeRewardAmountUsdStr}` },
     { title: 'Stake Required Amount', value: `$${stakeRequiredUsdStr}` },
     { title: 'Active Nodes', value: activeNodes },
-    { title: 'LIB Price Set', value: `$${stabilityFactorStr}` },
+    { title: 'LIB Price Set', value: `$${stabilityFactorStr}`, route: '/charts/libprice' },
     {
       title: 'LIB Supply',
       value: `${totalSupply.toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      route: '/charts/libsupplygrowth',
     },
     {
       title: 'LIB MarketCap',
       value: `$${(totalSupply * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      route: '/charts/marketcap',
     },
     {
       title: '$Total Staked',
@@ -144,14 +152,14 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: '$Network Rev (24H)',
-      value: `$${(
-        (totalNewTransactionFee + totalNewBurntFee) *
-        parseFloat(stabilityFactorStr)
-      ).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      value: `$${(totalNewBurntFee * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+        maximumFractionDigits: 2,
+      })}`,
+      route: '/charts/dailylibburnt',
     },
     {
       title: '$Network Exp (24H)',
-      value: `$${(totalNewMintedCoin * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+      value: `$${(totalNewNetworkExpense * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
     },
@@ -176,6 +184,7 @@ export const OverviewSection: React.FC = () => {
     {
       title: 'Daily Active Accounts (24H)',
       value: activeAccounts,
+      route: '/charts/active-address',
     },
   ]
 

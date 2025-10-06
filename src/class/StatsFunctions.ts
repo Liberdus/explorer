@@ -367,7 +367,12 @@ export const recordCoinStats = async (
           const coinStatsForCycle = {
             cycle: cycle.counter,
             totalSupplyChange: weiBNToEth(
-              registerAmount + createAmount + nodeRewardAmount - transactionFee - nodePenaltyAmount
+              registerAmount +
+                createAmount +
+                nodeRewardAmount -
+                transactionFee -
+                networkTollTaxFee -
+                nodePenaltyAmount
             ),
             totalStakeChange: weiBNToEth(stakeAmount - unStakeAmount - nodePenaltyAmount),
             transactionFee: weiBNToEth(transactionFee),
@@ -492,9 +497,28 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
     )
     let totalActiveNodes = 0
     let totalStandbyNodes = 0
-    for (const cycle of cycleRecords) {
-      totalActiveNodes += cycle.cycleRecord.active
-      totalStandbyNodes += cycle.cycleRecord.standby
+    for (let i = 0; i < cycleRecords.length; i++) {
+      const { activated, active, removed, apoptosized, standbyAdd, standby, syncing, lostSyncing } =
+        cycleRecords[i].cycleRecord
+      let totalActive = activated.length + active - removed.length
+      if (apoptosized.length) {
+        // To differentiate the apotosized is from active or lostSyncing nodes
+        if (i < cycleRecords.length - 1) {
+          // Check if the active count is decreased by the apotosized count in next cycle
+          const nextCycle = cycleRecords[i + 1].cycleRecord
+          if (active - apoptosized.length === nextCycle.active) {
+            totalActive += nextCycle.apoptosized.length
+          }
+        } else if (i === cycleRecords.length - 1) {
+          // For end cycle in the list, check if the lostSyncing nodes have the current
+          const previousCycle = cycleRecords[i - 1].cycleRecord
+          const lostSyncingNodes = apoptosized.filter((nodeId) => !previousCycle.lostSyncing.includes(nodeId))
+          totalActive += apoptosized.length - lostSyncingNodes.length
+        }
+      }
+      totalActiveNodes += totalActive
+      const totalStandby = standbyAdd.length + standby - lostSyncing.length
+      totalStandbyNodes += totalStandby
     }
     const avgActiveNodes = Math.round(totalActiveNodes / cycleRecords.length)
     const avgStandbyNodes = Math.ceil(totalStandbyNodes / cycleRecords.length)
@@ -613,12 +637,12 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
 
       const mintedCoin = weiBNToEth(registerAmount + createAmount)
       const transactionFee = weiBNToEth(transactionFeeAmount)
-      const burntFee = weiBNToEth(networkTollTaxFee)
+      const networkFee = weiBNToEth(networkTollTaxFee)
 
       const dailyCoinStats: DailyCoinStatsDB.DbDailyCoinStats = {
         dateStartTime: startTimestamp,
         transactionFee,
-        burntFee,
+        networkFee,
         stakeAmount: weiBNToEth(stakeAmount),
         unStakeAmount: weiBNToEth(unStakeAmount),
         penaltyAmount: weiBNToEth(nodePenaltyAmount),

@@ -12,8 +12,8 @@ export interface BaseDailyNetworkStats {
   nodePenaltyUsdStr: string
   defaultTollUsdStr: string
   minTollUsdStr: string
-  activeNodes: number
-  standbyNodes: number
+  activeNodes: number // The active nodes count from the cycle records ( activated + active - removed - apoptosized )
+  standbyNodes: number // The non-active nodes count from the cycle records (standby + syncing nodes)
 }
 
 export type DailyNetworkStats = BaseDailyNetworkStats

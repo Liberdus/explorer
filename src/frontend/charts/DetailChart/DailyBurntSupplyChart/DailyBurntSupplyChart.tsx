@@ -42,7 +42,7 @@ export const DailyBurntSupplyChart: React.FC = () => {
 
     const pointData = (point.point as DataPoint)?.burntSupplyChartData as BurntSupplyChartData
     const transactionFee = pointData?.transactionFee || 0
-    const tollTaxFee = pointData?.tollTaxFee || 0
+    const networkFee = pointData?.networkFee || 0
     const penaltyAmount = pointData?.penaltyAmount || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
@@ -57,7 +57,7 @@ export const DailyBurntSupplyChart: React.FC = () => {
           <span style="color: #666;">Transaction Fee:</span> <span style="font-weight: 500; color: #000;">${transactionFee.toLocaleString()} LIB</span>
         </div>
         <div style="margin-bottom: 2px;">
-          <span style="color: #666;">Toll Tax Fees:</span> <span style="font-weight: 500; color: #000;">${tollTaxFee.toLocaleString()} LIB</span>
+          <span style="color: #666;">Toll Tax Fees:</span> <span style="font-weight: 500; color: #000;">${networkFee.toLocaleString()} LIB</span>
         </div>
         <div>
           <span style="color: #666;">Penalty Amount:</span> <span style="font-weight: 500; color: #000;">${penaltyAmount.toLocaleString()} LIB</span>
@@ -79,7 +79,7 @@ export const DailyBurntSupplyChart: React.FC = () => {
                 subTitle="Daily amount of LIB burnt from transaction fees, network toll tax fees, and penalty amounts"
                 height={height}
                 data={seriesData}
-                yAxisTitle="LIB Burnt"
+                yAxisTitle="Daily LIB Burnt"
                 tooltipFormatter={tooltipFormatter}
               />
             )}
