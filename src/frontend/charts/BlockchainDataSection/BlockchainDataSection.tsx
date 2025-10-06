@@ -77,6 +77,11 @@ export const BlockchainDataSection: React.FC = () => {
       route: '/charts/active-address',
     },
     {
+      title: 'Network Transaction Fee Chart',
+      chartSvgName: 'networkTxnFee',
+      route: '/charts/txn-fee',
+    },
+    {
       title: 'Average Transaction Fee Chart',
       chartSvgName: 'avgTxnFee',
       route: '/charts/avg-txfee-usd',
