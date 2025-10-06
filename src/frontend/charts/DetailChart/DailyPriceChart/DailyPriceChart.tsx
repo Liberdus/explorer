@@ -60,7 +60,7 @@ export const DailyPriceChart: React.FC = () => {
                 subTitle="Historical daily LIB price in USD"
                 height={height}
                 data={seriesData}
-                yAxisTitle="Price (USD)"
+                yAxisTitle="LIB Price (USD)"
                 yAxisDecimals={priceDecimalPoint}
                 tooltipFormatter={tooltipFormatter}
               />

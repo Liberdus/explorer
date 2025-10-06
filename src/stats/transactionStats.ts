@@ -90,7 +90,7 @@ export function createEmptyBaseTxStats(): BaseTxStats {
 
     emptyBaseTxStatsCache = result
   }
-  return emptyBaseTxStatsCache
+  return JSON.parse(JSON.stringify(emptyBaseTxStatsCache)) // Send a deep copy
 }
 
 export function generateTransactionStatsSchema(): string {

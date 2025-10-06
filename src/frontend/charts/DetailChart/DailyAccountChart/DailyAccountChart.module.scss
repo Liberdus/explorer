@@ -1,4 +1,4 @@
-.DailyActiveAddressChart {
+.DailyAccountChart {
   padding: 20px;
 }
 
@@ -45,30 +45,6 @@
     font-size: 13px;
     line-height: 1.6;
     color: #495057;
-  }
-}
-
-.latestStats {
-  background: #f8f9fa;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 16px;
-  border-left: 3px solid #000;
-}
-
-.latestDate {
-  font-size: 12px;
-  color: #6c757d;
-  margin-bottom: 8px;
-}
-
-.activeAddresses {
-  font-size: 13px;
-  color: #212529;
-
-  strong {
-    font-weight: 600;
-    color: #000;
   }
 }
 
@@ -170,7 +146,7 @@
 }
 
 @media (max-width: 768px) {
-  .DailyActiveAddressChart {
+  .DailyAccountChart {
     padding: 12px;
   }
 

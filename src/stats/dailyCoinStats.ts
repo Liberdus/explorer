@@ -10,8 +10,8 @@ export interface DailyCoinStats {
   networkFee: number // Additional other fees not included in transactionFee (e.g. network toll tax )
   stakeAmount: number
   unStakeAmount: number
-  rewardAmountRealized: number
-  rewardAmountUnrealized: number
+  rewardAmountRealized: number // Node rewards that have been collected by the nominator ( withdraw_stake tx)
+  rewardAmountUnrealized: number // Node rewards that have been accumulated, but yet to be collected by the nominator ( claim_reward tx)
   penaltyAmount: number
 }
 
