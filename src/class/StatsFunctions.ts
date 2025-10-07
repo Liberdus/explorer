@@ -116,7 +116,7 @@ export const recordTransactionsStats = async (
   lastStoredCycle: number
 ): Promise<void> => {
   let combineTransactionStats: TransactionStatsDB.TransactionStats[] = []
-  const bucketSize = 1000
+  const bucketSize = 200 // Setting 1000 gives error
   let startCycle = lastStoredCycle + 1
   let endCycle = startCycle + bucketSize
   while (startCycle <= latestCycle) {
