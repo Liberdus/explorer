@@ -14,6 +14,7 @@ export type DailyTransactionStats = BaseDailyTransactionStats & BaseTxStats
 
 export type DbDailyTransactionStats = BaseDailyTransactionStats & {
   txsByType: string
+  txsWithFeeByType: string
 }
 
 export async function insertDailyTransactionStats(
@@ -60,14 +61,17 @@ export async function bulkInsertTransactionsStats(
   }
 }
 
-export async function queryLatestDailyTransactionStats(count: number): Promise<DailyTransactionStats[]> {
+export async function queryLatestDailyTransactionStats(
+  count: number,
+  txsWithFee = false
+): Promise<DailyTransactionStats[]> {
   try {
     const sql = `SELECT * FROM daily_transactions ORDER BY dateStartTime DESC ${
       count ? 'LIMIT ' + count : ''
     }`
     const dailyTransactionsStats: DbDailyTransactionStats[] = await db.all(dailyTransactionStatsDatabase, sql)
     if (config.verbose) console.log('dailyTransactionStats count', dailyTransactionsStats)
-    return parseDailyTransactionStats(dailyTransactionsStats)
+    return parseDailyTransactionStats(dailyTransactionsStats, txsWithFee)
   } catch (e) {
     console.log(e)
     return []
@@ -92,11 +96,16 @@ export async function queryDailyTransactionStatsBetween(
   }
 }
 
-export function parseDailyTransactionStats(stats: DbDailyTransactionStats[]): DailyTransactionStats[] {
+export function parseDailyTransactionStats(
+  stats: DbDailyTransactionStats[],
+  txsWithFee = false
+): DailyTransactionStats[] {
   if (!stats || !stats.length) return []
   return stats.map((stat) => {
-    const txsByType = JSON.parse(stat.txsByType) as BaseTxStats
-    // Ensure all required fields from BaseTxStats and DailyTransactionStats (except txsByType) are present
+    const txsByType = txsWithFee
+      ? JSON.parse(stat.txsWithFeeByType)
+      : (JSON.parse(stat.txsByType) as BaseTxStats)
+    // Ensure all required fields from BaseTxStats and DailyTransactionStats (except txsByType, txsWithFeeByType) are present
     return {
       dateStartTime: stat.dateStartTime,
       totalTxs: stat.totalTxs,
@@ -156,8 +165,7 @@ async function calculateTotalTransactionsChange(userTxs = false): Promise<number
 
     const txsColumn = userTxs ? 'totalUserTxs' : 'totalTxs'
     const last7DaysSql = `SELECT SUM(${txsColumn}) as total FROM daily_transactions WHERE dateStartTime >= ?`
-    const previous7DaysSql =
-      `SELECT SUM(${txsColumn}) as total FROM daily_transactions WHERE dateStartTime >= ? AND dateStartTime < ?`
+    const previous7DaysSql = `SELECT SUM(${txsColumn}) as total FROM daily_transactions WHERE dateStartTime >= ? AND dateStartTime < ?`
 
     const last7DaysResult: { total: number } = await db.get(dailyTransactionStatsDatabase, last7DaysSql, [
       sevenDaysAgo,

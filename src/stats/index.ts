@@ -103,9 +103,10 @@ export const initializeStatsDB = async (): Promise<void> => {
     dailyTransactionStatsDatabase,
     `CREATE TABLE if not exists daily_transactions (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
-      totalTxs NUMBER NOT NULL,
+      totalTxs NUMBER NOT NULL DEFAULT 0,
       totalUserTxs NUMBER NOT NULL DEFAULT 0,
-      txsByType TEXT NOT NULL
+      txsByType TEXT NOT NULL,
+      txsWithFeeByType TEXT NOT NULL
     )`
   )
 
@@ -113,9 +114,9 @@ export const initializeStatsDB = async (): Promise<void> => {
     dailyAccountStatsDatabase,
     `CREATE TABLE if not exists daily_accounts (
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
-      newAccounts NUMBER NOT NULL,
-      newUserAccounts NUMBER NOT NULL,
-      activeAccounts NUMBER NOT NULL,
+      newAccounts NUMBER NOT NULL DEFAULT 0,
+      newUserAccounts NUMBER NOT NULL DEFAULT 0,
+      activeAccounts NUMBER NOT NULL DEFAULT 0,
       activeBalanceAccounts NUMBER NOT NULL DEFAULT 0,
       newActiveBalanceAccounts NUMBER NOT NULL DEFAULT 0
     )`
@@ -132,8 +133,8 @@ export const initializeStatsDB = async (): Promise<void> => {
       nodePenaltyUsdStr TEXT NOT NULL,
       defaultTollUsdStr TEXT NOT NULL,
       minTollUsdStr TEXT NOT NULL,
-      activeNodes NUMBER NOT NULL,
-      standbyNodes NUMBER NOT NULL
+      activeNodes NUMBER NOT NULL DEFAULT 0,
+      standbyNodes NUMBER NOT NULL DEFAULT 0
     )`
   )
 

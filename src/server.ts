@@ -1040,6 +1040,7 @@ const start = async (): Promise<void> => {
       responseType: string
       last14DaysTxsReport: string
       allDailyTxsReport: string
+      txsWithFee?: string
       fetchTransactionStats: string
     }
   }>
@@ -1132,7 +1133,10 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      transactionStats = (await DailyTransactionStatsDB.queryLatestDailyTransactionStats(14)).sort(
+      const txsWithFee = query.txsWithFee === 'true' ? true : false
+      transactionStats = (
+        await DailyTransactionStatsDB.queryLatestDailyTransactionStats(14, txsWithFee)
+      ).sort(
         (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
       )
     } else if (query.allDailyTxsReport) {
@@ -1143,7 +1147,8 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      transactionStats = (await DailyTransactionStatsDB.queryLatestDailyTransactionStats(0)).sort(
+      const txsWithFee = query.txsWithFee === 'true' ? true : false
+      transactionStats = (await DailyTransactionStatsDB.queryLatestDailyTransactionStats(0, txsWithFee)).sort(
         (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
       )
     } else if (query.fetchTransactionStats) {

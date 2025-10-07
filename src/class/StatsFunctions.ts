@@ -408,24 +408,30 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
     const txCountsByType = await TransactionDB.queryTransactionCountsByType(beforeTimestamp, afterTimestamp)
 
     // Initialize transaction counts by type
-    const txsByTypeObject: BaseTxStats = createEmptyBaseTxStats()
+    const txsCountByTypeObject: BaseTxStats = createEmptyBaseTxStats()
+    const txsCountWithFeeByType: BaseTxStats = createEmptyBaseTxStats()
 
     // Update counts based on query results
     let calculatedTotalTxs = 0
+    let calculatedUserTotalTxs = 0 // Transactions with txFee > 0
     txCountsByType.forEach((typeCount) => {
-      calculatedTotalTxs += typeCount.count
+      calculatedTotalTxs += typeCount.total
+      calculatedUserTotalTxs += typeCount.countWithFee
       const propertyName = transactionTypeToPropertyName(typeCount.transactionType as TransactionType)
-      txsByTypeObject[propertyName] = typeCount.count
+      txsCountByTypeObject[propertyName] = typeCount.total
+      txsCountWithFeeByType[propertyName] = typeCount.countWithFee
     })
 
-    // Query user transactions (transactions with txFee > 0)
-    const totalUserTxs = await TransactionDB.queryTransactionCountByTxFee(beforeTimestamp, afterTimestamp, 0)
+    // Cast to string manually to preserve the key order of baseTxStats
+    const txsByType = JSON.stringify(txsCountByTypeObject)
+    const txsWithFeeByType = JSON.stringify(txsCountWithFeeByType)
 
     const dailyTransactionStats: DailyTransactionStatsDB.DbDailyTransactionStats = {
       dateStartTime: startTimestamp,
       totalTxs: calculatedTotalTxs,
-      totalUserTxs,
-      txsByType: JSON.stringify(txsByTypeObject),
+      totalUserTxs: calculatedUserTotalTxs,
+      txsByType,
+      txsWithFeeByType,
     }
 
     await DailyTransactionStatsDB.insertDailyTransactionStats(dailyTransactionStats)
@@ -452,7 +458,7 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
     const activeAccounts = await TransactionDB.queryActiveAccountsCountByTxFee(
       beforeTimestamp,
       afterTimestamp,
-      0
+      true
     )
 
     // Query user accounts with balance > 0 from AccountHistoryState at the end of this time period
@@ -520,8 +526,8 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       const totalStandby = standbyAdd.length + standby - lostSyncing.length
       totalStandbyNodes += totalStandby
     }
-    const avgActiveNodes = Math.round(totalActiveNodes / cycleRecords.length)
-    const avgStandbyNodes = Math.ceil(totalStandbyNodes / cycleRecords.length)
+    const avgActiveNodes = totalActiveNodes > 0 ? Math.round(totalActiveNodes / cycleRecords.length) : 0
+    const avgStandbyNodes = totalStandbyNodes > 0 ? Math.round(totalStandbyNodes / cycleRecords.length) : 0
 
     const current = networkAccount.data.current
     const transactionFeeUsdStr = current.transactionFeeUsdStr

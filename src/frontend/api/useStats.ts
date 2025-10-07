@@ -63,7 +63,7 @@ export const useStats = (query: {
     : last14DaysTxsReport
     ? `${PATHS.STATS_TRANSACTION}?last14DaysTxsReport=true&responseType=${transactionResponseType}`
     : allDailyTxsReport
-    ? `${PATHS.STATS_TRANSACTION}?allDailyTxsReport=true&responseType=${transactionResponseType}`
+    ? `${PATHS.STATS_TRANSACTION}?allDailyTxsReport=true&txsWithFee=true&responseType=${transactionResponseType}`
     : null
   const accountStatsQuery = allDailyAccountReport
     ? `${PATHS.STATS_ACCOUNT}?allDailyAccountReport=true&responseType=${accountResponseType}`
