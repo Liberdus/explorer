@@ -10,7 +10,8 @@ const start = async (): Promise<void> => {
 
   const receiptsCount = await ReceiptDB.queryReceiptCount()
   console.log('receiptsCount', receiptsCount)
-  const limit = 100
+  let totalReceiptsProcessed = 0
+  const limit = 1000
   const bucketSize = 1000
   for (let i = 0; i < receiptsCount; i += limit) {
     console.log(i, i + limit)
@@ -38,13 +39,13 @@ const start = async (): Promise<void> => {
             balance,
           }
           if (accountMap.has(accountHistoryState.accountId)) {
-            if (accountMap.get(accountHistoryState.accountId) !== accountHistoryState.beforeStateHash) {
+            if (accountMap.get(accountHistoryState.accountId) !== accountHistoryState.afterStateHash) {
               console.log(
-                `accountId ${accountHistoryState.accountId} in receipt ${receiptId} has different beforeStateHash`
+                `accountId ${accountHistoryState.accountId} in receipt ${receiptId} has different afterStateHash`
               )
             }
           }
-          accountMap.set(accountHistoryState.accountId, accountHistoryState.afterStateHash)
+          accountMap.set(accountHistoryState.accountId, accountHistoryState.beforeStateHash)
           accountHistoryStateList.push(accountHistoryState)
         }
       } else {
@@ -60,11 +61,13 @@ const start = async (): Promise<void> => {
         accountHistoryStateList = []
       }
     }
+    totalReceiptsProcessed += receipts.length
     if (accountHistoryStateList.length > 0) {
       await AccountHistoryStateDB.bulkInsertAccountHistoryStates(accountHistoryStateList)
       accountHistoryStateList = []
     }
   }
+  console.log('totalReceiptsProcessed', totalReceiptsProcessed, receiptsCount)
   const accountHistoryStateCount = await AccountHistoryStateDB.queryAccountHistoryStateCount()
   console.log('accountHistoryStateCount', accountHistoryStateCount)
   await Storage.closeDatabase()

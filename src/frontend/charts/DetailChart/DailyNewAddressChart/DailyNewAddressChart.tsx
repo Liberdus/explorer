@@ -74,7 +74,7 @@ export const DailyNewAddressChart: React.FC = () => {
                 subTitle=""
                 height={height}
                 data={seriesData}
-                yAxisTitle="New Addresses Per Day"
+                yAxisTitle="Liberdus Cumulative Address Growth"
                 tooltipFormatter={tooltipFormatter}
               />
             )}
