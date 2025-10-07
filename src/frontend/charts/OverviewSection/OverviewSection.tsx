@@ -116,7 +116,7 @@ export const OverviewSection: React.FC = () => {
     // Avg tx fee would be total_tx_fee_24h / transactions_24h
     {
       title: 'Avg Transaction Fee (24H)',
-      value: `$${(totalNewTransactionFee / totalNewUserTxs) * parseFloat(stabilityFactorStr)}`,
+      value: `$${(totalNewTransactionFee / totalNewUserTxs) * parseFloat(stabilityFactorStr) || 0}`,
       route: '/charts/avg-txfee-usd',
     },
     { title: 'Network Utilization (24H)', value: 0 },
