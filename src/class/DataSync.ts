@@ -2,7 +2,7 @@ import axios, { AxiosResponse } from 'axios'
 import * as crypto from '@shardus/crypto-utils'
 import { AccountDB, CycleDB, ReceiptDB, TransactionDB, OriginalTxDataDB } from '../storage'
 import { config, DISTRIBUTOR_URL } from '../config'
-import { Cycle as CycleType } from '../types'
+import { Cycle } from '../types'
 import { Utils as StringUtils } from '@shardus/types'
 
 export enum DataType {
@@ -154,7 +154,7 @@ export async function compareWithOldOriginalTxsData(
 export const compareWithOldCyclesData = async (
   lastCycleCounter: number
 ): Promise<{ success: boolean; cycle: number }> => {
-  let downloadedCycles: CycleType[]
+  let downloadedCycles: Cycle[]
 
   const numberOfCyclesTocompare = 20
   const response = await queryFromDistributor(DataType.CYCLE, {
@@ -265,7 +265,7 @@ export const downloadTxsDataAndCycles = async (
     if (response && response.data && response.data.cycleInfo) {
       console.log(`Downloaded cycles`, response.data.cycleInfo.length)
       const cycles = response.data.cycleInfo
-      let combineCycles = []
+      let combineCycles: Cycle[] = []
       for (let i = 0; i < cycles.length; i++) {
         // eslint-disable-next-line security/detect-object-injection
         const cycle = cycles[i]
@@ -273,9 +273,10 @@ export const downloadTxsDataAndCycles = async (
           console.log('Invalid Cycle Received', cycle)
           continue
         }
-        const cycleObj = {
+        const cycleObj: Cycle = {
           counter: cycle.counter,
           cycleRecord: cycle,
+          start: cycle.start,
           cycleMarker: cycle.marker,
         }
         combineCycles.push(cycleObj)
@@ -552,7 +553,7 @@ export const downloadCyclcesBetweenCycles = async (
     if (response && response.data && response.data.cycleInfo) {
       console.log(`Downloaded cycles`, response.data.cycleInfo.length)
       const cycles = response.data.cycleInfo
-      let combineCycles = []
+      let combineCycles: Cycle[] = []
       for (let i = 0; i < cycles.length; i++) {
         // eslint-disable-next-line security/detect-object-injection
         const cycle = cycles[i]
@@ -560,8 +561,9 @@ export const downloadCyclcesBetweenCycles = async (
           console.log('Invalid Cycle Received', cycle)
           continue
         }
-        const cycleObj = {
+        const cycleObj: Cycle = {
           counter: cycle.counter,
+          start: cycle.start,
           cycleRecord: cycle,
           cycleMarker: cycle.marker,
         }
