@@ -65,30 +65,6 @@ export const initializeDB = async (): Promise<void> => {
     )`
   )
 
-  /**
-   * createdTimestamp logic
-   * 1. New account, no createdTimestamp provided: Sets createdTimestamp = timestamp
-   * 2. New account, createdTimestamp provided: Uses the provided createdTimestamp
-   * 3. Existing account, no createdTimestamp provided: Compares existing createdTimestamp with new timestamp, saves the older one
-   * 4. Existing account, createdTimestamp provided: Compares existing createdTimestamp with provided createdTimestamp, saves the older one
-   */
-
-  // Create trigger to handle createdTimestamp logic for INSERT OR REPLACE and UPDATE operations
-  await runCreate(
-    accountDatabase,
-    `CREATE TRIGGER IF NOT EXISTS accounts_created_timestamp_trigger
-     BEFORE UPDATE ON accounts
-     FOR EACH ROW
-     BEGIN
-       UPDATE accounts
-       SET createdTimestamp = CASE
-         WHEN OLD.createdTimestamp IS NULL THEN COALESCE(NEW.createdTimestamp, NEW.timestamp)
-         WHEN NEW.createdTimestamp IS NULL THEN MIN(OLD.createdTimestamp, NEW.timestamp)
-         ELSE MIN(OLD.createdTimestamp, NEW.createdTimestamp)
-       END
-       WHERE accountId = NEW.accountId;
-     END;`
-  )
   await runCreate(
     accountDatabase,
     'CREATE INDEX if not exists `accounts_idx` ON `accounts` (`cycleNumber` DESC, `timestamp` DESC)'

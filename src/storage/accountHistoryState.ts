@@ -58,7 +58,7 @@ export async function bulkInsertAccountHistoryStates(
 export async function queryAccountHistoryState(
   _accountId: string,
   beforeTimestamp?: string
-): Promise<Account | null> {
+): Promise<Omit<Account, 'createdTimestamp'> | null> {
   try {
     let sql = `SELECT * FROM accountHistoryState WHERE accountId=? `
     const values = [_accountId]
@@ -90,7 +90,7 @@ export async function queryAccountHistoryState(
       }
       const account = filterAccount[0]
       const accountType = account.data.type as AccountType // be sure to update with the correct field with the account type defined in the dapp
-      const accObj: Account = {
+      const accObj: Omit<Account, 'createdTimestamp'> = {
         accountId: account.accountId,
         cycleNumber: receipt.cycle,
         timestamp: account.timestamp,

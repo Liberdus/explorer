@@ -11,7 +11,7 @@ export type AccountsCopy = {
 }
 
 export interface Account extends AccountsCopy {
-  createdTimestamp?: number // Automatically handled by SQL triggers - always preserves the oldest timestamp ( based on logic in src/storage/index.ts )
+  createdTimestamp: number // Always preserves the oldest timestamp
   accountType?: AccountType
 }
 
