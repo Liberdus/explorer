@@ -82,7 +82,7 @@ export const recordOldValidatorsStats = async (
   lastStoredCycle: number
 ): Promise<void> => {
   let combineValidatorsStats: ValidatorStatsDB.ValidatorStats[] = []
-  const bucketSize = 100
+  const bucketSize = 1000
   let startCycle = lastStoredCycle + 1
   let endCycle = startCycle + bucketSize
   while (startCycle <= latestCycle) {
@@ -116,7 +116,7 @@ export const recordTransactionsStats = async (
   lastStoredCycle: number
 ): Promise<void> => {
   let combineTransactionStats: TransactionStatsDB.TransactionStats[] = []
-  const bucketSize = 50
+  const bucketSize = 1000
   let startCycle = lastStoredCycle + 1
   let endCycle = startCycle + bucketSize
   while (startCycle <= latestCycle) {
@@ -290,7 +290,7 @@ export const recordCoinStats = async (
   lastStoredCycle: number,
   recordAccountBalance = false
 ): Promise<void> => {
-  const bucketSize = 50
+  const bucketSize = 1000
   let startCycle = lastStoredCycle + 1
   let endCycle = startCycle + bucketSize
   while (startCycle <= latestCycle) {

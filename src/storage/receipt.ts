@@ -110,11 +110,8 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
         } else {
           if (accountExist.timestamp < accObj.timestamp) {
             await AccountDB.updateAccount(accObj)
-          } else if (accObj.createdTimestamp < accountExist.createdTimestamp) {
-            // THIS SHOULD NOT HAPPEN - [TO CATCH IF IT HAPPENS]
-            console.error(
-              `Found new account that has older created timestamp than existing account. ${accObj.accountId} createdTimestamp ${accObj.createdTimestamp}  accountExist.createdTimestamp ${accountExist.createdTimestamp} timestamp ${accObj.timestamp} accountExist.timestamp ${accountExist.timestamp}`
-            )
+          }
+          if (accObj.createdTimestamp < accountExist.createdTimestamp) {
             await AccountDB.updateCreatedTimestamp(accObj.accountId, accObj.createdTimestamp)
           }
         }

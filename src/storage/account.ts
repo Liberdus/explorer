@@ -8,14 +8,21 @@ type DbAccount = Account & {
   data: string
 }
 
-export const EOA_CodeHash = '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'
-
 export async function insertAccount(account: Account): Promise<void> {
   try {
     const fields = Object.keys(account).join(', ')
     const placeholders = Object.keys(account).fill('?').join(', ')
     const values = db.extractValues(account)
-    const sql = 'INSERT OR REPLACE INTO accounts (' + fields + ') VALUES (' + placeholders + ')'
+    const sql = `INSERT INTO accounts (${fields}) VALUES (${placeholders})
+      ON CONFLICT(accountId) DO UPDATE SET
+        cycleNumber = excluded.cycleNumber,
+        timestamp = excluded.timestamp,
+        data = excluded.data,
+        hash = excluded.hash,
+        accountType = excluded.accountType,
+        isGlobal = excluded.isGlobal,
+        createdTimestamp = MIN(accounts.createdTimestamp, excluded.createdTimestamp)
+      WHERE excluded.timestamp > accounts.timestamp`
     await db.run(accountDatabase, sql, values)
     if (config.verbose) console.log('Successfully inserted Account', account.accountId)
   } catch (e) {
@@ -29,10 +36,19 @@ export async function bulkInsertAccounts(accounts: Account[]): Promise<void> {
     const fields = Object.keys(accounts[0]).join(', ')
     const placeholders = Object.keys(accounts[0]).fill('?').join(', ')
     const values = db.extractValuesFromArray(accounts)
-    let sql = 'INSERT OR REPLACE INTO accounts (' + fields + ') VALUES (' + placeholders + ')'
+    let sql = 'INSERT INTO accounts (' + fields + ') VALUES (' + placeholders + ')'
     for (let i = 1; i < accounts.length; i++) {
       sql = sql + ', (' + placeholders + ')'
     }
+    sql += ` ON CONFLICT(accountId) DO UPDATE SET
+      cycleNumber = excluded.cycleNumber,
+      timestamp = excluded.timestamp,
+      data = excluded.data,
+      hash = excluded.hash,
+      accountType = excluded.accountType,
+      isGlobal = excluded.isGlobal,
+      createdTimestamp = MIN(accounts.createdTimestamp, excluded.createdTimestamp)
+    WHERE excluded.timestamp > accounts.timestamp`
     await db.run(accountDatabase, sql, values)
     console.log('Successfully bulk inserted Accounts', accounts.length)
   } catch (e) {
@@ -90,9 +106,7 @@ export async function queryAccountCount(query: QueryAccountCountParams | null = 
       values.push(type)
     }
     if (startCycleNumber || endCycleNumber) {
-      console.log('before sql', sql)
       sql = db.updateSqlStatementClause(sql, values)
-      console.log('after sql', sql)
       sql += `cycleNumber BETWEEN ? AND ?`
       values.push(startCycleNumber, endCycleNumber)
     }
@@ -183,6 +197,7 @@ export async function processAccountData(accounts: AccountsCopy[]): Promise<Acco
       hash: account.hash,
       accountType,
       isGlobal: account.isGlobal,
+      createdTimestamp: account.timestamp,
     }
     combineAccounts.push(accObj)
     // if tx receipt is saved as an account, create tx object from the account and save it
