@@ -367,13 +367,10 @@ export function convertDailyAccountStatsToSeriesData(
   let lowest = { timestamp: 0, value: Infinity }
   if (queryType.newAddress) {
     seriesData[0].name = 'New Addresses'
-    seriesData[0].tooltip = 'New addresses per day'
   } else if (queryType.activeAccount) {
-    seriesData[0].name = 'Active Addresses'
-    seriesData[0].tooltip = 'Active addresses per day'
+    seriesData[0].name = 'Active Accounts'
   } else if (queryType.activeBalanceAccounts) {
     seriesData[0].name = 'Active Balance Accounts'
-    seriesData[0].tooltip = 'Active balance accounts per day'
   }
 
   if (!dailyAccountStats || dailyAccountStats.length === 0) {
@@ -569,22 +566,16 @@ export function convertDailyCoinStatsToSeriesData(
   let current = 0
   if (queryType.dailyPrice) {
     seriesData[0].name = 'LIB Price (USD)'
-    seriesData[0].tooltip = 'LIB Price in USD'
   } else if (queryType.dailyMarketCap) {
     seriesData[0].name = 'Market Cap (USD)'
-    seriesData[0].tooltip = 'LIB Market Capitalization in USD'
   } else if (queryType.dailySupplyGrowth) {
     seriesData[0].name = 'LIB Supply'
-    seriesData[0].tooltip = 'Total LIB Supply'
   } else if (queryType.dailyBurntSupply) {
     seriesData[0].name = 'Daily LIB Burnt'
-    seriesData[0].tooltip = 'Daily LIB Burnt'
   } else if (queryType.dailyTransactionFee) {
     seriesData[0].name = 'Txn Fee (LIB)'
-    seriesData[0].tooltip = 'Transaction Fee in LIB'
   } else if (queryType.dailyDistributedSupply) {
     seriesData[0].name = 'Daily LIB Distributed'
-    seriesData[0].tooltip = 'Daily LIB Distributed'
   }
   if (!dailyCoinStats || dailyCoinStats.length === 0) {
     return { seriesData, stats: { highest, lowest, current } }

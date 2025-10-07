@@ -169,7 +169,7 @@ let config: Config = {
     indexReceipt: true,
     indexOriginalTxData: true,
   },
-  saveAccountHistoryState: false,
+  saveAccountHistoryState: true,
   DISTRIBUTOR_RECONNECT_INTERVAL: 10_000, // in ms
   CONNECT_TO_DISTRIBUTOR_MAX_RETRY: 10,
   explorerMode: process.env.EXPLORER_MODE || explorerMode.WS.toString(),
