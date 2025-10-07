@@ -99,7 +99,7 @@ export const DailySupplyGrowthChart: React.FC = () => {
 
   return (
     <div className={styles.DailySupplyGrowthChart}>
-      <ContentLayout title="LIB Supply Growth" breadcrumbItems={breadcrumbs} showBackButton>
+      <ContentLayout title="LIB Supply Growth Chart" breadcrumbItems={breadcrumbs} showBackButton>
         <div className={styles.chartContainer}>
           <div className={styles.chartWrapper}>
             {loading ? (
@@ -110,7 +110,7 @@ export const DailySupplyGrowthChart: React.FC = () => {
                 subTitle="Daily breakdown of newly minted LIB, node rewards, transaction fees and burnt fees"
                 height={height}
                 data={seriesData}
-                yAxisTitle="Total LIB Supply"
+                yAxisTitle="LIB Supply"
                 tooltipFormatter={tooltipFormatter}
               />
             )}
