@@ -13,16 +13,18 @@ export async function insertAccount(account: Account): Promise<void> {
     const fields = Object.keys(account).join(', ')
     const placeholders = Object.keys(account).fill('?').join(', ')
     const values = db.extractValues(account)
+    const keepNewerData = (field: string): string =>
+      `${field} = CASE WHEN excluded.timestamp > accounts.timestamp THEN excluded.${field} ELSE accounts.${field} END`
+
     const sql = `INSERT INTO accounts (${fields}) VALUES (${placeholders})
       ON CONFLICT(accountId) DO UPDATE SET
-        cycleNumber = excluded.cycleNumber,
-        timestamp = excluded.timestamp,
-        data = excluded.data,
-        hash = excluded.hash,
-        accountType = excluded.accountType,
-        isGlobal = excluded.isGlobal,
-        createdTimestamp = MIN(accounts.createdTimestamp, excluded.createdTimestamp)
-      WHERE excluded.timestamp > accounts.timestamp`
+        ${keepNewerData('cycleNumber')},
+        ${keepNewerData('timestamp')},
+        ${keepNewerData('data')},
+        ${keepNewerData('hash')},
+        ${keepNewerData('accountType')},
+        ${keepNewerData('isGlobal')},
+        createdTimestamp = MIN(accounts.createdTimestamp, excluded.createdTimestamp)`
     await db.run(accountDatabase, sql, values)
     if (config.verbose) console.log('Successfully inserted Account', account.accountId)
   } catch (e) {
@@ -33,6 +35,9 @@ export async function insertAccount(account: Account): Promise<void> {
 
 export async function bulkInsertAccounts(accounts: Account[]): Promise<void> {
   try {
+    const keepNewerData = (field: string): string =>
+      `${field} = CASE WHEN excluded.timestamp > accounts.timestamp THEN excluded.${field} ELSE accounts.${field} END`
+
     const fields = Object.keys(accounts[0]).join(', ')
     const placeholders = Object.keys(accounts[0]).fill('?').join(', ')
     const values = db.extractValuesFromArray(accounts)
@@ -41,14 +46,13 @@ export async function bulkInsertAccounts(accounts: Account[]): Promise<void> {
       sql = sql + ', (' + placeholders + ')'
     }
     sql += ` ON CONFLICT(accountId) DO UPDATE SET
-      cycleNumber = excluded.cycleNumber,
-      timestamp = excluded.timestamp,
-      data = excluded.data,
-      hash = excluded.hash,
-      accountType = excluded.accountType,
-      isGlobal = excluded.isGlobal,
-      createdTimestamp = MIN(accounts.createdTimestamp, excluded.createdTimestamp)
-    WHERE excluded.timestamp > accounts.timestamp`
+      ${keepNewerData('cycleNumber')},
+      ${keepNewerData('timestamp')},
+      ${keepNewerData('data')},
+      ${keepNewerData('hash')},
+      ${keepNewerData('accountType')},
+      ${keepNewerData('isGlobal')},
+      createdTimestamp = MIN(accounts.createdTimestamp, excluded.createdTimestamp)`
     await db.run(accountDatabase, sql, values)
     console.log('Successfully bulk inserted Accounts', accounts.length)
   } catch (e) {
