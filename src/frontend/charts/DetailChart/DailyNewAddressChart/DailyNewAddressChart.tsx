@@ -63,7 +63,7 @@ export const DailyNewAddressChart: React.FC = () => {
 
   return (
     <div className={styles.DailyNewAddressChart}>
-      <ContentLayout title="Liberdus Cumulative Address Growth" breadcrumbItems={breadcrumbs} showBackButton>
+      <ContentLayout title="Liberdus Unique Addresses Chart" breadcrumbItems={breadcrumbs} showBackButton>
         <div className={styles.chartContainer}>
           <div className={styles.chartWrapper}>
             {loading ? (

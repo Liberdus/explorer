@@ -72,7 +72,7 @@ export const OverviewSection: React.FC = () => {
   const formatPercentage = (
     value: number
   ): { change: string; changeType: 'positive' | 'negative' | 'neutral' } => {
-    const formattedValue = Math.abs(value).toFixed(1)
+    const formattedValue = Math.abs(value).toFixed(2)
     if (value > 0) {
       return { change: `+${formattedValue}%`, changeType: 'positive' }
     } else if (value < 0) {
@@ -116,7 +116,14 @@ export const OverviewSection: React.FC = () => {
     // Avg tx fee would be total_tx_fee_24h / transactions_24h
     {
       title: 'Avg Transaction Fee (24H)',
-      value: `$${(totalNewTransactionFee / totalNewUserTxs) * parseFloat(stabilityFactorStr) || 0}`,
+      value: `$${
+        ((totalNewTransactionFee / totalNewUserTxs) * parseFloat(stabilityFactorStr)).toLocaleString(
+          undefined,
+          {
+            maximumFractionDigits: 4,
+          }
+        ) || 0
+      }`,
       route: '/charts/avg-txfee-usd',
     },
     { title: 'Network Utilization (24H)', value: 0 },

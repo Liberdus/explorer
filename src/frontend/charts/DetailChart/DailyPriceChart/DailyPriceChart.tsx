@@ -49,7 +49,7 @@ export const DailyPriceChart: React.FC = () => {
 
   return (
     <div className={styles.DailyPriceChart}>
-      <ContentLayout title="LIB Price (USD)" breadcrumbItems={breadcrumbs} showBackButton>
+      <ContentLayout title="LIB Daily Price (USD) Chart" breadcrumbItems={breadcrumbs} showBackButton>
         <div className={styles.chartContainer}>
           <div className={styles.chartWrapper}>
             {loading ? (

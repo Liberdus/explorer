@@ -48,7 +48,11 @@ export const DailyTransactionFeeChart: React.FC = () => {
 
   return (
     <div className={styles.DailyTransactionFeeChart}>
-      <ContentLayout title="Txn Fee (LIB)" breadcrumbItems={breadcrumbs} showBackButton>
+      <ContentLayout
+        title="Liberdus Network Transaction Fee Chart"
+        breadcrumbItems={breadcrumbs}
+        showBackButton
+      >
         <div className={styles.chartContainer}>
           <div className={styles.chartWrapper}>
             {loading ? (
@@ -59,7 +63,7 @@ export const DailyTransactionFeeChart: React.FC = () => {
                 subTitle="Historical total number of LIB paid as transaction fee"
                 height={height}
                 data={seriesData}
-                yAxisTitle="Transaction Fee (LIB)"
+                yAxisTitle="Txn Fee (LIB)"
                 tooltipFormatter={tooltipFormatter}
               />
             )}
