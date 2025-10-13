@@ -8,7 +8,14 @@ import * as crypto from '@shardus/crypto-utils'
 import Fastify, { FastifyRequest } from 'fastify'
 import * as usage from './middleware/usage'
 import * as Storage from './storage'
-import { AccountDB, CycleDB, ReceiptDB, TransactionDB, OriginalTxDataDB } from './storage'
+import {
+  AccountDB,
+  CycleDB,
+  ReceiptDB,
+  TransactionDB,
+  OriginalTxDataDB,
+  AccountHistoryStateDB,
+} from './storage'
 import * as StatsStorage from './stats'
 import {
   ValidatorStatsDB,
@@ -405,6 +412,7 @@ const start = async (): Promise<void> => {
       afterTimestamp: string
       requery: string
       totalTxsDetail: string
+      balanceChanges: string
     }
   }>
 
@@ -421,6 +429,7 @@ const start = async (): Promise<void> => {
       afterTimestamp: 's?',
       requery: 's?',
       totalTxsDetail: 's?',
+      balanceChanges: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -524,9 +533,23 @@ const start = async (): Promise<void> => {
         if (config.enableTxIdCache) txIdQueryCache.set(txId, res)
         return reply.send(res)
       }
+
+      // If balanceChanges is requested, fetch the balance changes
+      if (query.balanceChanges === 'true' && res.transactions.length > 0) {
+        try {
+          const balanceChanges = await AccountHistoryStateDB.queryBalanceChangesByReceiptId(txId)
+          res.balanceChanges = balanceChanges
+        } catch (e) {
+          console.log('Error fetching balance changes for transaction', txId, e)
+        }
+      }
+
       reply.send(res)
       if (config.enableTxIdCache) {
-        txIdQueryCache.set(txId, { success: true, transactions: res.transactions })
+        txIdQueryCache.set(txId, {
+          success: true,
+          ...res,
+        })
         if (txIdQueryCache.size > txIdQueryCacheSize + 10) {
           // Remove old data
           const extra = txIdQueryCache.size - txIdQueryCacheSize

@@ -1,0 +1,64 @@
+@import '../../../../styles/index.scss';
+
+.StateTab {
+  padding: spacing(20);
+
+  .noData {
+    padding: spacing(48);
+    text-align: center;
+    color: color(gray-600);
+    @include fontStyle(small);
+    font-style: italic;
+  }
+
+  .gridContainer {
+    display: flex;
+    flex-direction: column;
+    gap: spacing(16);
+  }
+
+  .gridRow {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: spacing(10);
+    align-items: center;
+    padding: spacing(2) 0;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: spacing(12);
+      padding: spacing(12) 0;
+    }
+  }
+
+  .divider {
+    border: none;
+    border-top: border(gray);
+    opacity: 0.75;
+    margin: spacing(2) 0;
+  }
+
+  .link {
+    color: color(info);
+  }
+
+  .header {
+    @include fontStyle(small, bold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .value {
+    @include fontStyle(small);
+  }
+
+  .positive {
+    color: color(success);
+    @include fontStyle(small, semi-bold);
+  }
+
+  .negative {
+    color: color(danger);
+    @include fontStyle(small, semi-bold);
+  }
+}

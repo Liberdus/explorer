@@ -13,6 +13,12 @@ export interface AccountHistoryState {
   balance: number
 }
 
+export interface BalanceChange {
+  accountId: string
+  before: number
+  after: number
+}
+
 export async function insertAccountHistoryState(accountHistoryState: AccountHistoryState): Promise<void> {
   try {
     const fields = Object.keys(accountHistoryState).join(', ')
@@ -171,4 +177,37 @@ export async function queryNewActiveBalanceAccountsCount(
   }
   if (config.verbose) console.log('New active balance accounts count from history', count)
   return count?.count || 0
+}
+
+export async function queryBalanceChangesByReceiptId(receiptId: string): Promise<BalanceChange[]> {
+  try {
+    // Single optimized query using correlated subquery
+    // Gets after balance from current row and before balance from most recent previous state
+    const sql = `
+      SELECT
+        accountId,
+        balance as after,
+        COALESCE(
+          (
+            SELECT balance
+            FROM accountHistoryState prev
+            WHERE prev.accountId = current.accountId
+              AND prev.timestamp < current.timestamp
+            ORDER BY prev.timestamp DESC
+            LIMIT 1
+          ),
+          0
+        ) as before
+      FROM accountHistoryState current
+      WHERE receiptId = ?
+        AND balance > 0
+    `
+    const results = (await db.all(accountHistoryStateDatabase, sql, [receiptId])) as BalanceChange[]
+
+    console.log('Found balance changes for receiptId', receiptId, results.length)
+    return results
+  } catch (e) {
+    console.log('Error querying balance changes by receiptId', receiptId, e)
+    return []
+  }
 }

@@ -7,6 +7,7 @@ import { JsonView } from '../JsonView'
 import { Ovewview } from '../Overview'
 import { Receipt } from '../Receipt'
 import { AccountInfo } from '../AccountInfo'
+import { StateTab } from '../StateTab'
 
 import styles from './TransactionDetail.module.scss'
 import { useTransactionDetailHook } from './useTransactionDetailHook'
@@ -17,7 +18,8 @@ export const TransactionDetail: React.FC = () => {
 
   const txId = router?.query?.id as string
 
-  const { transactionData, receiptData, setShowReceipt, showReceipt } = useTransactionDetailHook(txId)
+  const { transactionData, receiptData, setShowReceipt, showReceipt, balanceChanges } =
+    useTransactionDetailHook(txId)
 
   const tabs = useMemo(() => {
     const tabsArray = [
@@ -27,6 +29,11 @@ export const TransactionDetail: React.FC = () => {
         content: <Ovewview transaction={transactionData} />,
       },
       {
+        key: 'state',
+        value: 'State',
+        content: <StateTab balanceChanges={balanceChanges} />,
+      },
+      {
         key: 'jsonview',
         value: 'Json View',
         content: <JsonView transaction={transactionData} />,
@@ -34,7 +41,7 @@ export const TransactionDetail: React.FC = () => {
     ]
 
     return tabsArray
-  }, [transactionData])
+  }, [transactionData, balanceChanges])
 
   const receiptTabs = useMemo(
     () => [
@@ -46,7 +53,7 @@ export const TransactionDetail: React.FC = () => {
       {
         key: 'accountInfo',
         value: 'Account Info',
-        content: <AccountInfo accounts={receiptData ? receiptData.afterStates : [] as AccountsCopy[]} />,
+        content: <AccountInfo accounts={receiptData ? receiptData.afterStates : ([] as AccountsCopy[])} />,
       },
     ],
     [receiptData]
