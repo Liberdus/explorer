@@ -77,14 +77,14 @@ export const DailyTransactionFeeChart: React.FC = () => {
                 The Liberdus Network Transaction Fee Chart shows historical total number of LIB paid as
                 transaction fee for the Liberdus network.
               </p>
-              {lowest && lowest.value !== Infinity && (
+              {highest && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Lowest transaction fee of <strong>{lowest.value.toLocaleString()} LIB</strong> on{' '}
-                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
+                      Highest transaction fee of <strong>{highest.value.toLocaleString()} LIB</strong> on{' '}
+                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -94,14 +94,14 @@ export const DailyTransactionFeeChart: React.FC = () => {
                   </div>
                 </div>
               )}
-              {highest && (
+              {lowest && lowest.value !== Infinity && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Highest transaction fee of <strong>{highest.value.toLocaleString()} LIB</strong> on{' '}
-                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
+                      Lowest transaction fee of <strong>{lowest.value.toLocaleString()} LIB</strong> on{' '}
+                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',

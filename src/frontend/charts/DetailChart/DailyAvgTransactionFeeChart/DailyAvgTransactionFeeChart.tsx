@@ -88,24 +88,6 @@ export const DailyAvgTransactionFeeChart: React.FC = () => {
               <p>
                 The chart shows the daily average amount in USD spent per transaction on the Liberdus network.
               </p>
-              {lowest && lowest.value !== Infinity && (
-                <div className={styles.highlight}>
-                  <div className={styles.highlightIcon}>📍</div>
-                  <div className={styles.highlightContent}>
-                    <div className={styles.highlightLabel}>HIGHLIGHT</div>
-                    <div className={styles.highlightText}>
-                      Lowest average transaction fee of{' '}
-                      <strong>${parseFloat(lowest.value.toFixed(feeDecimalPoint))}</strong> on{' '}
-                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
               {highest && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
@@ -115,6 +97,24 @@ export const DailyAvgTransactionFeeChart: React.FC = () => {
                       Highest average transaction fee of{' '}
                       <strong>${parseFloat(highest.value.toFixed(feeDecimalPoint))}</strong> on{' '}
                       {new Date(highest.timestamp).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {lowest && lowest.value !== Infinity && (
+                <div className={styles.highlight}>
+                  <div className={styles.highlightIcon}>📍</div>
+                  <div className={styles.highlightContent}>
+                    <div className={styles.highlightLabel}>HIGHLIGHT</div>
+                    <div className={styles.highlightText}>
+                      Lowest average transaction fee of{' '}
+                      <strong>${parseFloat(lowest.value.toFixed(feeDecimalPoint))}</strong> on{' '}
+                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
