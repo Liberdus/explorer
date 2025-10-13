@@ -1,3 +1,4 @@
+import { BalanceChange } from '../storage/accountHistoryState'
 import { OriginalTxData } from './originalTxData'
 
 export type ErrorResponse = {
@@ -24,6 +25,7 @@ export type TransactionResponse = {
   transactions?: Array<unknown>
   totalPages?: number
   totalTransactions?: number
+  balanceChanges?: BalanceChange[]
 }
 
 export type AccountResponse = {
