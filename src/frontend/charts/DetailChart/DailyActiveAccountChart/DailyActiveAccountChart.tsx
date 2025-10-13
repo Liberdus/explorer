@@ -76,14 +76,14 @@ export const DailyActiveAccountChart: React.FC = () => {
                 The Active Liberdus Accounts chart shows the daily number of unique accounts that were active
                 on the network as a transaction sender.
               </p>
-              {lowest && lowest.value !== Infinity && (
+              {highest && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Lowest number of <strong>{lowest.value.toLocaleString()}</strong> addresses on{' '}
-                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
+                      Highest number of <strong>{highest.value.toLocaleString()}</strong> addresses on{' '}
+                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -93,14 +93,14 @@ export const DailyActiveAccountChart: React.FC = () => {
                   </div>
                 </div>
               )}
-              {highest && (
+              {lowest && lowest.value !== Infinity && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Highest number of <strong>{highest.value.toLocaleString()}</strong> addresses on{' '}
-                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
+                      Lowest number of <strong>{lowest.value.toLocaleString()}</strong> addresses on{' '}
+                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',

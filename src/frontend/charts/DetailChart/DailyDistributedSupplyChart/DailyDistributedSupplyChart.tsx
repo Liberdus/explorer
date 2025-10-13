@@ -89,23 +89,6 @@ export const DailyDistributedSupplyChart: React.FC = () => {
                 The chart shows the daily amount of LIB Distributed ( minted LIB to the newly created
                 accounts, node rewards collected by the nominator ).
               </p>
-              {lowest && lowest.value !== Infinity && (
-                <div className={styles.highlight}>
-                  <div className={styles.highlightIcon}>📍</div>
-                  <div className={styles.highlightContent}>
-                    <div className={styles.highlightLabel}>HIGHLIGHT</div>
-                    <div className={styles.highlightText}>
-                      Lowest amount of LIB Distributed <strong>{lowest.value.toLocaleString()} LIB</strong> on{' '}
-                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
               {highest && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
@@ -115,6 +98,23 @@ export const DailyDistributedSupplyChart: React.FC = () => {
                       Highest number of LIB Distributed <strong>{highest.value.toLocaleString()} LIB</strong>{' '}
                       on{' '}
                       {new Date(highest.timestamp).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {lowest && lowest.value !== Infinity && (
+                <div className={styles.highlight}>
+                  <div className={styles.highlightIcon}>📍</div>
+                  <div className={styles.highlightContent}>
+                    <div className={styles.highlightLabel}>HIGHLIGHT</div>
+                    <div className={styles.highlightText}>
+                      Lowest amount of LIB Distributed <strong>{lowest.value.toLocaleString()} LIB</strong> on{' '}
+                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',

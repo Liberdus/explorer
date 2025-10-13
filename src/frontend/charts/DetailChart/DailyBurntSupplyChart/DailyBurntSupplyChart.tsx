@@ -93,14 +93,14 @@ export const DailyBurntSupplyChart: React.FC = () => {
                 The chart shows the daily amount of LIB burnt ( transaction fees + network toll tax fees +
                 penalty amount ).
               </p>
-              {lowest && lowest.value !== Infinity && (
+              {highest && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Lowest amount of LIB Burnt <strong>{lowest.value.toLocaleString()} LIB</strong> on{' '}
-                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
+                      Highest number of LIB Burnt <strong>{highest.value.toLocaleString()} LIB</strong> on{' '}
+                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -110,14 +110,14 @@ export const DailyBurntSupplyChart: React.FC = () => {
                   </div>
                 </div>
               )}
-              {highest && (
+              {lowest && lowest.value !== Infinity && (
                 <div className={styles.highlight}>
                   <div className={styles.highlightIcon}>📍</div>
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Highest number of LIB Burnt <strong>{highest.value.toLocaleString()} LIB</strong> on{' '}
-                      {new Date(highest.timestamp).toLocaleDateString('en-US', {
+                      Lowest amount of LIB Burnt <strong>{lowest.value.toLocaleString()} LIB</strong> on{' '}
+                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
