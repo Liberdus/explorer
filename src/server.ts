@@ -399,6 +399,76 @@ const start = async (): Promise<void> => {
     reply.send(res)
   })
 
+  type PollDataRequest = FastifyRequest<{
+    Querystring: {
+      account: string
+      chatTimestamp: string
+    }
+  }>
+
+  server.get('/api/poll', async (_request: PollDataRequest, reply) => {
+    const err = utils.validateTypes(_request.query, {
+      account: 's',
+      chatTimestamp: 's',
+    })
+    if (err) {
+      reply.send({ success: false, error: err })
+      return
+    }
+
+    const query = _request.query
+    const accountId = query.account.toLowerCase()
+    const chatTimestamp = parseInt(query.chatTimestamp)
+
+    // Validate account ID format
+    if (accountId.length !== 64) {
+      reply.send({ success: false, reason: 'Invalid account id' })
+      return
+    }
+
+    // Validate timestamp
+    if (isNaN(chatTimestamp) || chatTimestamp < 0) {
+      reply.send({ success: false, reason: 'Invalid chatTimestamp' })
+      return
+    }
+
+    // Check if account exists
+    let account: Account
+    let currentChatTimestamp = 0
+    account = await AccountDB.queryAccountByAccountId(accountId)
+    if (!account) {
+      reply.send({ success: false, reason: 'account not found' })
+      return
+    }
+
+    currentChatTimestamp = account.data?.data?.chatTimestamp
+    if (currentChatTimestamp === undefined) {
+      return reply.send({ success: false, reason: 'chatTimestamp does not exist in the searched account' })
+    }
+    if (currentChatTimestamp && currentChatTimestamp !== chatTimestamp) {
+      return reply.send({ success: true, chatTimestamp: currentChatTimestamp })
+    }
+
+    const startTime = Date.now()
+    const timeoutMs = 120 * 1000 // 120 seconds
+    const checkIntervalMs = 1000 // 1 second
+
+    await utils.sleep(checkIntervalMs)
+
+    while (Date.now() - startTime < timeoutMs) {
+      account = await AccountDB.queryAccountByAccountId(accountId)
+
+      currentChatTimestamp = account.data?.data?.chatTimestamp
+      if (currentChatTimestamp && currentChatTimestamp !== chatTimestamp) {
+        return reply.send({ success: true, chatTimestamp: currentChatTimestamp })
+      }
+
+      await utils.sleep(checkIntervalMs)
+    }
+
+    return reply.send({ success: false, reason: 'no change' })
+  })
+
   type TransactionDataRequest = FastifyRequest<{
     Querystring: {
       count: string
@@ -408,6 +478,7 @@ const start = async (): Promise<void> => {
       endCycle: string
       accountId: string
       txId: string
+      appReceiptId: string
       beforeTimestamp: string
       afterTimestamp: string
       requery: string
@@ -425,6 +496,7 @@ const start = async (): Promise<void> => {
       startCycle: 's?',
       endCycle: 's?',
       txId: 's?',
+      appReceiptId: 's?',
       beforeTimestamp: 's?',
       afterTimestamp: 's?',
       requery: 's?',
@@ -446,6 +518,7 @@ const start = async (): Promise<void> => {
       !query.startCycle &&
       !query.endCycle &&
       !query.txId &&
+      !query.appReceiptId &&
       !query.beforeTimestamp &&
       !query.afterTimestamp &&
       !query.requery &&
@@ -558,6 +631,16 @@ const start = async (): Promise<void> => {
           txIdQueryCache = new Map(arrayTemp)
         }
       }
+      return
+    } else if (query.appReceiptId) {
+      const appReceiptId = query.appReceiptId.toLowerCase()
+      if (appReceiptId.length !== 64) {
+        reply.send({ success: false, error: 'Invalid app receipt id' })
+        return
+      }
+      // const transactions = await TransactionDB.queryTransactionByAppReceiptId(appReceiptId)
+      const transaction = await TransactionDB.queryTransactionByTxId(appReceiptId)
+      reply.send({ transaction: transaction ? transaction.data : null })
       return
     } else if (query.totalTxsDetail === 'true') {
       const totalTransactions = await TransactionDB.queryTransactionCount()

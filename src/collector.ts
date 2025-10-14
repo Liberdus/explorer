@@ -27,6 +27,7 @@ import { sleep } from './utils'
 import RMQCyclesConsumer from './collectors/rmq/cycles'
 import RMQOriginalTxsConsumer from './collectors/rmq/original_txs'
 import RMQReceiptsConsumer from './collectors/rmq/receipts'
+import { setupCollectorSocketServer } from './collectorServer'
 
 const DistributorFirehoseEvent = 'FIREHOSE'
 let ws: WebSocket
@@ -375,6 +376,8 @@ const startServer = async (): Promise<void> => {
   if (config.dataLogWrite) await initDataLogWriter()
 
   addSigListeners()
+
+  if (config.collectorSockerServer.enabled) setupCollectorSocketServer()
 
   if (config.explorerMode === explorerMode.MQ) {
     startRMQEventsConsumers()

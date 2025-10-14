@@ -7,6 +7,7 @@ import * as AccountHistoryStateDB from './accountHistoryState'
 import { Utils as StringUtils } from '@shardus/types'
 import { AccountType, Transaction, TransactionType, Receipt, Account } from '../types'
 import { weiBNToEth } from '../class/StatsFunctions'
+import { forwardData } from '../collectorServer'
 
 type DbReceipt = Receipt & {
   tx: string
@@ -118,6 +119,10 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
     } else combineReceipts.push(modifiedReceiptObj as unknown as Receipt)
     const txReceipt = appReceiptData
     receiptsMap.set(tx.txId, tx.timestamp)
+
+    if (config.collectorSockerServer.enabled) {
+      forwardData(receiptObj)
+    }
 
     // Receipts size can be big, better to save per 100
     if (combineReceipts.length >= 100) {

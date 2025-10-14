@@ -56,6 +56,9 @@ export interface Config {
     collector: string
     server: string
   }
+  collectorSockerServer: {
+    enabled: true
+  }
   distributorInfo: {
     ip: string
     port: string
@@ -146,6 +149,9 @@ let config: Config = {
   port: {
     collector: process.env.COLLECTORPORT || '4444',
     server: process.env.PORT || '6001',
+  },
+  collectorSockerServer: {
+    enabled: true,
   },
   distributorInfo: {
     ip: process.env.DISTRIBUTOR_IP || '127.0.0.1',
