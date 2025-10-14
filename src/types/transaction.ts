@@ -13,6 +13,8 @@ export interface Transaction {
   txFee?: number
 }
 
+export type AppReceipt = object
+
 export interface BaseLiberdusTx {
   timestamp: number
   type: TransactionType
