@@ -27,3 +27,18 @@ export const toEthereumAddress = (address: string): string => {
   }
   return address // return original address even if it's not a valid address
 }
+
+/**
+ * Truncates an address to only show the first 10 characters and the last 10 characters.
+ * If the address is 14 characters or less, it is returned as is.
+ * @param address the address to truncate
+ * @returns the truncated address
+ */
+export const truncateAddress = (address: string): string => {
+  if (address.length <= 14) {
+    return address
+  }
+  const start = address.slice(0, 10)
+  const end = address.slice(-10)
+  return `${start}...${end}`
+}

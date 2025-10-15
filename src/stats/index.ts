@@ -116,10 +116,10 @@ export const initializeStatsDB = async (): Promise<void> => {
       dateStartTime BIGINT NOT NULL UNIQUE PRIMARY KEY,
       newAccounts NUMBER NOT NULL DEFAULT 0,
       newUserAccounts NUMBER NOT NULL DEFAULT 0,
-      activeAccounts NUMBER NOT NULL DEFAULT 0,
-      activeBalanceAccounts NUMBER NOT NULL DEFAULT 0,
-      newActiveBalanceAccounts NUMBER NOT NULL DEFAULT 0
+      activeAccounts NUMBER NOT NULL DEFAULT 0
     )`
+    // activeBalanceAccounts NUMBER NOT NULL DEFAULT 0,
+    // newActiveBalanceAccounts NUMBER NOT NULL DEFAULT 0
   )
 
   await runCreate(

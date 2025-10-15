@@ -1,7 +1,9 @@
 @import '../../../../styles/index.scss';
 
 .StateTab {
-  padding: spacing(20);
+  padding: spacing(16);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; // for smooth scrolling on iOS
 
   .noData {
     padding: spacing(48);
@@ -15,6 +17,7 @@
     display: flex;
     flex-direction: column;
     gap: spacing(16);
+    min-width: 600px; // Adjust this value as needed
   }
 
   .gridRow {
@@ -23,12 +26,6 @@
     gap: spacing(10);
     align-items: center;
     padding: spacing(2) 0;
-
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-      gap: spacing(12);
-      padding: spacing(12) 0;
-    }
   }
 
   .divider {

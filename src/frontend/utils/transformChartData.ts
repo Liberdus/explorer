@@ -57,7 +57,6 @@ export interface BurntSupplyChartData {
 
 export interface ActiveBalanceAccountsChartData {
   newUserAccounts: number
-  newActiveBalanceAccounts: number
 }
 
 export interface DistributedSupplyChartData {
@@ -438,20 +437,17 @@ export function convertDailyAccountStatsToSeriesData(
     } else if (queryType.activeBalanceAccounts) {
       let newUserAccounts: number
       let activeBalanceAccounts: number
-      let newActiveBalanceAccounts: number
       if (accountResponseType === 'array') {
-        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, activeAccounts, activeBalanceAccounts, newActiveBalanceAccounts]
+        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, activeAccounts, activeBalanceAccounts]
         const accountStat = stat as number[]
         timestamp = accountStat[0] // dateStartTime is already in milliseconds
         newUserAccounts = accountStat[2] || 0
         activeBalanceAccounts = accountStat[4] || 0
-        newActiveBalanceAccounts = accountStat[5] || 0
       } else {
         const accountStat = stat as DailyAccountStats
         timestamp = accountStat.dateStartTime
         newUserAccounts = accountStat.newUserAccounts || 0
         activeBalanceAccounts = accountStat.activeBalanceAccounts || 0
-        newActiveBalanceAccounts = accountStat.newActiveBalanceAccounts || 0
       }
 
       if (activeBalanceAccounts > highest.value) {
@@ -466,7 +462,6 @@ export function convertDailyAccountStatsToSeriesData(
         y: activeBalanceAccounts,
         activeBalanceAccountsChartData: {
           newUserAccounts,
-          newActiveBalanceAccounts,
         },
       })
     }

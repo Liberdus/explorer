@@ -1291,14 +1291,7 @@ const start = async (): Promise<void> => {
     if (query.responseType && query.responseType === 'array') {
       const temp_array = []
       dailyAccountStats.forEach((item: DailyAccountStats) =>
-        temp_array.push([
-          item.dateStartTime,
-          item.newAccounts,
-          item.newUserAccounts,
-          item.activeAccounts,
-          item.activeBalanceAccounts,
-          item.newActiveBalanceAccounts,
-        ])
+        temp_array.push([item.dateStartTime, item.newAccounts, item.newUserAccounts, item.activeAccounts])
       )
       dailyAccountStats = temp_array as any
     }
