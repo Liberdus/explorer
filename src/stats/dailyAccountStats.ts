@@ -8,8 +8,21 @@ export interface BaseDailyAccountStats {
   newAccounts: number // new accounts created in the 24 hour period
   newUserAccounts: number // new user accounts created in the 24 hour period
   activeAccounts: number // user accounts that make at least one transaction with txFee > 0
-  activeBalanceAccounts: number // user accounts with balance > 0
-  newActiveBalanceAccounts: number // user accounts that were involved in transactions in the last 24 hours and have latest balance > 0
+  // activeBalanceAccounts: number // user accounts with balance > 0
+  // newActiveBalanceAccounts: number // user accounts that were involved in transactions in the last 24 hours and have latest balance > 0
+}
+
+export interface AccountStatsSummary {
+  totalAccounts: number
+  newAccounts: number
+  totalUserAccounts: number
+  newUserAccounts: number
+  totalAccountsChange: number
+  newAccountsChange: number
+  totalUserAccountsChange: number
+  newUserAccountsChange: number
+  activeAccounts: number
+  activeAccountsChange: number
 }
 
 export type DailyAccountStats = BaseDailyAccountStats
@@ -85,110 +98,111 @@ export async function queryDailyAccountStatsBetween(
   }
 }
 
-export async function queryAccountStats(): Promise<{
-  totalAccounts: number
-  totalNewAccounts: number
-  totalAccountsChange: number
-  totalNewAccountsChange: number
-  activeBalanceAccounts: number
-  activeAccounts: number
-  newActiveBalanceAccounts: number
-}> {
+export async function queryAccountStats(): Promise<AccountStatsSummary> {
   try {
-    // Get sum of all newAccounts from daily_accounts table
-    const totalSql = 'SELECT SUM(newAccounts) as totalAccounts FROM daily_accounts'
-    const totalResult: { totalAccounts: number } = await db.get(dailyAccountStatsDatabase, totalSql)
-
-    // Get the newAccounts from the latest entry (most recent entry by dateStartTime)
-    const latestSql = `
+    const totalsSql = `
       SELECT
-        newAccounts as totalNewAccounts,
-        activeBalanceAccounts,
-        activeAccounts,
-        newActiveBalanceAccounts
+        SUM(newAccounts) as totalAccounts,
+        SUM(newUserAccounts) as totalUserAccounts
       FROM daily_accounts
-      ORDER BY dateStartTime DESC
-      LIMIT 1
     `
-    const latestResult: {
-      totalNewAccounts: number
-      activeBalanceAccounts: number
-      activeAccounts: number
-      newActiveBalanceAccounts: number
-    } = await db.get(dailyAccountStatsDatabase, latestSql)
+    const totalsResult: { totalAccounts: number; totalUserAccounts: number } = await db.get(
+      dailyAccountStatsDatabase,
+      totalsSql
+    )
 
-    // Calculate percentage changes
-    const totalAccountsChange = await calculateTotalAccountsChange()
-    const totalNewAccountsChange = await calculateNewAccountsChange()
+    const latestDailyAccountStats = await queryLatestDailyAccountStats(1)
+    const latestResult = latestDailyAccountStats[0]
+
+    const totalAccountsChange = await calculateTotalMetricChange('newAccounts')
+    const totalUserAccountsChange = await calculateTotalMetricChange('newUserAccounts')
+    const newAccountsChange = await calculateMetricChange('newAccounts')
+    const newUserAccountsChange = await calculateMetricChange('newUserAccounts')
+    const activeAccountsChange = await calculateMetricChange('activeAccounts')
 
     return {
-      totalAccounts: totalResult?.totalAccounts || 0,
-      totalNewAccounts: latestResult?.totalNewAccounts || 0,
+      totalAccounts: totalsResult?.totalAccounts || 0,
+      newAccounts: latestResult?.newAccounts || 0,
+      totalUserAccounts: totalsResult?.totalUserAccounts || 0,
+      newUserAccounts: latestResult?.newUserAccounts || 0,
       totalAccountsChange,
-      totalNewAccountsChange,
-      activeBalanceAccounts: latestResult?.activeBalanceAccounts || 0,
+      newAccountsChange,
+      totalUserAccountsChange,
+      newUserAccountsChange,
       activeAccounts: latestResult?.activeAccounts || 0,
-      newActiveBalanceAccounts: latestResult?.newActiveBalanceAccounts || 0,
+      activeAccountsChange,
     }
   } catch (e) {
     console.log(e)
-    return {
+    const emptyStats: AccountStatsSummary = {
       totalAccounts: 0,
-      totalNewAccounts: 0,
+      newAccounts: 0,
+      totalUserAccounts: 0,
+      newUserAccounts: 0,
       totalAccountsChange: 0,
-      totalNewAccountsChange: 0,
-      activeBalanceAccounts: 0,
+      newAccountsChange: 0,
+      totalUserAccountsChange: 0,
+      newUserAccountsChange: 0,
       activeAccounts: 0,
-      newActiveBalanceAccounts: 0,
+      activeAccountsChange: 0,
     }
+    return emptyStats
   }
 }
 
-async function calculateTotalAccountsChange(): Promise<number> {
+/**
+ * Calculates the percentage change between the cumulative total of a metric on the most recent day
+ * and the cumulative total up to the previous day. This is useful for "total" style metrics that grow over time.
+ */
+async function calculateTotalMetricChange(fieldName: string): Promise<number> {
   try {
-    // Get today's new addresses and yesterday's cumulative total
-    // Formula: (today's new addresses / yesterday's cumulative total) * 100
-
-    const latestTwoDaysSql = `
-      SELECT newAccounts,
-             (SELECT SUM(newAccounts) FROM daily_accounts WHERE dateStartTime < d.dateStartTime) as previousTotal
+    const sql = `
+      SELECT ${fieldName} as currentValue,
+             (
+               SELECT COALESCE(SUM(${fieldName}), 0)
+               FROM daily_accounts
+               WHERE dateStartTime < d.dateStartTime
+             ) as previousTotal
       FROM daily_accounts d
       ORDER BY dateStartTime DESC
       LIMIT 1
     `
-    const result: { newAccounts: number; previousTotal: number } = await db.get(
+    const result: { currentValue: number; previousTotal: number } = await db.get(
       dailyAccountStatsDatabase,
-      latestTwoDaysSql
+      sql
     )
 
     if (!result) return 0
 
-    const todayNewAddresses = result.newAccounts || 0
-    const yesterdayCumulativeTotal = result.previousTotal || 0
+    const currentValue = result.currentValue || 0
+    const previousTotal = result.previousTotal || 0
 
-    if (yesterdayCumulativeTotal === 0) return todayNewAddresses > 0 ? 100 : 0
-    return (todayNewAddresses / yesterdayCumulativeTotal) * 100
+    if (previousTotal === 0) return currentValue > 0 ? 100 : 0
+    return (currentValue / previousTotal) * 100
   } catch (e) {
-    console.log('Error calculating total accounts change:', e)
+    console.log(`Error calculating total change for ${fieldName}:`, e)
     return 0
   }
 }
 
-async function calculateNewAccountsChange(): Promise<number> {
+/**
+ * Calculates the day-over-day percentage change for a metric by comparing the latest value
+ * with the previous day's value. This is useful for daily counts or rates.
+ */
+async function calculateMetricChange(fieldName: string): Promise<number> {
   try {
-    // Compare latest day's newAccounts with the previous day
-    const latestTwoDaysSql = 'SELECT newAccounts FROM daily_accounts ORDER BY dateStartTime DESC LIMIT 2'
-    const results: { newAccounts: number }[] = await db.all(dailyAccountStatsDatabase, latestTwoDaysSql)
+    const latestTwoDaysSql = `SELECT ${fieldName} as value FROM daily_accounts ORDER BY dateStartTime DESC LIMIT 2`
+    const results: { value: number }[] = await db.all(dailyAccountStatsDatabase, latestTwoDaysSql)
 
     if (results.length < 2) return 0
 
-    const current = results[0]?.newAccounts || 0
-    const previous = results[1]?.newAccounts || 0
+    const current = results[0]?.value || 0
+    const previous = results[1]?.value || 0
 
     if (previous === 0) return current > 0 ? 100 : 0
     return ((current - previous) / previous) * 100
   } catch (e) {
-    console.log('Error calculating new accounts change:', e)
+    console.log(`Error calculating change for ${fieldName}:`, e)
     return 0
   }
 }

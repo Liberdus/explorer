@@ -38,18 +38,18 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, changeType 
 
 export const OverviewSection: React.FC = () => {
   const {
-    totalAccounts,
-    totalNewAccounts,
+    totalAddresses,
+    newAddresses,
     totalUserTxs,
-    totalNewUserTxs,
+    newUserTxs,
     totalAccountsChange,
-    totalNewAccountsChange,
+    newAddressesChange,
     totalUserTxsChange,
-    totalNewUserTxsChange,
-    totalNewTransactionFee,
-    totalNewBurntFee,
-    totalNewNetworkExpense,
-    totalNewSupply,
+    newUserTxsChange,
+    newTransactionFee,
+    newBurntFee,
+    newNetworkExpense,
+    newSupply,
     totalSupply,
     totalStaked,
     stabilityFactorStr,
@@ -58,9 +58,9 @@ export const OverviewSection: React.FC = () => {
     stakeRequiredUsdStr,
     activeNodes,
     standbyNodes,
-    activeBalanceAccounts,
+    totalUserAccounts,
     activeAccounts,
-    newActiveBalanceAccounts,
+    newUserAccounts,
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
@@ -86,7 +86,7 @@ export const OverviewSection: React.FC = () => {
   const stats: StatsCardProps[] = [
     {
       title: 'Addresses (Total)',
-      value: totalAccounts,
+      value: totalAddresses,
       ...formatPercentage(totalAccountsChange),
       route: '/charts/address',
     },
@@ -98,38 +98,37 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: 'New Addresses (24H)',
-      value: totalNewAccounts,
-      ...formatPercentage(totalNewAccountsChange),
+      value: newAddresses,
+      ...formatPercentage(newAddressesChange),
       route: '/charts/address',
     },
     {
       title: 'Transactions (24H)',
-      value: totalNewUserTxs,
-      ...formatPercentage(totalNewUserTxsChange),
+      value: newUserTxs,
+      ...formatPercentage(newUserTxsChange),
       route: '/charts/tx',
     },
     {
       title: 'Total Transaction Fee (24H)',
-      value: `$${totalNewTransactionFee * parseFloat(stabilityFactorStr)}`,
+      value: `$${newTransactionFee * parseFloat(stabilityFactorStr)}`,
       route: '/charts/transactionfee',
     },
     // Avg tx fee would be total_tx_fee_24h / transactions_24h
     {
       title: 'Avg Transaction Fee (24H)',
       value: `$${
-        ((totalNewTransactionFee / totalNewUserTxs) * parseFloat(stabilityFactorStr)).toLocaleString(
-          undefined,
-          {
-            maximumFractionDigits: 4,
-          }
-        ) || 0
+        newUserTxs
+          ? ((newTransactionFee / newUserTxs) * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+              maximumFractionDigits: 4,
+            })
+          : 0
       }`,
       route: '/charts/avg-txfee-usd',
     },
     { title: 'Network Utilization (24H)', value: 0 },
     {
       title: 'Burnt Fees (24H)',
-      value: `$${totalNewBurntFee * parseFloat(stabilityFactorStr)}`,
+      value: `$${newBurntFee * parseFloat(stabilityFactorStr)}`,
       route: '/charts/dailylibburnt',
     },
     { title: 'Tx Fee Set', value: `$${transactionFeeUsdStr}` },
@@ -159,14 +158,14 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: '$Network Rev (24H)',
-      value: `$${(totalNewBurntFee * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+      value: `$${(newBurntFee * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
       route: '/charts/dailylibburnt',
     },
     {
       title: '$Network Exp (24H)',
-      value: `$${(totalNewNetworkExpense * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+      value: `$${(newNetworkExpense * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
       route: '/charts/dailylibdistributed',
@@ -177,19 +176,19 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: 'LIB Supply (24H)',
-      value: `${totalNewSupply.toLocaleString(undefined, {
+      value: `${newSupply.toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
       route: '/charts/libsupplygrowth',
     },
     {
       title: 'Accounts (Total)',
-      value: activeBalanceAccounts,
+      value: totalUserAccounts,
       route: '/charts/account',
     },
     {
       title: 'Accounts (24H)',
-      value: newActiveBalanceAccounts,
+      value: newUserAccounts,
       route: '/charts/account',
     },
     {

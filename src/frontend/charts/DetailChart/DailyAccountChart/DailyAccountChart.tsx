@@ -39,19 +39,16 @@ export const DailyAccountChart: React.FC = () => {
     const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
     const activeBalanceAccounts = point.y || 0
 
-    // Extract new active balance accounts from the point
-
     const pointData = (point.point as DataPoint)
       ?.activeBalanceAccountsChartData as ActiveBalanceAccountsChartData
     const newUserAccounts = pointData?.newUserAccounts || 0
-    const newActiveBalanceAccounts = pointData?.newActiveBalanceAccounts || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
       <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
         ${xDateString}
       </div>
       <div style="margin-bottom: 4px;">
-        <span style="color: #666;">Total Active Balance Accounts:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
+        <span style="color: #666;">Total Accounts:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
           activeBalanceAccounts,
           0
         )}</span>
@@ -62,25 +59,19 @@ export const DailyAccountChart: React.FC = () => {
           0
         )}</span>
       </div>
-            <div>
-        <span style="color: #666;">New Balance Accounts:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
-          newActiveBalanceAccounts,
-          0
-        )}</span>
-      </div>
     </div>`
   }
 
   return (
     <div className={styles.DailyAccountChart}>
-      <ContentLayout title="Active Liberdus Balance Accounts" breadcrumbItems={breadcrumbs} showBackButton>
+      <ContentLayout title="Liberdus Accounts" breadcrumbItems={breadcrumbs} showBackButton>
         <div className={styles.chartContainer}>
           <div className={styles.chartWrapper}>
             {loading ? (
               <div className={styles.loading}>Loading...</div>
             ) : (
               <DailyStatsChart
-                title="Active Liberdus Balance Accounts"
+                title="Liberdus Accounts"
                 subTitle=""
                 height={height}
                 data={seriesData}
@@ -95,8 +86,7 @@ export const DailyAccountChart: React.FC = () => {
             </div>
             <div className={styles.infoPanelContent}>
               <p>
-                The Active Balance Address chart shows the daily number of unique accounts that hold some LIB
-                coins.
+                The Liberdus Accounts chart shows the daily number of user accounts that hold some LIB coins.
               </p>
               {highest && (
                 <div className={styles.highlight}>

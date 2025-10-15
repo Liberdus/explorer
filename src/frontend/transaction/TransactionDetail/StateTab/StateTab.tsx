@@ -1,6 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
-import { toEthereumAddress } from '../../../utils/transformAddress'
+import { toEthereumAddress, truncateAddress } from '../../../utils/transformAddress'
 
 import styles from './StateTab.module.scss'
 import { BalanceChange } from '../../../../storage/accountHistoryState'
@@ -34,7 +34,7 @@ export const StateTab: React.FC<StateTabProps> = ({ balanceChanges }) => {
           return (
             <div key={index} className={styles.gridRow}>
               <Link href={`/account/${change.accountId}`} className={styles.link}>
-                <div className={styles.value}>{toEthereumAddress(change.accountId)} </div>
+                <div className={styles.value}>{truncateAddress(toEthereumAddress(change.accountId))} </div>
               </Link>
               <div className={styles.value}>{change.before.toLocaleString()}</div>
               <div className={styles.value}>{change.after.toLocaleString()}</div>
