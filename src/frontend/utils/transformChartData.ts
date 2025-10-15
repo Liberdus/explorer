@@ -17,12 +17,16 @@ export interface DataPoint {
   dailyTxsChartData?: DailyTxsChartData
   avgTxFeeChartData?: AvgTxFeeChartData
   burntSupplyChartData?: BurntSupplyChartData
-  activeBalanceAccountsChartData?: ActiveBalanceAccountsChartData
+  accountChartData?: AccountChartData
   distributedSupplyChartData?: DistributedSupplyChartData
 }
 
 export interface NewAddressChartData {
   dailyIncrease: number
+}
+
+export interface AccountChartData {
+  newUsers: number
 }
 
 export interface MarketCapChartData {
@@ -53,10 +57,6 @@ export interface BurntSupplyChartData {
   transactionFee: number
   networkFee: number
   penaltyAmount: number
-}
-
-export interface ActiveBalanceAccountsChartData {
-  newUserAccounts: number
 }
 
 export interface DistributedSupplyChartData {
@@ -349,7 +349,7 @@ export function convertDailyAccountStatsToSeriesData(
   queryType: {
     newAddress?: boolean
     activeAccount?: boolean
-    activeBalanceAccounts?: boolean
+    newAccount?: boolean
   }
 ): {
   seriesData: SeriesData[]
@@ -358,7 +358,7 @@ export function convertDailyAccountStatsToSeriesData(
     lowest: { timestamp: number; value: number } | null
   }
 } {
-  if (!queryType.newAddress && !queryType.activeAccount && !queryType.activeBalanceAccounts) {
+  if (!queryType.newAddress && !queryType.activeAccount && !queryType.newAccount) {
     throw new Error('No query type selected for daily account stats')
   }
   const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
@@ -368,8 +368,8 @@ export function convertDailyAccountStatsToSeriesData(
     seriesData[0].name = 'New Addresses'
   } else if (queryType.activeAccount) {
     seriesData[0].name = 'Active Accounts'
-  } else if (queryType.activeBalanceAccounts) {
-    seriesData[0].name = 'Active Balance Accounts'
+  } else if (queryType.newAccount) {
+    seriesData[0].name = 'New Accounts'
   }
 
   if (!dailyAccountStats || dailyAccountStats.length === 0) {
@@ -434,34 +434,35 @@ export function convertDailyAccountStatsToSeriesData(
         x: timestamp,
         y: activeAccounts,
       })
-    } else if (queryType.activeBalanceAccounts) {
+    } else if (queryType.newAccount) {
       let newUserAccounts: number
-      let activeBalanceAccounts: number
       if (accountResponseType === 'array') {
         // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, activeAccounts, activeBalanceAccounts]
         const accountStat = stat as number[]
         timestamp = accountStat[0] // dateStartTime is already in milliseconds
         newUserAccounts = accountStat[2] || 0
-        activeBalanceAccounts = accountStat[4] || 0
       } else {
         const accountStat = stat as DailyAccountStats
         timestamp = accountStat.dateStartTime
         newUserAccounts = accountStat.newUserAccounts || 0
-        activeBalanceAccounts = accountStat.activeBalanceAccounts || 0
       }
 
-      if (activeBalanceAccounts > highest.value) {
-        highest = { timestamp, value: activeBalanceAccounts }
+      cumulativeTotal += newUserAccounts
+
+      if (newUserAccounts > highest.value) {
+        highest = { timestamp, value: newUserAccounts }
       }
-      if (activeBalanceAccounts < lowest.value) {
-        lowest = { timestamp, value: activeBalanceAccounts }
+
+      if (newUserAccounts < lowest.value && newUserAccounts > 0) {
+        lowest = { timestamp, value: newUserAccounts }
       }
-      // Add data point for Active Balance Accounts
+
+      // Add data point for New Accounts with cumulative total
       seriesData[0].data.push({
         x: timestamp,
-        y: activeBalanceAccounts,
-        activeBalanceAccountsChartData: {
-          newUserAccounts,
+        y: cumulativeTotal,
+        accountChartData: {
+          newUsers: newUserAccounts,
         },
       })
     }

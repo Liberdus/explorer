@@ -117,9 +117,9 @@ export function parseDailyTransactionStats(
 
 export async function queryTransactionStats(query = { userTxs: false }): Promise<{
   totalTransactions: number
-  totalNewTransactions: number
+  newTransactions: number
   totalTransactionsChange: number
-  totalNewTransactionsChange: number
+  newTransactionsChange: number
 }> {
   try {
     const { userTxs } = query
@@ -130,29 +130,26 @@ export async function queryTransactionStats(query = { userTxs: false }): Promise
 
     // Get the totalTxs from the latest entry (most recent entry by dateStartTime)
     const latestTxs = userTxs ? 'totalUserTxs' : 'totalTxs'
-    const latestSql = `SELECT ${latestTxs} as totalNewTransactions FROM daily_transactions ORDER BY dateStartTime DESC LIMIT 1`
-    const latestResult: { totalNewTransactions: number } = await db.get(
-      dailyTransactionStatsDatabase,
-      latestSql
-    )
+    const latestSql = `SELECT ${latestTxs} as newTransactions FROM daily_transactions ORDER BY dateStartTime DESC LIMIT 1`
+    const latestResult: { newTransactions: number } = await db.get(dailyTransactionStatsDatabase, latestSql)
 
     // Calculate percentage changes
     const totalTransactionsChange = await calculateTotalTransactionsChange(query.userTxs)
-    const totalNewTransactionsChange = await calculateNewTransactionsChange(query.userTxs)
+    const newTransactionsChange = await calculateNewTransactionsChange(query.userTxs)
 
     return {
       totalTransactions: totalResult?.totalTransactions || 0,
-      totalNewTransactions: latestResult?.totalNewTransactions || 0,
+      newTransactions: latestResult?.newTransactions || 0,
       totalTransactionsChange,
-      totalNewTransactionsChange,
+      newTransactionsChange,
     }
   } catch (e) {
     console.log(e)
     return {
       totalTransactions: 0,
-      totalNewTransactions: 0,
+      newTransactions: 0,
       totalTransactionsChange: 0,
-      totalNewTransactionsChange: 0,
+      newTransactionsChange: 0,
     }
   }
 }
