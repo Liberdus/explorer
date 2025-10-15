@@ -1186,9 +1186,9 @@ const start = async (): Promise<void> => {
       reply.send({
         success: true,
         totalUserTxs: stats.totalTransactions,
-        totalNewUserTxs: stats.totalNewTransactions,
+        newUserTxs: stats.newTransactions,
         totalUserTxsChange: stats.totalTransactionsChange,
-        totalNewUserTxsChange: stats.totalNewTransactionsChange,
+        newUserTxsChange: stats.newTransactionsChange,
       })
       return
     }

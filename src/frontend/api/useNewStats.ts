@@ -8,14 +8,14 @@ import { DailyCoinStats } from '../../stats/dailyCoinStats'
 import { AccountStatsSummary } from '../../stats/dailyAccountStats'
 
 type StatsResult = {
-  totalAddresses: number
-  newAddresses: number // addresses created in the last 24 hours
+  totalAccounts: number
+  newAccounts: number // addresses created in the last 24 hours
   totalUserAccounts: number // cumulative user accounts created
   newUserAccounts: number // user accounts created in the last 24 hours
   totalUserTxs: number
   newUserTxs: number // transactions created in the last 24 hours
   totalAccountsChange: number // percentage change: today's new addresses / yesterday's cumulative total * 100
-  newAddressesChange: number // percentage change in new addresses (day-to-day comparison)
+  newAccountsChange: number // percentage change in new addresses (day-to-day comparison)
   totalUserAccountsChange: number // percentage change: today's new user accounts / yesterday's cumulative total * 100
   newUserAccountsChange: number
   totalUserTxsChange: number // percentage change in total transactions (7-day comparison)
@@ -65,9 +65,9 @@ export const useNewStats = (query: {
 
   const transactionStatsResponse = useSWR<{
     totalUserTxs: number
-    totalNewUserTxs: number
+    newUserTxs: number
     totalUserTxsChange: number
-    totalNewUserTxsChange: number
+    newUserTxsChange: number
   }>(transactionStatsQuery, fetcher, swrOptions)
   const coinStatsResponse = useSWR<{
     success: boolean
@@ -79,13 +79,13 @@ export const useNewStats = (query: {
   const networkStatsResponse = useSWR<BaseDailyNetworkStats>(networkStatsQuery, fetcher, swrOptions)
 
   // get values
-  const totalAddresses =
+  const totalAccounts =
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
     'totalAccounts' in accountStatsResponse.data
       ? accountStatsResponse.data.totalAccounts
       : 0
-  const newAddresses =
+  const newAccounts =
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
     'newAccounts' in accountStatsResponse.data
@@ -113,8 +113,8 @@ export const useNewStats = (query: {
   const newUserTxs =
     typeof transactionStatsResponse.data === 'object' &&
     transactionStatsResponse.data != null &&
-    'totalNewUserTxs' in transactionStatsResponse.data
-      ? transactionStatsResponse.data.totalNewUserTxs
+    'newUserTxs' in transactionStatsResponse.data
+      ? transactionStatsResponse.data.newUserTxs
       : 0
   const totalAccountsChange =
     typeof accountStatsResponse.data === 'object' &&
@@ -122,7 +122,7 @@ export const useNewStats = (query: {
     'totalAccountsChange' in accountStatsResponse.data
       ? accountStatsResponse.data.totalAccountsChange
       : 0
-  const newAddressesChange =
+  const newAccountsChange =
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
     'newAccountsChange' in accountStatsResponse.data
@@ -149,8 +149,8 @@ export const useNewStats = (query: {
   const newUserTxsChange =
     typeof transactionStatsResponse.data === 'object' &&
     transactionStatsResponse.data != null &&
-    'totalNewUserTxsChange' in transactionStatsResponse.data
-      ? transactionStatsResponse.data.totalNewUserTxsChange
+    'newUserTxsChange' in transactionStatsResponse.data
+      ? transactionStatsResponse.data.newUserTxsChange
       : 0
   const newTransactionFee =
     typeof coinStatsResponse.data === 'object' &&
@@ -265,14 +265,14 @@ export const useNewStats = (query: {
       : 0
 
   return {
-    totalAddresses,
-    newAddresses,
+    totalAccounts,
+    newAccounts,
     totalUserAccounts,
     newUserAccounts,
     totalUserTxs,
     newUserTxs,
     totalAccountsChange,
-    newAddressesChange,
+    newAccountsChange,
     totalUserAccountsChange,
     newUserAccountsChange,
     totalUserTxsChange,

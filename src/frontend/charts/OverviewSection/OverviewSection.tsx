@@ -38,12 +38,14 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, change, changeType 
 
 export const OverviewSection: React.FC = () => {
   const {
-    totalAddresses,
-    newAddresses,
+    totalAccounts,
+    newAccounts,
     totalUserTxs,
     newUserTxs,
     totalAccountsChange,
-    newAddressesChange,
+    newAccountsChange,
+    totalUserAccountsChange,
+    newUserAccountsChange,
     totalUserTxsChange,
     newUserTxsChange,
     newTransactionFee,
@@ -59,8 +61,9 @@ export const OverviewSection: React.FC = () => {
     activeNodes,
     standbyNodes,
     totalUserAccounts,
-    activeAccounts,
     newUserAccounts,
+    activeAccounts,
+    activeAccountsChange,
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
@@ -86,7 +89,7 @@ export const OverviewSection: React.FC = () => {
   const stats: StatsCardProps[] = [
     {
       title: 'Addresses (Total)',
-      value: totalAddresses,
+      value: totalAccounts,
       ...formatPercentage(totalAccountsChange),
       route: '/charts/address',
     },
@@ -98,8 +101,8 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: 'New Addresses (24H)',
-      value: newAddresses,
-      ...formatPercentage(newAddressesChange),
+      value: newAccounts,
+      ...formatPercentage(newAccountsChange),
       route: '/charts/address',
     },
     {
@@ -184,16 +187,19 @@ export const OverviewSection: React.FC = () => {
     {
       title: 'Accounts (Total)',
       value: totalUserAccounts,
+      ...formatPercentage(totalUserAccountsChange),
       route: '/charts/account',
     },
     {
       title: 'Accounts (24H)',
       value: newUserAccounts,
+      ...formatPercentage(newUserAccountsChange),
       route: '/charts/account',
     },
     {
       title: 'Daily Active Accounts (24H)',
       value: activeAccounts,
+      ...formatPercentage(activeAccountsChange),
       route: '/charts/active-account',
     },
   ]

@@ -4,9 +4,9 @@ import { ContentLayout, DailyStatsChart } from '../../../components'
 import styles from './DailyAccountChart.module.scss'
 import { useStats } from '../../../api'
 import {
-  ActiveBalanceAccountsChartData,
   convertDailyAccountStatsToSeriesData,
   DataPoint,
+  AccountChartData,
 } from '../../../utils/transformChartData'
 import { breadcrumbsList } from '../../../types/routes'
 
@@ -26,10 +26,10 @@ export const DailyAccountChart: React.FC = () => {
     seriesData,
     stats: { highest, lowest },
   } = convertDailyAccountStatsToSeriesData(dailyAccountStats, accountResponseType, {
-    activeBalanceAccounts: true,
+    newAccount: true,
   })
 
-  // Tooltip formatter for active balance accounts
+  // Tooltip formatter for total accounts
   const tooltipFormatter = (
     timestamp: number,
     point: any,
@@ -37,11 +37,10 @@ export const DailyAccountChart: React.FC = () => {
   ): string => {
     const xDate = new Date(timestamp)
     const xDateString = Highcharts.dateFormat('%A, %B %e, %Y', xDate.getTime())
-    const activeBalanceAccounts = point.y || 0
+    const totalAccounts = point.y || 0
 
-    const pointData = (point.point as DataPoint)
-      ?.activeBalanceAccountsChartData as ActiveBalanceAccountsChartData
-    const newUserAccounts = pointData?.newUserAccounts || 0
+    const pointData = (point.point as DataPoint)?.accountChartData as AccountChartData
+    const newUsers = pointData?.newUsers || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
       <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
@@ -49,13 +48,13 @@ export const DailyAccountChart: React.FC = () => {
       </div>
       <div style="margin-bottom: 4px;">
         <span style="color: #666;">Total Accounts:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
-          activeBalanceAccounts,
+          totalAccounts,
           0
         )}</span>
       </div>
       <div>
-        <span style="color: #666;">New Created Accounts:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
-          newUserAccounts,
+        <span style="color: #666;">New Users:</span> <span style="font-weight: 600; color: #000;">${Highcharts.numberFormat(
+          newUsers,
           0
         )}</span>
       </div>
@@ -86,7 +85,8 @@ export const DailyAccountChart: React.FC = () => {
             </div>
             <div className={styles.infoPanelContent}>
               <p>
-                The Liberdus Accounts chart shows the daily number of user accounts that hold some LIB coins.
+                The Liberdus Accounts chart shows the cumulative number of user accounts that created in the
+                network.
               </p>
               {highest && (
                 <div className={styles.highlight}>
@@ -94,7 +94,7 @@ export const DailyAccountChart: React.FC = () => {
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Highest number of <strong>{highest.value.toLocaleString()}</strong> accounts on{' '}
+                      Highest number of new users <strong>{highest.value.toLocaleString()}</strong> on{' '}
                       {new Date(highest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
@@ -111,7 +111,7 @@ export const DailyAccountChart: React.FC = () => {
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Lowest number of <strong>{lowest.value.toLocaleString()}</strong> accounts on{' '}
+                      Lowest number of new users <strong>{lowest.value.toLocaleString()}</strong> on{' '}
                       {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
