@@ -10,6 +10,7 @@ export {
   DailyBurntSupplyChart,
   DailyTransactionFeeChart,
   DailyDistributedSupplyChart,
+  DailyNetworkStakeChart,
 } from './DetailChart'
 export { OverviewSection } from './OverviewSection'
 export { BlockchainDataSection } from './BlockchainDataSection'
