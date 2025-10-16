@@ -10,7 +10,7 @@ import {
   DailyCoinStatsDB,
   TotalAccountBalanceDB,
 } from '../stats'
-import { AccountDB, CycleDB, TransactionDB, AccountHistoryStateDB } from '../storage'
+import { AccountDB, CycleDB, TransactionDB } from '../storage'
 import { TransactionType, AccountType } from '../types'
 import { P2P } from '@shardus/types'
 import { config, NetworkAccountId } from '../config/index'
@@ -497,10 +497,11 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       afterTimestampInSeconds,
       beforeTimestampInSeconds
     )
+    let lastCycleCounter = 0
     let totalActiveNodes = 0
     let totalStandbyNodes = 0
     for (let i = 0; i < cycleRecords.length; i++) {
-      const { activated, active, removed, apoptosized, standbyAdd, standby, syncing, lostSyncing } =
+      const { activated, active, removed, apoptosized, standbyAdd, standby, syncing, lostSyncing, counter } =
         cycleRecords[i].cycleRecord
       let totalActive = activated.length + active - removed.length
       if (apoptosized.length) {
@@ -517,6 +518,7 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
           const lostSyncingNodes = apoptosized.filter((nodeId) => !previousCycle.lostSyncing.includes(nodeId))
           totalActive += apoptosized.length - lostSyncingNodes.length
         }
+        lastCycleCounter = counter
       }
       totalActiveNodes += totalActive
       const totalStandby = standbyAdd.length + standby - lostSyncing.length
@@ -549,6 +551,15 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       minTollUsdStr,
       activeNodes: avgActiveNodes,
       standbyNodes: avgStandbyNodes,
+    }
+
+    // Go through all changes and stop after the last cycle of the time period, so that the relative values are correct for the time period
+    const changes = networkAccount.data.listOfChanges
+    for (const change of changes) {
+      if (change.cycle > lastCycleCounter) break
+      for (const appDataKey of Object.keys(change.appData)) {
+        dailyNetworkStats[appDataKey] = change.appData[appDataKey]
+      }
     }
 
     await DailyNetworkStatsDB.insertDailyNetworkStats(dailyNetworkStats)
