@@ -3,22 +3,38 @@ import useSWR from 'swr'
 import { fetcher } from './fetcher'
 
 import { PATHS } from './paths'
-import { BaseDailyNetworkStats } from '../../stats/dailyNetworkStats'
-import { DailyCoinStatsWithSummary } from '../../stats/dailyCoinStats'
+import { DailyNetworkStatsSummary } from '../../stats/dailyNetworkStats'
+import { DailyCoinStatsSummary } from '../../stats/dailyCoinStats'
 import { DailyAccountStatsSummary } from '../../stats/dailyAccountStats'
 
-type StatsResult = DailyAccountStatsSummary &
-  DailyCoinStatsWithSummary &
-  BaseDailyNetworkStats & {
+type StatsResult = Omit<DailyAccountStatsSummary, 'dateStartTime'> &
+  Omit<DailyCoinStatsSummary, EXCLUDED_COIN_STATS_FIELDS> &
+  Omit<DailyNetworkStatsSummary, EXCLUDED_NETWORK_STATS_FIELDS> & {
     totalUserTxs: number
     newUserTxs: number // transactions created in the last 24 hours
     totalUserTxsChange: number // percentage change in total transactions (7-day comparison)
     newUserTxsChange: number // percentage change in new transactions (day-to-day comparison)
-    newTransactionFee: number // total transaction fee in the last 24 hours
-    newBurntFee: number // total burnt fee in the last 24 hours
-    newNetworkExpense: number // total network expense ( minted coin + realized node rewards )  in the last 24 hours
-    newSupply: number // total LIB supply created in the last 24 hours
   }
+
+type EXCLUDED_COIN_STATS_FIELDS =
+  | 'dateStartTime'
+  | 'mintedCoin'
+  | 'networkFee'
+  | 'stakeAmount'
+  | 'unStakeAmount'
+  | 'rewardAmountRealized'
+  | 'rewardAmountUnrealized'
+  | 'penaltyAmount'
+
+type EXCLUDED_NETWORK_STATS_FIELDS =
+  | 'dateStartTime'
+  | 'nodePenaltyUsdStr'
+  | 'defaultTollUsdStr'
+  | 'minTollUsdStr'
+  | 'nodePenaltyUsdStrChange'
+  | 'defaultTollUsdStrChange'
+  | 'minTollUsdStrChange'
+  | 'standbyNodesChange'
 
 export const useNewStats = (query: {
   fetchAccountStats?: boolean
@@ -35,7 +51,7 @@ export const useNewStats = (query: {
   const transactionStatsQuery = fetchTransactionStats
     ? `${PATHS.STATS_TRANSACTION}?fetchTransactionStats=true`
     : null
-  const coinStatsQuery = fetchCoinStats ? `${PATHS.STATS_COIN}?count=1` : null
+  const coinStatsQuery = fetchCoinStats ? `${PATHS.STATS_COIN}?fetchCoinStats=true` : null
   const networkStatsQuery = fetchNetworkStats ? `${PATHS.STATS_NETWORK}` : null
 
   const swrOptions = {
@@ -54,9 +70,9 @@ export const useNewStats = (query: {
     newUserTxsChange: number
   }>(transactionStatsQuery, fetcher, swrOptions)
 
-  const coinStatsResponse = useSWR<DailyCoinStatsWithSummary>(coinStatsQuery, fetcher, swrOptions)
+  const coinStatsResponse = useSWR<DailyCoinStatsSummary>(coinStatsQuery, fetcher, swrOptions)
 
-  const networkStatsResponse = useSWR<BaseDailyNetworkStats>(networkStatsQuery, fetcher, swrOptions)
+  const networkStatsResponse = useSWR<DailyNetworkStatsSummary>(networkStatsQuery, fetcher, swrOptions)
 
   // get values
   const totalAccounts =
@@ -84,18 +100,13 @@ export const useNewStats = (query: {
       ? accountStatsResponse.data.newUserAccounts
       : 0
 
-  const totalUserTxs =
-    typeof transactionStatsResponse.data === 'object' &&
-    transactionStatsResponse.data != null &&
-    'totalUserTxs' in transactionStatsResponse.data
-      ? transactionStatsResponse.data.totalUserTxs
+  const activeAccounts =
+    typeof accountStatsResponse.data === 'object' &&
+    accountStatsResponse.data != null &&
+    'activeAccounts' in accountStatsResponse.data
+      ? accountStatsResponse.data.activeAccounts
       : 0
-  const newUserTxs =
-    typeof transactionStatsResponse.data === 'object' &&
-    transactionStatsResponse.data != null &&
-    'newUserTxs' in transactionStatsResponse.data
-      ? transactionStatsResponse.data.newUserTxs
-      : 0
+
   const totalAccountsChange =
     typeof accountStatsResponse.data === 'object' &&
     accountStatsResponse.data != null &&
@@ -120,6 +131,25 @@ export const useNewStats = (query: {
     'newUserAccountsChange' in accountStatsResponse.data
       ? accountStatsResponse.data.newUserAccountsChange
       : 0
+  const activeAccountsChange =
+    typeof accountStatsResponse.data === 'object' &&
+    accountStatsResponse.data != null &&
+    'activeAccountsChange' in accountStatsResponse.data
+      ? accountStatsResponse.data.activeAccountsChange
+      : 0
+
+  const totalUserTxs =
+    typeof transactionStatsResponse.data === 'object' &&
+    transactionStatsResponse.data != null &&
+    'totalUserTxs' in transactionStatsResponse.data
+      ? transactionStatsResponse.data.totalUserTxs
+      : 0
+  const newUserTxs =
+    typeof transactionStatsResponse.data === 'object' &&
+    transactionStatsResponse.data != null &&
+    'newUserTxs' in transactionStatsResponse.data
+      ? transactionStatsResponse.data.newUserTxs
+      : 0
   const totalUserTxsChange =
     typeof transactionStatsResponse.data === 'object' &&
     transactionStatsResponse.data != null &&
@@ -132,7 +162,7 @@ export const useNewStats = (query: {
     'newUserTxsChange' in transactionStatsResponse.data
       ? transactionStatsResponse.data.newUserTxsChange
       : 0
-  const newTransactionFee =
+  const transactionFee =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
     'transactionFee' in coinStatsResponse.data
@@ -141,28 +171,22 @@ export const useNewStats = (query: {
   const newBurntFee =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'transactionFee' in coinStatsResponse.data
-      ? coinStatsResponse.data.transactionFee +
-        coinStatsResponse.data.networkFee +
-        coinStatsResponse.data.penaltyAmount
+    'newBurntFee' in coinStatsResponse.data
+      ? coinStatsResponse.data.newBurntFee
       : 0
 
   const newNetworkExpense =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'mintedCoin' in coinStatsResponse.data
-      ? coinStatsResponse.data.mintedCoin + coinStatsResponse.data.rewardAmountRealized
+    'newNetworkExpense' in coinStatsResponse.data
+      ? coinStatsResponse.data.newNetworkExpense
       : 0
 
   const newSupply =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'mintedCoin' in coinStatsResponse.data
-      ? coinStatsResponse.data.mintedCoin +
-        coinStatsResponse.data.rewardAmountRealized -
-        coinStatsResponse.data.transactionFee -
-        coinStatsResponse.data.networkFee -
-        coinStatsResponse.data.penaltyAmount
+    'newSupply' in coinStatsResponse.data
+      ? coinStatsResponse.data.newSupply
       : 0
 
   const totalSupply =
@@ -186,12 +210,26 @@ export const useNewStats = (query: {
       ? networkStatsResponse.data.stabilityFactorStr
       : '0'
 
+  const stabilityFactorStrChange =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'stabilityFactorStrChange' in networkStatsResponse.data
+      ? networkStatsResponse.data.stabilityFactorStrChange
+      : 0
+
   const transactionFeeUsdStr =
     typeof networkStatsResponse.data === 'object' &&
     networkStatsResponse.data != null &&
-    'stabilityFactorStr' in networkStatsResponse.data
+    'transactionFeeUsdStr' in networkStatsResponse.data
       ? networkStatsResponse.data.transactionFeeUsdStr
       : '0'
+
+  const transactionFeeUsdStrChange =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'transactionFeeUsdStrChange' in networkStatsResponse.data
+      ? networkStatsResponse.data.transactionFeeUsdStrChange
+      : 0
 
   const nodeRewardAmountUsdStr =
     typeof networkStatsResponse.data === 'object' &&
@@ -200,12 +238,25 @@ export const useNewStats = (query: {
       ? networkStatsResponse.data.nodeRewardAmountUsdStr
       : '0'
 
+  const nodeRewardAmountUsdStrChange =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'nodeRewardAmountUsdStrChange' in networkStatsResponse.data
+      ? networkStatsResponse.data.nodeRewardAmountUsdStrChange
+      : 0
+
   const stakeRequiredUsdStr =
     typeof networkStatsResponse.data === 'object' &&
     networkStatsResponse.data != null &&
     'stakeRequiredUsdStr' in networkStatsResponse.data
       ? networkStatsResponse.data.stakeRequiredUsdStr
       : '0'
+  const stakeRequiredUsdStrChange =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'stakeRequiredUsdStrChange' in networkStatsResponse.data
+      ? networkStatsResponse.data.stakeRequiredUsdStrChange
+      : 0
 
   const activeNodes =
     typeof networkStatsResponse.data === 'object' &&
@@ -213,26 +264,18 @@ export const useNewStats = (query: {
     'activeNodes' in networkStatsResponse.data
       ? networkStatsResponse.data.activeNodes
       : 0
+  const activeNodesChange =
+    typeof networkStatsResponse.data === 'object' &&
+    networkStatsResponse.data != null &&
+    'activeNodesChange' in networkStatsResponse.data
+      ? networkStatsResponse.data.activeNodesChange
+      : 0
 
   const standbyNodes =
     typeof networkStatsResponse.data === 'object' &&
     networkStatsResponse.data != null &&
     'standbyNodes' in networkStatsResponse.data
       ? networkStatsResponse.data.standbyNodes
-      : 0
-
-  const activeAccounts =
-    typeof accountStatsResponse.data === 'object' &&
-    accountStatsResponse.data != null &&
-    'activeAccounts' in accountStatsResponse.data
-      ? accountStatsResponse.data.activeAccounts
-      : 0
-
-  const activeAccountsChange =
-    typeof accountStatsResponse.data === 'object' &&
-    accountStatsResponse.data != null &&
-    'activeAccountsChange' in accountStatsResponse.data
-      ? accountStatsResponse.data.activeAccountsChange
       : 0
 
   return {
@@ -248,17 +291,23 @@ export const useNewStats = (query: {
     newUserAccountsChange,
     totalUserTxsChange,
     newUserTxsChange,
-    newTransactionFee,
+    transactionFee,
     newBurntFee,
     newNetworkExpense,
     newSupply,
     totalSupply,
     totalStake,
+
     stabilityFactorStr,
-    transactionFeeUsdStr,
     nodeRewardAmountUsdStr,
     stakeRequiredUsdStr,
     activeNodes,
+    transactionFeeUsdStr,
+    stabilityFactorStrChange,
+    transactionFeeUsdStrChange,
+    nodeRewardAmountUsdStrChange,
+    stakeRequiredUsdStrChange,
+    activeNodesChange,
     standbyNodes,
     activeAccounts,
     activeAccountsChange,
