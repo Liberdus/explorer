@@ -1,0 +1,115 @@
+.DailyNetworkStakeChart {
+  padding: 20px;
+}
+
+.chartContainer {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.chartWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.infoPanel {
+  width: 320px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.infoPanelHeader {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+
+  h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.infoPanelContent {
+  padding: 16px;
+
+  p {
+    margin: 0 0 16px 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #495057;
+  }
+}
+
+.highlight {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin-bottom: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.highlightIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.highlightContent {
+  flex: 1;
+}
+
+.highlightLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6c757d;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.highlightText {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #212529;
+
+  strong {
+    font-weight: 600;
+    color: #000;
+  }
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  font-size: 16px;
+  color: #6c757d;
+}
+
+@media (max-width: 1024px) {
+  .chartContainer {
+    flex-direction: column;
+  }
+
+  .infoPanel {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .DailyNetworkStakeChart {
+    padding: 12px;
+  }
+}
