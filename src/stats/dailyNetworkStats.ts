@@ -16,6 +16,18 @@ export interface BaseDailyNetworkStats {
   standbyNodes: number // The non-active nodes count from the cycle records (standby + syncing nodes)
 }
 
+export interface DailyNetworkStatsSummary extends BaseDailyNetworkStats {
+  stabilityFactorStrChange: number
+  transactionFeeUsdStrChange: number
+  stakeRequiredUsdStrChange: number
+  nodeRewardAmountUsdStrChange: number
+  nodePenaltyUsdStrChange: number
+  defaultTollUsdStrChange: number
+  minTollUsdStrChange: number
+  activeNodesChange: number
+  standbyNodesChange: number
+}
+
 export type DailyNetworkStats = BaseDailyNetworkStats
 
 export type DbDailyNetworkStats = BaseDailyNetworkStats
@@ -69,6 +81,75 @@ export async function queryLatestDailyNetworkStats(count: number): Promise<Daily
   } catch (e) {
     console.log(e)
     return []
+  }
+}
+
+export async function queryDailyNetworkStatsSummary(): Promise<DailyNetworkStatsSummary | undefined> {
+  try {
+    const last2DaysResult = await queryLatestDailyNetworkStats(2)
+    const dailyNetworkStats = last2DaysResult[0]
+
+    if (!dailyNetworkStats) {
+      return
+    }
+
+    const previous = last2DaysResult[1]
+
+    const calculatePercentageChange = (currentValue: number, previousValue: number): number => {
+      if (previousValue === 0) {
+        if (currentValue === 0) return 0
+        return currentValue > 0 ? 100 : -100
+      }
+      return ((currentValue - previousValue) / previousValue) * 100
+    }
+
+    const summary: DailyNetworkStatsSummary = {
+      dateStartTime: dailyNetworkStats.dateStartTime ?? 0,
+      stabilityFactorStr: dailyNetworkStats.stabilityFactorStr ?? '0',
+      transactionFeeUsdStr: dailyNetworkStats.transactionFeeUsdStr ?? '0',
+      stakeRequiredUsdStr: dailyNetworkStats.stakeRequiredUsdStr ?? '0',
+      nodeRewardAmountUsdStr: dailyNetworkStats.nodeRewardAmountUsdStr ?? '0',
+      nodePenaltyUsdStr: dailyNetworkStats.nodePenaltyUsdStr ?? '0',
+      defaultTollUsdStr: dailyNetworkStats.defaultTollUsdStr ?? '0',
+      minTollUsdStr: dailyNetworkStats.minTollUsdStr ?? '0',
+      activeNodes: dailyNetworkStats.activeNodes ?? 0,
+      standbyNodes: dailyNetworkStats.standbyNodes ?? 0,
+      stabilityFactorStrChange: calculatePercentageChange(
+        parseFloat(dailyNetworkStats.stabilityFactorStr),
+        parseFloat(previous?.stabilityFactorStr)
+      ),
+      transactionFeeUsdStrChange: calculatePercentageChange(
+        parseFloat(dailyNetworkStats.transactionFeeUsdStr),
+        parseFloat(previous?.transactionFeeUsdStr)
+      ),
+      stakeRequiredUsdStrChange: calculatePercentageChange(
+        parseFloat(dailyNetworkStats.stakeRequiredUsdStr),
+        parseFloat(previous?.stakeRequiredUsdStr)
+      ),
+      nodeRewardAmountUsdStrChange: calculatePercentageChange(
+        parseFloat(dailyNetworkStats.nodeRewardAmountUsdStr),
+        parseFloat(previous?.nodeRewardAmountUsdStr)
+      ),
+      nodePenaltyUsdStrChange: calculatePercentageChange(
+        parseFloat(dailyNetworkStats.nodePenaltyUsdStr),
+        parseFloat(previous?.nodePenaltyUsdStr)
+      ),
+      defaultTollUsdStrChange: calculatePercentageChange(
+        parseFloat(dailyNetworkStats.defaultTollUsdStr),
+        parseFloat(previous?.defaultTollUsdStr)
+      ),
+      minTollUsdStrChange: calculatePercentageChange(
+        parseFloat(dailyNetworkStats.minTollUsdStr),
+        parseFloat(previous?.minTollUsdStr)
+      ),
+      activeNodesChange: calculatePercentageChange(dailyNetworkStats.activeNodes, previous?.activeNodes),
+      standbyNodesChange: calculatePercentageChange(dailyNetworkStats.standbyNodes, previous?.standbyNodes),
+    }
+
+    return summary
+  } catch (e) {
+    console.log('Error fetching daily network stats summary:', e)
+    return
   }
 }
 

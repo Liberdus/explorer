@@ -52,17 +52,22 @@ export const OverviewSection: React.FC = () => {
     newUserTxs,
     totalUserTxsChange,
     newUserTxsChange,
-    newTransactionFee,
+    transactionFee,
     newBurntFee,
     newNetworkExpense,
     newSupply,
     totalSupply,
     totalStake,
     stabilityFactorStr,
+    stabilityFactorStrChange,
     transactionFeeUsdStr,
+    transactionFeeUsdStrChange,
     nodeRewardAmountUsdStr,
+    nodeRewardAmountUsdStrChange,
     stakeRequiredUsdStr,
+    stakeRequiredUsdStrChange,
     activeNodes,
+    activeNodesChange,
     standbyNodes,
   } = useNewStats({
     fetchAccountStats: true,
@@ -113,7 +118,7 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: 'Total Transaction Fee (24H)',
-      value: `$${newTransactionFee * parseFloat(stabilityFactorStr)}`,
+      value: `$${transactionFee * parseFloat(stabilityFactorStr)}`,
       route: '/charts/transactionfee',
     },
     // Avg tx fee would be total_tx_fee_24h / transactions_24h
@@ -121,7 +126,7 @@ export const OverviewSection: React.FC = () => {
       title: 'Avg Transaction Fee (24H)',
       value: `$${
         newUserTxs
-          ? ((newTransactionFee / newUserTxs) * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
+          ? ((transactionFee / newUserTxs) * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
               maximumFractionDigits: 4,
             })
           : 0
@@ -134,11 +139,31 @@ export const OverviewSection: React.FC = () => {
       value: `$${newBurntFee * parseFloat(stabilityFactorStr)}`,
       route: '/charts/dailylibburnt',
     },
-    { title: 'Tx Fee Set', value: `$${transactionFeeUsdStr}`, route: '/charts/txfeeset' },
-    { title: 'Node Reward / Hr', value: `$${nodeRewardAmountUsdStr}`, route: '/charts/noderewardrate' },
-    { title: 'Stake Required Amount', value: `$${stakeRequiredUsdStr}`, route: '/charts/requiredstake' },
-    { title: 'Active Nodes', value: activeNodes, route: '/charts/activenodes' },
-    { title: 'LIB Price Set', value: `$${stabilityFactorStr}`, route: '/charts/libprice' },
+    {
+      title: 'Tx Fee Set',
+      value: `$${transactionFeeUsdStr}`,
+      ...formatPercentage(transactionFeeUsdStrChange),
+      route: '/charts/txfeeset',
+    },
+    {
+      title: 'Node Reward / Hr',
+      value: `$${nodeRewardAmountUsdStr}`,
+      ...formatPercentage(nodeRewardAmountUsdStrChange),
+      route: '/charts/noderewardrate',
+    },
+    {
+      title: 'Stake Required Amount',
+      value: `$${stakeRequiredUsdStr}`,
+      ...formatPercentage(stakeRequiredUsdStrChange),
+      route: '/charts/requiredstake',
+    },
+    { title: 'Active Nodes', value: activeNodes, ...formatPercentage(activeNodesChange) },
+    {
+      title: 'LIB Price Set',
+      value: `$${stabilityFactorStr}`,
+      ...formatPercentage(stabilityFactorStrChange),
+      route: '/charts/libprice',
+    },
     {
       title: 'LIB Supply',
       value: `${totalSupply.toLocaleString(undefined, {

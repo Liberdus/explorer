@@ -15,7 +15,17 @@ export interface DailyCoinStats {
   penaltyAmount: number
 }
 
-export interface DailyCoinStatsWithSummary extends DailyCoinStats {
+export type DailyCoinStatsSummary = Omit<DailyCoinStats, 'dateStartTime'> &
+  DailyCoinStatsSummaryDerivedValues &
+  TotalCoinStats
+
+export interface DailyCoinStatsSummaryDerivedValues {
+  newBurntFee: number // total burnt fee in the last 24 hours ( transaction fee + network fee + penalty amount )
+  newNetworkExpense: number // total network expense ( minted coin + realized node rewards )  in the last 24 hours
+  newSupply: number // total LIB supply created in the last 24 hours
+}
+
+export interface TotalCoinStats {
   totalSupply: number
   totalStake: number
 }
@@ -70,6 +80,57 @@ export async function queryLatestDailyCoinStats(count: number): Promise<DailyCoi
   } catch (e) {
     console.log(e)
     return []
+  }
+}
+
+export async function queryDailyCoinStatsSummary(): Promise<DailyCoinStatsSummary | undefined> {
+  try {
+    const last2DaysResult = await queryLatestDailyCoinStats(2)
+    const dailyCoinStat = last2DaysResult[0]
+
+    if (!dailyCoinStat) {
+      return
+    }
+
+    const aggregatedCoinStats: DailyCoinStats = await queryAggregatedDailyCoinStats()
+
+    const totalSupply =
+      config.genesisLIBSupply +
+      calculateTotalSupplyChange(
+        aggregatedCoinStats.mintedCoin,
+        aggregatedCoinStats.rewardAmountRealized,
+        aggregatedCoinStats.transactionFee,
+        aggregatedCoinStats.networkFee,
+        aggregatedCoinStats.penaltyAmount
+      )
+
+    const totalStake = calculateTotalStakeChange(
+      aggregatedCoinStats.stakeAmount,
+      aggregatedCoinStats.unStakeAmount,
+      aggregatedCoinStats.penaltyAmount
+    )
+    const newBurntFee = dailyCoinStat.transactionFee + dailyCoinStat.networkFee + dailyCoinStat.penaltyAmount
+
+    const newNetworkExpense = dailyCoinStat.mintedCoin + dailyCoinStat.rewardAmountRealized
+
+    const newSupply =
+      dailyCoinStat.mintedCoin +
+      dailyCoinStat.rewardAmountRealized -
+      dailyCoinStat.transactionFee -
+      dailyCoinStat.networkFee -
+      dailyCoinStat.penaltyAmount
+
+    return {
+      ...dailyCoinStat,
+      newBurntFee,
+      newNetworkExpense,
+      newSupply,
+      totalSupply,
+      totalStake,
+    }
+  } catch (e) {
+    console.log(e)
+    return
   }
 }
 

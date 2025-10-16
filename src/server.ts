@@ -54,7 +54,7 @@ import { ValidatorStats } from './stats/validatorStats'
 import { TransactionStats, convertBaseTxStatsAsArray } from './stats/transactionStats'
 import { DailyTransactionStats } from './stats/dailyTransactionStats'
 import { DailyAccountStats } from './stats/dailyAccountStats'
-import { DailyCoinStats, DailyCoinStatsWithSummary } from './stats/dailyCoinStats'
+import { DailyCoinStats, DailyCoinStatsSummary } from './stats/dailyCoinStats'
 
 if (config.env == envEnum.DEV) {
   //default debug mode
@@ -1270,10 +1270,10 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      const stats = await DailyAccountStatsDB.queryDailyAccountStatsSummary()
+      const summary = await DailyAccountStatsDB.queryDailyAccountStatsSummary()
       reply.send({
         success: true,
-        ...stats,
+        ...summary,
       })
       return
     } else if (query.allDailyAccountReport) {
@@ -1307,6 +1307,7 @@ const start = async (): Promise<void> => {
       count: string
       allDailyCoinReport: string
       responseType: string
+      fetchCoinStats: string
     }
   }>
 
@@ -1315,6 +1316,7 @@ const start = async (): Promise<void> => {
       count: 's?',
       allDailyCoinReport: 's?',
       responseType: 's?',
+      fetchCoinStats: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -1323,10 +1325,40 @@ const start = async (): Promise<void> => {
 
     const query = _request.query
 
-    // Handle allDailyCoinReport query - returns all daily coin stats with price from network stats
-    if (query.allDailyCoinReport === 'true') {
+    let dailyCoinStats: DailyCoinStats[] = []
+    if (query.count) {
+      const count: number = parseInt(query.count)
+      if (count <= 0 || Number.isNaN(count)) {
+        reply.send({ success: false, error: 'Invalid count' })
+        return
+      }
+      if (count > config.requestLimits.MAX_STATS_PER_REQUEST) {
+        reply.send({
+          success: false,
+          error: `Maximum count is ${config.requestLimits.MAX_STATS_PER_REQUEST}`,
+        })
+        return
+      }
+      const coinStats = await CoinStatsDB.queryLatestCoinStats(count)
+      return reply.send({ success: true, coinStats })
+    } else if (query.fetchCoinStats) {
+      if (query.fetchCoinStats !== 'true') {
+        reply.send({
+          success: false,
+          error: 'Invalid fetchCoinStats',
+        })
+        return
+      }
+      const summary = await DailyCoinStatsDB.queryDailyCoinStatsSummary()
+      reply.send({
+        success: true,
+        ...summary,
+      })
+      return
+    } else if (query.allDailyCoinReport === 'true') {
+      // Handle allDailyCoinReport query - returns all daily coin stats with price from network stats
       try {
-        const dailyCoinStats = (await DailyCoinStatsDB.queryLatestDailyCoinStats(0)).sort(
+        dailyCoinStats = (await DailyCoinStatsDB.queryLatestDailyCoinStats(0)).sort(
           (a, b) => a.dateStartTime - b.dateStartTime // Sort by dateStartTime
         )
         const dailyNetworkStats = (await DailyNetworkStatsDB.queryLatestDailyNetworkStats(0)).sort(
@@ -1377,53 +1409,6 @@ const start = async (): Promise<void> => {
         })
         return
       }
-    }
-
-    let dailyCoinStats: DailyCoinStats[] = []
-    if (query.count) {
-      const count: number = parseInt(query.count)
-      if (count <= 0 || Number.isNaN(count)) {
-        reply.send({ success: false, error: 'Invalid count' })
-        return
-      }
-      if (count > config.requestLimits.MAX_STATS_PER_REQUEST) {
-        reply.send({
-          success: false,
-          error: `Maximum count is ${config.requestLimits.MAX_STATS_PER_REQUEST}`,
-        })
-        return
-      }
-      dailyCoinStats = await DailyCoinStatsDB.queryLatestDailyCoinStats(count)
-
-      // Also fetch aggregated totals for supply and stake calculations
-      const aggregatedStats = await DailyCoinStatsDB.queryAggregatedDailyCoinStats()
-      const totalSupply =
-        config.genesisLIBSupply +
-        DailyCoinStatsDB.calculateTotalSupplyChange(
-          aggregatedStats.mintedCoin,
-          aggregatedStats.rewardAmountRealized,
-          aggregatedStats.transactionFee,
-          aggregatedStats.networkFee,
-          aggregatedStats.penaltyAmount
-        )
-
-      const totalStake = DailyCoinStatsDB.calculateTotalStakeChange(
-        aggregatedStats.stakeAmount,
-        aggregatedStats.unStakeAmount,
-        aggregatedStats.penaltyAmount
-      )
-
-      const stat: DailyCoinStatsWithSummary = {
-        ...dailyCoinStats[0],
-        totalSupply,
-        totalStake,
-      }
-
-      reply.send({
-        success: true,
-        stat,
-      })
-      return
     }
 
     // Default behavior - return aggregated stats
@@ -1514,12 +1499,11 @@ const start = async (): Promise<void> => {
       }
     }
 
-    // Default behavior - return latest network stats
     try {
-      const stats = await DailyNetworkStatsDB.queryLatestDailyNetworkStats(1)
+      const summary = await DailyNetworkStatsDB.queryDailyNetworkStatsSummary()
       reply.send({
         success: true,
-        ...stats[0],
+        ...summary,
       })
     } catch (e) {
       reply.send({
