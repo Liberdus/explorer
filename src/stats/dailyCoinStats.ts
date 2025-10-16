@@ -16,10 +16,12 @@ export interface DailyCoinStats {
 }
 
 export type DailyCoinStatsSummary = Omit<DailyCoinStats, 'dateStartTime'> &
-  DailyCoinStatsSummaryDerivedValues &
-  TotalCoinStats
+  TotalCoinStats &
+  DailyCoinDerivedMetrics &
+  TotalCoinMetricChanges &
+  DailyCoinMetricChanges
 
-export interface DailyCoinStatsSummaryDerivedValues {
+export interface DailyCoinDerivedMetrics {
   newBurntFee: number // total burnt fee in the last 24 hours ( transaction fee + network fee + penalty amount )
   newNetworkExpense: number // total network expense ( minted coin + realized node rewards )  in the last 24 hours
   newSupply: number // total LIB supply created in the last 24 hours
@@ -28,6 +30,29 @@ export interface DailyCoinStatsSummaryDerivedValues {
 export interface TotalCoinStats {
   totalSupply: number
   totalStake: number
+}
+
+export interface AggregatedDailyCoinStats {
+  totalMintedCoin: number
+  totalTransactionFee: number
+  totalNetworkFee: number
+  totalStakeAmount: number
+  totalUnStakeAmount: number
+  totalRewardAmountRealized: number
+  totalRewardAmountUnrealized: number
+  totalPenaltyAmount: number
+}
+
+export interface TotalCoinMetricChanges {
+  totalSupplyChange: number // percentage change: today's supply change / yesterday's cumulative total * 100
+  totalStakeChange: number // percentage change: today's stake change / yesterday's cumulative total * 100
+}
+
+export interface DailyCoinMetricChanges {
+  transactionFeeChange: number // percentage change in transaction fee (day-to-day comparison)
+  newBurntFeeChange: number // percentage change in burnt fee (day-to-day comparison)
+  newNetworkExpenseChange: number // percentage change in network expense (day-to-day comparison)
+  newSupplyChange: number // percentage change in supply (day-to-day comparison)
 }
 
 export interface DailyCoinStatsWithPrice extends DailyCoinStats {
@@ -92,33 +117,69 @@ export async function queryDailyCoinStatsSummary(): Promise<DailyCoinStatsSummar
       return
     }
 
-    const aggregatedCoinStats: DailyCoinStats = await queryAggregatedDailyCoinStats()
+    const aggregatedCoinStats: AggregatedDailyCoinStats = await queryAggregatedDailyCoinStats()
+
+    const {
+      totalMintedCoin,
+      totalRewardAmountRealized,
+      totalTransactionFee,
+      totalNetworkFee,
+      totalPenaltyAmount,
+      totalStakeAmount,
+      totalUnStakeAmount,
+    } = aggregatedCoinStats
 
     const totalSupply =
       config.genesisLIBSupply +
       calculateTotalSupplyChange(
-        aggregatedCoinStats.mintedCoin,
-        aggregatedCoinStats.rewardAmountRealized,
-        aggregatedCoinStats.transactionFee,
-        aggregatedCoinStats.networkFee,
-        aggregatedCoinStats.penaltyAmount
+        totalMintedCoin,
+        totalRewardAmountRealized,
+        totalTransactionFee,
+        totalNetworkFee,
+        totalPenaltyAmount
       )
 
-    const totalStake = calculateTotalStakeChange(
-      aggregatedCoinStats.stakeAmount,
-      aggregatedCoinStats.unStakeAmount,
-      aggregatedCoinStats.penaltyAmount
+    const totalStake = calculateTotalStakeChange(totalStakeAmount, totalUnStakeAmount, totalPenaltyAmount)
+
+    const {
+      mintedCoin,
+      transactionFee,
+      networkFee,
+      stakeAmount,
+      unStakeAmount,
+      rewardAmountRealized,
+      penaltyAmount,
+    } = dailyCoinStat
+
+    const newBurntFee = calculateNewBurntFee(transactionFee, networkFee, penaltyAmount)
+
+    const newNetworkExpense = calculateNewNetworkExpense(mintedCoin, rewardAmountRealized)
+
+    const newSupply = calculateNewSupply(
+      mintedCoin,
+      rewardAmountRealized,
+      transactionFee,
+      networkFee,
+      penaltyAmount
     )
-    const newBurntFee = dailyCoinStat.transactionFee + dailyCoinStat.networkFee + dailyCoinStat.penaltyAmount
 
-    const newNetworkExpense = dailyCoinStat.mintedCoin + dailyCoinStat.rewardAmountRealized
+    const newStake = calculateTotalStakeChange(stakeAmount, unStakeAmount, penaltyAmount)
 
-    const newSupply =
-      dailyCoinStat.mintedCoin +
-      dailyCoinStat.rewardAmountRealized -
-      dailyCoinStat.transactionFee -
-      dailyCoinStat.networkFee -
-      dailyCoinStat.penaltyAmount
+    let totalChanges: TotalCoinMetricChanges = {
+      totalSupplyChange: 0,
+      totalStakeChange: 0,
+    }
+    let metricChanges: DailyCoinMetricChanges = {
+      transactionFeeChange: 0,
+      newBurntFeeChange: 0,
+      newNetworkExpenseChange: 0,
+      newSupplyChange: 0,
+    }
+
+    if (last2DaysResult.length === 2) {
+      totalChanges = await calculateTotalCoinMetricChange(totalSupply, totalStake, newSupply, newStake)
+      metricChanges = await calculateCoinMetricChange(last2DaysResult)
+    }
 
     return {
       ...dailyCoinStat,
@@ -127,6 +188,8 @@ export async function queryDailyCoinStatsSummary(): Promise<DailyCoinStatsSummar
       newSupply,
       totalSupply,
       totalStake,
+      ...totalChanges,
+      ...metricChanges,
     }
   } catch (e) {
     console.log(e)
@@ -134,21 +197,148 @@ export async function queryDailyCoinStatsSummary(): Promise<DailyCoinStatsSummar
   }
 }
 
-export async function queryAggregatedDailyCoinStats(): Promise<DailyCoinStats | undefined> {
+/**
+ * Calculates the percentage change between the cumulative total of metrics on the most recent day
+ * and the cumulative total up to the previous day. This is useful for "total" style metrics that grow over time.
+ */
+async function calculateTotalCoinMetricChange(
+  totalSupply: number,
+  totalStake: number,
+  latestNewSupply: number,
+  latestNewStake: number
+): Promise<TotalCoinMetricChanges> {
+  const res: TotalCoinMetricChanges = {
+    totalSupplyChange: 0,
+    totalStakeChange: 0,
+  }
+  try {
+    const previousSupplyTotal = totalSupply - latestNewSupply || 0
+    const previousStakeTotal = totalStake - latestNewStake || 0
+
+    const totalSupplyChange =
+      previousSupplyTotal === 0
+        ? latestNewSupply > 0
+          ? 100
+          : latestNewSupply < 0
+          ? -100
+          : 0
+        : (latestNewSupply / previousSupplyTotal) * 100
+
+    const totalStakeChange =
+      previousStakeTotal === 0
+        ? latestNewStake > 0
+          ? 100
+          : latestNewStake < 0
+          ? -100
+          : 0
+        : (latestNewStake / previousStakeTotal) * 100
+
+    return {
+      totalSupplyChange,
+      totalStakeChange,
+    }
+  } catch (e) {
+    console.log('Error calculating total coin change metrics:', e)
+    return res
+  }
+}
+
+/**
+ * Calculates the day-over-day percentage change for metrics by comparing the latest value
+ * with the previous day's value. This is useful for daily counts or rates.
+ */
+async function calculateCoinMetricChange(dailyCoinStats: DailyCoinStats[]): Promise<DailyCoinMetricChanges> {
+  const res: DailyCoinMetricChanges = {
+    transactionFeeChange: 0,
+    newBurntFeeChange: 0,
+    newNetworkExpenseChange: 0,
+    newSupplyChange: 0,
+  }
+  try {
+    const [current, previous] = dailyCoinStats
+    const calculatePercentageChange = (currentValue: number, previousValue: number): number => {
+      if (previousValue === 0) {
+        if (currentValue > 0) return 100
+        if (currentValue < 0) return -100
+        return 0
+      }
+      return ((currentValue - previousValue) / Math.abs(previousValue)) * 100
+    }
+
+    // Calculate current day's derived values using helper functions
+    const currentNewBurntFee = calculateNewBurntFee(
+      current.transactionFee,
+      current.networkFee,
+      current.penaltyAmount
+    )
+    const currentNewNetworkExpense = calculateNewNetworkExpense(
+      current.mintedCoin,
+      current.rewardAmountRealized
+    )
+    const currentNewSupply = calculateNewSupply(
+      current.mintedCoin,
+      current.rewardAmountRealized,
+      current.transactionFee,
+      current.networkFee,
+      current.penaltyAmount
+    )
+
+    // Calculate previous day's derived values using helper functions
+    const previousNewBurntFee = calculateNewBurntFee(
+      previous.transactionFee,
+      previous.networkFee,
+      previous.penaltyAmount
+    )
+    const previousNewNetworkExpense = calculateNewNetworkExpense(
+      previous.mintedCoin,
+      previous.rewardAmountRealized
+    )
+    const previousNewSupply = calculateNewSupply(
+      previous.mintedCoin,
+      previous.rewardAmountRealized,
+      previous.transactionFee,
+      previous.networkFee,
+      previous.penaltyAmount
+    )
+
+    const transactionFeeChange = calculatePercentageChange(
+      current.transactionFee ?? 0,
+      previous.transactionFee ?? 0
+    )
+    const newBurntFeeChange = calculatePercentageChange(currentNewBurntFee ?? 0, previousNewBurntFee ?? 0)
+    const newNetworkExpenseChange = calculatePercentageChange(
+      currentNewNetworkExpense ?? 0,
+      previousNewNetworkExpense ?? 0
+    )
+    const newSupplyChange = calculatePercentageChange(currentNewSupply ?? 0, previousNewSupply ?? 0)
+
+    return {
+      transactionFeeChange,
+      newBurntFeeChange,
+      newNetworkExpenseChange,
+      newSupplyChange,
+    }
+  } catch (e) {
+    console.log('Error calculating daily coin change metrics:', e)
+    return res
+  }
+}
+
+export async function queryAggregatedDailyCoinStats(): Promise<AggregatedDailyCoinStats | undefined> {
   try {
     const sql = `SELECT
-      IFNULL(sum(mintedCoin), 0) as mintedCoin,
-      IFNULL(sum(transactionFee), 0) as transactionFee,
-      IFNULL(sum(networkFee), 0) as networkFee,
-      IFNULL(sum(stakeAmount), 0) as stakeAmount,
-      IFNULL(sum(unStakeAmount), 0) as unStakeAmount,
-      IFNULL(sum(rewardAmountRealized), 0) as rewardAmountRealized,
-      IFNULL(sum(rewardAmountUnrealized), 0) as rewardAmountUnrealized,
-      IFNULL(sum(penaltyAmount), 0) as penaltyAmount
+      IFNULL(sum(mintedCoin), 0) as totalMintedCoin,
+      IFNULL(sum(transactionFee), 0) as totalTransactionFee,
+      IFNULL(sum(networkFee), 0) as totalNetworkFee,
+      IFNULL(sum(stakeAmount), 0) as totalStakeAmount,
+      IFNULL(sum(unStakeAmount), 0) as totalUnStakeAmount,
+      IFNULL(sum(rewardAmountRealized), 0) as totalRewardAmountRealized,
+      IFNULL(sum(rewardAmountUnrealized), 0) as totalRewardAmountUnrealized,
+      IFNULL(sum(penaltyAmount), 0) as totalPenaltyAmount
       FROM daily_coin_stats`
-    const dailyCoinStats: DailyCoinStats = await db.get(dailyCoinStatsDatabase, sql)
-    if (config.verbose) console.log('aggregated daily coin stats', dailyCoinStats)
-    return dailyCoinStats
+    const aggregatedCoinStats: AggregatedDailyCoinStats = await db.get(dailyCoinStatsDatabase, sql)
+    if (config.verbose) console.log('aggregated daily coin stats', aggregatedCoinStats)
+    return aggregatedCoinStats
   } catch (e) {
     console.log(e)
   }
@@ -170,4 +360,26 @@ export function calculateTotalStakeChange(
   penaltyAmount: number
 ): number {
   return stakeAmount - unStakeAmount - penaltyAmount
+}
+
+export function calculateNewBurntFee(
+  transactionFee: number,
+  networkFee: number,
+  penaltyAmount: number
+): number {
+  return transactionFee + networkFee + penaltyAmount
+}
+
+export function calculateNewNetworkExpense(mintedCoin: number, rewardAmountRealized: number): number {
+  return mintedCoin + rewardAmountRealized
+}
+
+export function calculateNewSupply(
+  mintedCoin: number,
+  rewardAmountRealized: number,
+  transactionFee: number,
+  networkFee: number,
+  penaltyAmount: number
+): number {
+  return mintedCoin + rewardAmountRealized - transactionFee - networkFee - penaltyAmount
 }

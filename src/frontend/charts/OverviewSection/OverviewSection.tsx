@@ -58,6 +58,12 @@ export const OverviewSection: React.FC = () => {
     newSupply,
     totalSupply,
     totalStake,
+    totalSupplyChange,
+    totalStakeChange,
+    transactionFeeChange,
+    newBurntFeeChange,
+    newNetworkExpenseChange,
+    newSupplyChange,
     stabilityFactorStr,
     stabilityFactorStrChange,
     transactionFeeUsdStr,
@@ -119,6 +125,7 @@ export const OverviewSection: React.FC = () => {
     {
       title: 'Total Transaction Fee (24H)',
       value: `$${transactionFee * parseFloat(stabilityFactorStr)}`,
+      ...formatPercentage(transactionFeeChange),
       route: '/charts/transactionfee',
     },
     // Avg tx fee would be total_tx_fee_24h / transactions_24h
@@ -137,6 +144,7 @@ export const OverviewSection: React.FC = () => {
     {
       title: 'Burnt Fees (24H)',
       value: `$${newBurntFee * parseFloat(stabilityFactorStr)}`,
+      ...formatPercentage(newBurntFeeChange),
       route: '/charts/dailylibburnt',
     },
     {
@@ -157,7 +165,12 @@ export const OverviewSection: React.FC = () => {
       ...formatPercentage(stakeRequiredUsdStrChange),
       route: '/charts/requiredstake',
     },
-    { title: 'Active Nodes', value: activeNodes, ...formatPercentage(activeNodesChange) },
+    {
+      title: 'Active Nodes',
+      value: activeNodes,
+      ...formatPercentage(activeNodesChange),
+      route: '/charts/activenodes',
+    },
     {
       title: 'LIB Price Set',
       value: `$${stabilityFactorStr}`,
@@ -169,6 +182,7 @@ export const OverviewSection: React.FC = () => {
       value: `${totalSupply.toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      ...formatPercentage(totalSupplyChange),
       route: '/charts/libsupplygrowth',
     },
     {
@@ -183,6 +197,7 @@ export const OverviewSection: React.FC = () => {
       value: `$${(totalStake * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      ...formatPercentage(totalStakeChange),
       route: '/charts/networkstake',
     },
     {
@@ -197,6 +212,7 @@ export const OverviewSection: React.FC = () => {
       value: `$${(newNetworkExpense * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      ...formatPercentage(newNetworkExpenseChange),
       route: '/charts/dailylibdistributed',
     },
     {
@@ -208,6 +224,7 @@ export const OverviewSection: React.FC = () => {
       value: `${newSupply.toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      ...formatPercentage(newSupplyChange),
       route: '/charts/libsupplygrowth',
     },
     {
