@@ -7,22 +7,19 @@ export interface BaseDailyAccountStats {
   dateStartTime: number
   newAccounts: number // new accounts created in the 24 hour period
   newUserAccounts: number // new user accounts created in the 24 hour period
-  activeAccounts: number // user accounts that make at least one transaction with txFee > 0
+  activeAccounts: number // user accounts that make at least one transaction with txFee > 0 in the 24 hour period
   // activeBalanceAccounts: number // user accounts with balance > 0
   // newActiveBalanceAccounts: number // user accounts that were involved in transactions in the last 24 hours and have latest balance > 0
 }
 
-export interface AccountStatsSummary {
+export interface DailyAccountStatsSummary extends Omit<BaseDailyAccountStats, 'dateStartTime'> {
   totalAccounts: number
-  newAccounts: number
-  totalUserAccounts: number
-  newUserAccounts: number
-  totalAccountsChange: number
-  newAccountsChange: number
-  totalUserAccountsChange: number
-  newUserAccountsChange: number
-  activeAccounts: number
-  activeAccountsChange: number
+  totalUserAccounts: number // cumulative user accounts created
+  newAccountsChange: number // percentage change in new accounts (day-to-day comparison)
+  newUserAccountsChange: number // percentage change in new user accounts (day-to-day comparison)
+  activeAccountsChange: number // percentage change in active accounts (day-to-day comparison)
+  totalAccountsChange: number // percentage change: today's new accounts / yesterday's cumulative total * 100
+  totalUserAccountsChange: number // percentage change: today's new user accounts / yesterday's cumulative total * 100
 }
 
 export type DailyAccountStats = BaseDailyAccountStats
@@ -98,7 +95,7 @@ export async function queryDailyAccountStatsBetween(
   }
 }
 
-export async function queryAccountStats(): Promise<AccountStatsSummary> {
+export async function queryDailyAccountStatsSummary(): Promise<DailyAccountStatsSummary | []> {
   try {
     const totalsSql = `
       SELECT
@@ -134,19 +131,7 @@ export async function queryAccountStats(): Promise<AccountStatsSummary> {
     }
   } catch (e) {
     console.log(e)
-    const emptyStats: AccountStatsSummary = {
-      totalAccounts: 0,
-      newAccounts: 0,
-      totalUserAccounts: 0,
-      newUserAccounts: 0,
-      totalAccountsChange: 0,
-      newAccountsChange: 0,
-      totalUserAccountsChange: 0,
-      newUserAccountsChange: 0,
-      activeAccounts: 0,
-      activeAccountsChange: 0,
-    }
-    return emptyStats
+    return []
   }
 }
 
@@ -154,7 +139,7 @@ export async function queryAccountStats(): Promise<AccountStatsSummary> {
  * Calculates the percentage change between the cumulative total of a metric on the most recent day
  * and the cumulative total up to the previous day. This is useful for "total" style metrics that grow over time.
  */
-async function calculateTotalMetricChange(fieldName: string): Promise<number> {
+async function calculateTotalMetricChange(fieldName: keyof DailyAccountStats): Promise<number> {
   try {
     const sql = `
       SELECT ${fieldName} as currentValue,
@@ -189,7 +174,7 @@ async function calculateTotalMetricChange(fieldName: string): Promise<number> {
  * Calculates the day-over-day percentage change for a metric by comparing the latest value
  * with the previous day's value. This is useful for daily counts or rates.
  */
-async function calculateMetricChange(fieldName: string): Promise<number> {
+async function calculateMetricChange(fieldName: keyof DailyAccountStats): Promise<number> {
   try {
     const latestTwoDaysSql = `SELECT ${fieldName} as value FROM daily_accounts ORDER BY dateStartTime DESC LIMIT 2`
     const results: { value: number }[] = await db.all(dailyAccountStatsDatabase, latestTwoDaysSql)

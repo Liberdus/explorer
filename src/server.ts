@@ -54,7 +54,7 @@ import { ValidatorStats } from './stats/validatorStats'
 import { TransactionStats, convertBaseTxStatsAsArray } from './stats/transactionStats'
 import { DailyTransactionStats } from './stats/dailyTransactionStats'
 import { DailyAccountStats } from './stats/dailyAccountStats'
-import { DailyCoinStats } from './stats/dailyCoinStats'
+import { DailyCoinStats, DailyCoinStatsWithSummary } from './stats/dailyCoinStats'
 
 if (config.env == envEnum.DEV) {
   //default debug mode
@@ -1270,7 +1270,7 @@ const start = async (): Promise<void> => {
         })
         return
       }
-      const stats = await DailyAccountStatsDB.queryAccountStats()
+      const stats = await DailyAccountStatsDB.queryDailyAccountStatsSummary()
       reply.send({
         success: true,
         ...stats,
@@ -1407,17 +1407,21 @@ const start = async (): Promise<void> => {
           aggregatedStats.penaltyAmount
         )
 
-      const totalStaked = DailyCoinStatsDB.calculateTotalStakeChange(
+      const totalStake = DailyCoinStatsDB.calculateTotalStakeChange(
         aggregatedStats.stakeAmount,
         aggregatedStats.unStakeAmount,
         aggregatedStats.penaltyAmount
       )
 
+      const stat: DailyCoinStatsWithSummary = {
+        ...dailyCoinStats[0],
+        totalSupply,
+        totalStake,
+      }
+
       reply.send({
         success: true,
-        dailyCoinStats,
-        totalSupply,
-        totalStaked,
+        stat,
       })
       return
     }
