@@ -27,7 +27,9 @@ export const DailyAvgTransactionFeeChart: React.FC = () => {
   const {
     seriesData,
     stats: { highest, lowest },
-  } = convertDailyNetworkStatsToSeriesData(dailyNetworkStats, networkResponseType)
+  } = convertDailyNetworkStatsToSeriesData(dailyNetworkStats, networkResponseType, {
+    dailyTransactionFee: true,
+  })
 
   // Tooltip formatter for average transaction fee
   const tooltipFormatter = (

@@ -538,7 +538,6 @@ export function convertDailyCoinStatsToSeriesData(
   dailyCoinStats: DailyCoinStats[] | number[][],
   coinResponseType = 'array',
   queryType: {
-    dailyPrice?: boolean
     dailyMarketCap?: boolean
     dailySupplyGrowth?: boolean
     dailyBurntSupply?: boolean
@@ -551,11 +550,9 @@ export function convertDailyCoinStatsToSeriesData(
   stats: {
     highest: { timestamp: number; value: number } | null
     lowest: { timestamp: number; value: number } | null
-    current: number | null
   }
 } {
   if (
-    !queryType.dailyPrice &&
     !queryType.dailyMarketCap &&
     !queryType.dailySupplyGrowth &&
     !queryType.dailyBurntSupply &&
@@ -568,10 +565,7 @@ export function convertDailyCoinStatsToSeriesData(
   const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
   let highest = { timestamp: 0, value: 0 }
   let lowest = { timestamp: 0, value: Infinity }
-  let current = 0
-  if (queryType.dailyPrice) {
-    seriesData[0].name = 'LIB Price (USD)'
-  } else if (queryType.dailyMarketCap) {
+  if (queryType.dailyMarketCap) {
     seriesData[0].name = 'Market Cap (USD)'
   } else if (queryType.dailySupplyGrowth) {
     seriesData[0].name = 'LIB Supply'
@@ -585,42 +579,15 @@ export function convertDailyCoinStatsToSeriesData(
     seriesData[0].name = 'Network Stake'
   }
   if (!dailyCoinStats || dailyCoinStats.length === 0) {
-    return { seriesData, stats: { highest, lowest, current } }
+    return { seriesData, stats: { highest, lowest } }
   }
 
   let cumulativeTotal = config.genesisLIBSupply
   let cumulativeTotalStake = 0
 
-  // Convert price data for chart
+  // Convert coin stats data for chart
   dailyCoinStats.forEach((stat) => {
-    if (queryType.dailyPrice) {
-      let timestamp: number
-      let priceUSD: number
-      if (coinResponseType === 'array') {
-        // Array format for daily stats: [dateStartTime, priceUSD, ...]
-        const coinStat = stat as number[]
-        timestamp = coinStat[0] // dateStartTime is already in milliseconds
-        priceUSD = coinStat[9]
-      } else {
-        const coinStat = stat as DailyCoinStatsWithPrice
-        timestamp = coinStat.dateStartTime
-        priceUSD = coinStat.stabilityFactor
-      }
-
-      if (priceUSD > highest.value) {
-        highest = { timestamp, value: priceUSD }
-      }
-      if (priceUSD < lowest.value && priceUSD > 0) {
-        lowest = { timestamp, value: priceUSD }
-      }
-
-      current = priceUSD
-
-      seriesData[0].data.push({
-        x: timestamp,
-        y: priceUSD,
-      })
-    } else if (queryType.dailyMarketCap) {
+    if (queryType.dailyMarketCap) {
       // Convert market cap data for chart
 
       let timestamp: number
@@ -876,7 +843,7 @@ export function convertDailyCoinStatsToSeriesData(
     }
   })
 
-  return { seriesData, stats: { highest, lowest, current } }
+  return { seriesData, stats: { highest, lowest } }
 }
 
 export function calculateTotalSupplyChange(
@@ -899,64 +866,102 @@ export function calculateTotalStakeChange(
 
 export function convertDailyNetworkStatsToSeriesData(
   dailyNetworkStats: DailyNetworkStats[] | number[][],
-  networkResponseType = 'array'
+  networkResponseType = 'array',
+  queryType: {
+    dailyPrice?: boolean
+    dailyTransactionFee?: boolean
+  }
 ): {
   seriesData: SeriesData[]
   stats: {
     highest: { timestamp: number; value: number } | null
     lowest: { timestamp: number; value: number } | null
+    current: number | null
   }
 } {
-  const seriesData: SeriesData[] = [
-    {
-      name: 'Avg Tx Fee (USD)',
-      data: [],
-      zIndex: 1,
-      tooltip: 'Average Transaction Fee in USD',
-      visible: true,
-    },
-  ]
+  if (!queryType.dailyPrice && !queryType.dailyTransactionFee) {
+    throw new Error('No query type selected for daily network stats')
+  }
+  const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
   let highest = { timestamp: 0, value: 0 }
   let lowest = { timestamp: 0, value: Infinity }
+  let current = 0
+
+  if (queryType.dailyPrice) {
+    seriesData[0].name = 'LIB Price (USD)'
+  } else if (queryType.dailyTransactionFee) {
+    seriesData[0].name = 'Avg Tx Fee (USD)'
+    seriesData[0].tooltip = 'Average Transaction Fee in USD'
+  }
 
   if (!dailyNetworkStats || dailyNetworkStats.length === 0) {
-    return { seriesData, stats: { highest, lowest } }
+    return { seriesData, stats: { highest, lowest, current } }
   }
 
   dailyNetworkStats.forEach((stat) => {
-    let timestamp: number
-    let transactionFeeUsd: number
-    let stabilityFactor: number
+    if (queryType.dailyPrice) {
+      let timestamp: number
+      let priceUSD: number
 
-    if (networkResponseType === 'array') {
-      // Array format for daily network stats: [dateStartTime, stabilityFactorStr, transactionFeeUsdStr, ...]
-      const networkStat = stat as number[]
-      timestamp = networkStat[0] // dateStartTime is already in milliseconds
-      stabilityFactor = parseFloat(networkStat[1] as any) || 0
-      transactionFeeUsd = parseFloat(networkStat[2] as any) || 0
-    } else {
-      const networkStat = stat as DailyNetworkStats
-      timestamp = networkStat.dateStartTime
-      stabilityFactor = parseFloat(networkStat.stabilityFactorStr) || 0
-      transactionFeeUsd = parseFloat(networkStat.transactionFeeUsdStr) || 0
-    }
+      if (networkResponseType === 'array') {
+        // Array format for daily network stats: [dateStartTime, stabilityFactorStr, transactionFeeUsdStr, ...]
+        const networkStat = stat as number[]
+        timestamp = networkStat[0] // dateStartTime is already in milliseconds
+        priceUSD = parseFloat(networkStat[1] as any) || 0
+      } else {
+        const networkStat = stat as DailyNetworkStats
+        timestamp = networkStat.dateStartTime
+        priceUSD = parseFloat(networkStat.stabilityFactorStr) || 0
+      }
 
-    if (transactionFeeUsd > highest.value) {
-      highest = { timestamp, value: transactionFeeUsd }
-    }
-    if (transactionFeeUsd < lowest.value && transactionFeeUsd > 0) {
-      lowest = { timestamp, value: transactionFeeUsd }
-    }
+      if (priceUSD > highest.value) {
+        highest = { timestamp, value: priceUSD }
+      }
+      if (priceUSD < lowest.value && priceUSD > 0) {
+        lowest = { timestamp, value: priceUSD }
+      }
 
-    // Add data point for Average Transaction Fee with stability factor for tooltip
-    seriesData[0].data.push({
-      x: timestamp,
-      y: transactionFeeUsd,
-      avgTxFeeChartData: {
-        stabilityFactor,
-      },
-    })
+      current = priceUSD
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: priceUSD,
+      })
+    } else if (queryType.dailyTransactionFee) {
+      let timestamp: number
+      let transactionFeeUsd: number
+      let stabilityFactor: number
+
+      if (networkResponseType === 'array') {
+        // Array format for daily network stats: [dateStartTime, stabilityFactorStr, transactionFeeUsdStr, ...]
+        const networkStat = stat as number[]
+        timestamp = networkStat[0] // dateStartTime is already in milliseconds
+        stabilityFactor = parseFloat(networkStat[1] as any) || 0
+        transactionFeeUsd = parseFloat(networkStat[2] as any) || 0
+      } else {
+        const networkStat = stat as DailyNetworkStats
+        timestamp = networkStat.dateStartTime
+        stabilityFactor = parseFloat(networkStat.stabilityFactorStr) || 0
+        transactionFeeUsd = parseFloat(networkStat.transactionFeeUsdStr) || 0
+      }
+
+      if (transactionFeeUsd > highest.value) {
+        highest = { timestamp, value: transactionFeeUsd }
+      }
+      if (transactionFeeUsd < lowest.value && transactionFeeUsd > 0) {
+        lowest = { timestamp, value: transactionFeeUsd }
+      }
+
+      // Add data point for Average Transaction Fee with stability factor for tooltip
+      seriesData[0].data.push({
+        x: timestamp,
+        y: transactionFeeUsd,
+        avgTxFeeChartData: {
+          stabilityFactor,
+        },
+      })
+    }
   })
 
-  return { seriesData, stats: { highest, lowest } }
+  return { seriesData, stats: { highest, lowest, current } }
 }
