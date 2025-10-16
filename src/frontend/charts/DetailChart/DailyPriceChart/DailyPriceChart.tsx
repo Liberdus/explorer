@@ -4,7 +4,7 @@ import { ContentLayout, DailyStatsChart } from '../../../components'
 
 import styles from './DailyPriceChart.module.scss'
 import { useStats } from '../../../api'
-import { convertDailyCoinStatsToSeriesData, DataPoint } from '../../../utils/transformChartData'
+import { convertDailyNetworkStatsToSeriesData } from '../../../utils/transformChartData'
 import { breadcrumbsList } from '../../../types/routes'
 
 export const DailyPriceChart: React.FC = () => {
@@ -13,17 +13,17 @@ export const DailyPriceChart: React.FC = () => {
 
   const breadcrumbs = [breadcrumbsList.chart]
 
-  const coinResponseType = 'array'
+  const networkResponseType = 'array'
 
-  const { dailyCoinStats, loading } = useStats({
-    coinResponseType,
-    allDailyCoinReport: true,
+  const { dailyNetworkStats, loading } = useStats({
+    networkResponseType,
+    allDailyNetworkReport: true,
   })
 
   const {
     seriesData,
     stats: { highest, lowest, current },
-  } = convertDailyCoinStatsToSeriesData(dailyCoinStats, coinResponseType, {
+  } = convertDailyNetworkStatsToSeriesData(dailyNetworkStats, networkResponseType, {
     dailyPrice: true,
   })
 
