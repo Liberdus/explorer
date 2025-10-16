@@ -19,6 +19,7 @@ export interface DataPoint {
   burntSupplyChartData?: BurntSupplyChartData
   accountChartData?: AccountChartData
   distributedSupplyChartData?: DistributedSupplyChartData
+  networkStakeChartData?: NetworkStakeChartData
 }
 
 export interface NewAddressChartData {
@@ -62,6 +63,12 @@ export interface BurntSupplyChartData {
 export interface DistributedSupplyChartData {
   mintedCoin: number
   rewardAmountRealized: number
+}
+
+export interface NetworkStakeChartData {
+  stakeAmount: number
+  unstakeAmount: number
+  penaltyAmount: number
 }
 
 export interface SeriesData {
@@ -537,6 +544,7 @@ export function convertDailyCoinStatsToSeriesData(
     dailyBurntSupply?: boolean
     dailyTransactionFee?: boolean
     dailyDistributedSupply?: boolean
+    dailyNetworkStake?: boolean
   }
 ): {
   seriesData: SeriesData[]
@@ -552,7 +560,8 @@ export function convertDailyCoinStatsToSeriesData(
     !queryType.dailySupplyGrowth &&
     !queryType.dailyBurntSupply &&
     !queryType.dailyTransactionFee &&
-    !queryType.dailyDistributedSupply
+    !queryType.dailyDistributedSupply &&
+    !queryType.dailyNetworkStake
   ) {
     throw new Error('No query type selected for daily coin stats')
   }
@@ -572,12 +581,15 @@ export function convertDailyCoinStatsToSeriesData(
     seriesData[0].name = 'Txn Fee (LIB)'
   } else if (queryType.dailyDistributedSupply) {
     seriesData[0].name = 'Daily LIB Distributed'
+  } else if (queryType.dailyNetworkStake) {
+    seriesData[0].name = 'Network Stake'
   }
   if (!dailyCoinStats || dailyCoinStats.length === 0) {
     return { seriesData, stats: { highest, lowest, current } }
   }
 
   let cumulativeTotal = config.genesisLIBSupply
+  let cumulativeTotalStake = 0
 
   // Convert price data for chart
   dailyCoinStats.forEach((stat) => {
@@ -817,6 +829,48 @@ export function convertDailyCoinStatsToSeriesData(
         distributedSupplyChartData: {
           mintedCoin,
           rewardAmountRealized,
+        },
+      })
+    } else if (queryType.dailyNetworkStake) {
+      // Convert network stake data for chart
+      let timestamp: number
+      let stakeAmount = 0
+      let unstakeAmount = 0
+      let penaltyAmount = 0
+      if (coinResponseType === 'array') {
+        const dailyCoinStat = stat as number[]
+        timestamp = dailyCoinStat[0]
+        stakeAmount = dailyCoinStat[4] || 0
+        unstakeAmount = dailyCoinStat[5] || 0
+        penaltyAmount = dailyCoinStat[8] || 0
+      } else {
+        const dailyCoinStat = stat as DailyCoinStats
+        timestamp = dailyCoinStat.dateStartTime
+        stakeAmount = dailyCoinStat.stakeAmount || 0
+        unstakeAmount = dailyCoinStat.unStakeAmount || 0
+        penaltyAmount = dailyCoinStat.penaltyAmount || 0
+      }
+
+      // Calculate total stake change for the day
+      const totalStakeChange = calculateTotalStakeChange(stakeAmount, unstakeAmount, penaltyAmount)
+
+      // Calculate cumulative total stake
+      cumulativeTotalStake = cumulativeTotalStake + totalStakeChange
+
+      if (cumulativeTotalStake > highest.value) {
+        highest = { timestamp, value: cumulativeTotalStake }
+      }
+      if (cumulativeTotalStake < lowest.value && cumulativeTotalStake > 0) {
+        lowest = { timestamp, value: cumulativeTotalStake }
+      }
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: cumulativeTotalStake,
+        networkStakeChartData: {
+          stakeAmount,
+          unstakeAmount,
+          penaltyAmount,
         },
       })
     }

@@ -101,6 +101,11 @@ export const BlockchainDataSection: React.FC = () => {
       chartSvgName: 'dailyBlockRewards',
       route: '/charts/dailylibdistributed',
     },
+    {
+      title: 'Daily Network Stake Chart',
+      chartSvgName: 'uncleCountRewards',
+      route: '/charts/networkstake',
+    },
   ]
 
   return (

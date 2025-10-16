@@ -158,6 +158,7 @@ export const OverviewSection: React.FC = () => {
       value: `$${(totalStaked * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      route: '/charts/networkstake',
     },
     {
       title: '$Network Rev (24H)',
