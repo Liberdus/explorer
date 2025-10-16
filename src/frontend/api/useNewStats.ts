@@ -4,37 +4,21 @@ import { fetcher } from './fetcher'
 
 import { PATHS } from './paths'
 import { BaseDailyNetworkStats } from '../../stats/dailyNetworkStats'
-import { DailyCoinStats } from '../../stats/dailyCoinStats'
-import { AccountStatsSummary } from '../../stats/dailyAccountStats'
+import { DailyCoinStatsWithSummary } from '../../stats/dailyCoinStats'
+import { DailyAccountStatsSummary } from '../../stats/dailyAccountStats'
 
-type StatsResult = {
-  totalAccounts: number
-  newAccounts: number // addresses created in the last 24 hours
-  totalUserAccounts: number // cumulative user accounts created
-  newUserAccounts: number // user accounts created in the last 24 hours
-  totalUserTxs: number
-  newUserTxs: number // transactions created in the last 24 hours
-  totalAccountsChange: number // percentage change: today's new addresses / yesterday's cumulative total * 100
-  newAccountsChange: number // percentage change in new addresses (day-to-day comparison)
-  totalUserAccountsChange: number // percentage change: today's new user accounts / yesterday's cumulative total * 100
-  newUserAccountsChange: number
-  totalUserTxsChange: number // percentage change in total transactions (7-day comparison)
-  newUserTxsChange: number // percentage change in new transactions (day-to-day comparison)
-  newTransactionFee: number // total transaction fee in the last 24 hours
-  newBurntFee: number // total burnt fee in the last 24 hours
-  newNetworkExpense: number // total network expense ( minted coin + realized node rewards )  in the last 24 hours
-  newSupply: number // total LIB supply created in the last 24 hours
-  totalSupply: number // total LIB supply
-  totalStaked: number // total staked amount
-  stabilityFactorStr: string // LIB Pric in USD
-  transactionFeeUsdStr: string // transaction fee in USD
-  nodeRewardAmountUsdStr: string // node reward amount in USD per hour
-  stakeRequiredUsdStr: string // stake required amount in USD
-  activeNodes: number // number of active nodes count in the last 24 hours
-  standbyNodes: number // number of standby nodes count in the last 24 hours
-  activeAccounts: number // user accounts that made fee paying transactions in the last 24 hours
-  activeAccountsChange: number // percentage change in active accounts (day-to-day comparison)
-}
+type StatsResult = DailyAccountStatsSummary &
+  DailyCoinStatsWithSummary &
+  BaseDailyNetworkStats & {
+    totalUserTxs: number
+    newUserTxs: number // transactions created in the last 24 hours
+    totalUserTxsChange: number // percentage change in total transactions (7-day comparison)
+    newUserTxsChange: number // percentage change in new transactions (day-to-day comparison)
+    newTransactionFee: number // total transaction fee in the last 24 hours
+    newBurntFee: number // total burnt fee in the last 24 hours
+    newNetworkExpense: number // total network expense ( minted coin + realized node rewards )  in the last 24 hours
+    newSupply: number // total LIB supply created in the last 24 hours
+  }
 
 export const useNewStats = (query: {
   fetchAccountStats?: boolean
@@ -61,7 +45,7 @@ export const useNewStats = (query: {
   }
 
   // get responses
-  const accountStatsResponse = useSWR<AccountStatsSummary>(accountStatsQuery, fetcher, swrOptions)
+  const accountStatsResponse = useSWR<DailyAccountStatsSummary>(accountStatsQuery, fetcher, swrOptions)
 
   const transactionStatsResponse = useSWR<{
     totalUserTxs: number
@@ -69,12 +53,8 @@ export const useNewStats = (query: {
     totalUserTxsChange: number
     newUserTxsChange: number
   }>(transactionStatsQuery, fetcher, swrOptions)
-  const coinStatsResponse = useSWR<{
-    success: boolean
-    dailyCoinStats: DailyCoinStats[]
-    totalSupply: number
-    totalStaked: number
-  }>(coinStatsQuery, fetcher, swrOptions)
+
+  const coinStatsResponse = useSWR<DailyCoinStatsWithSummary>(coinStatsQuery, fetcher, swrOptions)
 
   const networkStatsResponse = useSWR<BaseDailyNetworkStats>(networkStatsQuery, fetcher, swrOptions)
 
@@ -155,43 +135,34 @@ export const useNewStats = (query: {
   const newTransactionFee =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'dailyCoinStats' in coinStatsResponse.data &&
-    Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
-    coinStatsResponse.data.dailyCoinStats.length > 0
-      ? coinStatsResponse.data.dailyCoinStats[0].transactionFee
+    'transactionFee' in coinStatsResponse.data
+      ? coinStatsResponse.data.transactionFee
       : 0
   const newBurntFee =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'dailyCoinStats' in coinStatsResponse.data &&
-    Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
-    coinStatsResponse.data.dailyCoinStats.length > 0
-      ? coinStatsResponse.data.dailyCoinStats[0].transactionFee +
-        coinStatsResponse.data.dailyCoinStats[0].networkFee +
-        coinStatsResponse.data.dailyCoinStats[0].penaltyAmount
+    'transactionFee' in coinStatsResponse.data
+      ? coinStatsResponse.data.transactionFee +
+        coinStatsResponse.data.networkFee +
+        coinStatsResponse.data.penaltyAmount
       : 0
 
   const newNetworkExpense =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'dailyCoinStats' in coinStatsResponse.data &&
-    Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
-    coinStatsResponse.data.dailyCoinStats.length > 0
-      ? coinStatsResponse.data.dailyCoinStats[0].mintedCoin +
-        coinStatsResponse.data.dailyCoinStats[0].rewardAmountRealized
+    'mintedCoin' in coinStatsResponse.data
+      ? coinStatsResponse.data.mintedCoin + coinStatsResponse.data.rewardAmountRealized
       : 0
 
   const newSupply =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
-    'dailyCoinStats' in coinStatsResponse.data &&
-    Array.isArray(coinStatsResponse.data.dailyCoinStats) &&
-    coinStatsResponse.data.dailyCoinStats.length > 0
-      ? coinStatsResponse.data.dailyCoinStats[0].mintedCoin +
-        coinStatsResponse.data.dailyCoinStats[0].rewardAmountRealized -
-        coinStatsResponse.data.dailyCoinStats[0].transactionFee -
-        coinStatsResponse.data.dailyCoinStats[0].networkFee -
-        coinStatsResponse.data.dailyCoinStats[0].penaltyAmount
+    'mintedCoin' in coinStatsResponse.data
+      ? coinStatsResponse.data.mintedCoin +
+        coinStatsResponse.data.rewardAmountRealized -
+        coinStatsResponse.data.transactionFee -
+        coinStatsResponse.data.networkFee -
+        coinStatsResponse.data.penaltyAmount
       : 0
 
   const totalSupply =
@@ -201,11 +172,11 @@ export const useNewStats = (query: {
       ? coinStatsResponse.data.totalSupply
       : 0
 
-  const totalStaked =
+  const totalStake =
     typeof coinStatsResponse.data === 'object' &&
     coinStatsResponse.data != null &&
     'totalStaked' in coinStatsResponse.data
-      ? coinStatsResponse.data.totalStaked
+      ? coinStatsResponse.data.totalStake
       : 0
 
   const stabilityFactorStr =
@@ -282,7 +253,7 @@ export const useNewStats = (query: {
     newNetworkExpense,
     newSupply,
     totalSupply,
-    totalStaked,
+    totalStake,
     stabilityFactorStr,
     transactionFeeUsdStr,
     nodeRewardAmountUsdStr,

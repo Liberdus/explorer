@@ -15,7 +15,7 @@ export interface DailyCoinStats {
   penaltyAmount: number
 }
 
-export interface DailyCoinStatsWithSupply extends DailyCoinStats {
+export interface DailyCoinStatsWithSummary extends DailyCoinStats {
   totalSupply: number
   totalStake: number
 }
@@ -73,16 +73,7 @@ export async function queryLatestDailyCoinStats(count: number): Promise<DailyCoi
   }
 }
 
-export async function queryAggregatedDailyCoinStats(): Promise<{
-  transactionFee: number
-  networkFee: number
-  stakeAmount: number
-  unStakeAmount: number
-  penaltyAmount: number
-  rewardAmountRealized: number
-  rewardAmountUnrealized: number
-  mintedCoin: number
-}> {
+export async function queryAggregatedDailyCoinStats(): Promise<DailyCoinStats | undefined> {
   try {
     const sql = `SELECT
       IFNULL(sum(mintedCoin), 0) as mintedCoin,
@@ -94,30 +85,11 @@ export async function queryAggregatedDailyCoinStats(): Promise<{
       IFNULL(sum(rewardAmountUnrealized), 0) as rewardAmountUnrealized,
       IFNULL(sum(penaltyAmount), 0) as penaltyAmount
       FROM daily_coin_stats`
-    const dailyCoinStats: {
-      transactionFee: number
-      networkFee: number
-      stakeAmount: number
-      unStakeAmount: number
-      penaltyAmount: number
-      rewardAmountRealized: number
-      rewardAmountUnrealized: number
-      mintedCoin: number
-    } = await db.get(dailyCoinStatsDatabase, sql)
+    const dailyCoinStats: DailyCoinStats = await db.get(dailyCoinStatsDatabase, sql)
     if (config.verbose) console.log('aggregated daily coin stats', dailyCoinStats)
     return dailyCoinStats
   } catch (e) {
     console.log(e)
-    return {
-      transactionFee: 0,
-      networkFee: 0,
-      stakeAmount: 0,
-      unStakeAmount: 0,
-      penaltyAmount: 0,
-      rewardAmountRealized: 0,
-      rewardAmountUnrealized: 0,
-      mintedCoin: 0,
-    }
   }
 }
 
