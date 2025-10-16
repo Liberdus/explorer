@@ -20,6 +20,7 @@ export interface DataPoint {
   accountChartData?: AccountChartData
   distributedSupplyChartData?: DistributedSupplyChartData
   networkStakeChartData?: NetworkStakeChartData
+  activeNodesChartData?: ActiveNodesChartData
 }
 
 export interface NewAddressChartData {
@@ -69,6 +70,10 @@ export interface NetworkStakeChartData {
   stakeAmount: number
   unstakeAmount: number
   penaltyAmount: number
+}
+
+export interface ActiveNodesChartData {
+  standbyNodes: number
 }
 
 export interface SeriesData {
@@ -870,6 +875,10 @@ export function convertDailyNetworkStatsToSeriesData(
   queryType: {
     dailyPrice?: boolean
     dailyTransactionFee?: boolean
+    dailyTxFeeSet?: boolean
+    dailyNodeRewardRate?: boolean
+    dailyRequiredStake?: boolean
+    dailyActiveNodes?: boolean
   }
 ): {
   seriesData: SeriesData[]
@@ -879,7 +888,14 @@ export function convertDailyNetworkStatsToSeriesData(
     current: number | null
   }
 } {
-  if (!queryType.dailyPrice && !queryType.dailyTransactionFee) {
+  if (
+    !queryType.dailyPrice &&
+    !queryType.dailyTransactionFee &&
+    !queryType.dailyTxFeeSet &&
+    !queryType.dailyNodeRewardRate &&
+    !queryType.dailyRequiredStake &&
+    !queryType.dailyActiveNodes
+  ) {
     throw new Error('No query type selected for daily network stats')
   }
   const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
@@ -892,6 +908,14 @@ export function convertDailyNetworkStatsToSeriesData(
   } else if (queryType.dailyTransactionFee) {
     seriesData[0].name = 'Avg Tx Fee (USD)'
     seriesData[0].tooltip = 'Average Transaction Fee in USD'
+  } else if (queryType.dailyTxFeeSet) {
+    seriesData[0].name = 'Transaction Fee Set (USD)'
+  } else if (queryType.dailyNodeRewardRate) {
+    seriesData[0].name = 'Node Reward Rate (USD)'
+  } else if (queryType.dailyRequiredStake) {
+    seriesData[0].name = 'Required Stake (USD)'
+  } else if (queryType.dailyActiveNodes) {
+    seriesData[0].name = 'Active Nodes'
   }
 
   if (!dailyNetworkStats || dailyNetworkStats.length === 0) {
@@ -958,6 +982,124 @@ export function convertDailyNetworkStatsToSeriesData(
         y: transactionFeeUsd,
         avgTxFeeChartData: {
           stabilityFactor,
+        },
+      })
+    } else if (queryType.dailyTxFeeSet) {
+      let timestamp: number
+      let txFeeSetUsd: number
+
+      if (networkResponseType === 'array') {
+        // Array format: [dateStartTime, stabilityFactorStr, transactionFeeUsdStr, stakeRequiredUsdStr, ...]
+        const networkStat = stat as number[]
+        timestamp = networkStat[0]
+        txFeeSetUsd = parseFloat(networkStat[2] as any) || 0
+      } else {
+        const networkStat = stat as DailyNetworkStats
+        timestamp = networkStat.dateStartTime
+        txFeeSetUsd = parseFloat(networkStat.transactionFeeUsdStr) || 0
+      }
+
+      if (txFeeSetUsd > highest.value) {
+        highest = { timestamp, value: txFeeSetUsd }
+      }
+      if (txFeeSetUsd < lowest.value && txFeeSetUsd > 0) {
+        lowest = { timestamp, value: txFeeSetUsd }
+      }
+
+      current = txFeeSetUsd
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: txFeeSetUsd,
+      })
+    } else if (queryType.dailyNodeRewardRate) {
+      let timestamp: number
+      let nodeRewardRateUsd: number
+
+      if (networkResponseType === 'array') {
+        // Array format: [dateStartTime, stabilityFactorStr, transactionFeeUsdStr, stakeRequiredUsdStr, nodeRewardAmountUsdStr, ...]
+        const networkStat = stat as number[]
+        timestamp = networkStat[0]
+        nodeRewardRateUsd = parseFloat(networkStat[4] as any) || 0
+      } else {
+        const networkStat = stat as DailyNetworkStats
+        timestamp = networkStat.dateStartTime
+        nodeRewardRateUsd = parseFloat(networkStat.nodeRewardAmountUsdStr) || 0
+      }
+
+      if (nodeRewardRateUsd > highest.value) {
+        highest = { timestamp, value: nodeRewardRateUsd }
+      }
+      if (nodeRewardRateUsd < lowest.value && nodeRewardRateUsd > 0) {
+        lowest = { timestamp, value: nodeRewardRateUsd }
+      }
+
+      current = nodeRewardRateUsd
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: nodeRewardRateUsd,
+      })
+    } else if (queryType.dailyRequiredStake) {
+      let timestamp: number
+      let requiredStakeUsd: number
+
+      if (networkResponseType === 'array') {
+        // Array format: [dateStartTime, stabilityFactorStr, transactionFeeUsdStr, stakeRequiredUsdStr, ...]
+        const networkStat = stat as number[]
+        timestamp = networkStat[0]
+        requiredStakeUsd = parseFloat(networkStat[3] as any) || 0
+      } else {
+        const networkStat = stat as DailyNetworkStats
+        timestamp = networkStat.dateStartTime
+        requiredStakeUsd = parseFloat(networkStat.stakeRequiredUsdStr) || 0
+      }
+
+      if (requiredStakeUsd > highest.value) {
+        highest = { timestamp, value: requiredStakeUsd }
+      }
+      if (requiredStakeUsd < lowest.value && requiredStakeUsd > 0) {
+        lowest = { timestamp, value: requiredStakeUsd }
+      }
+
+      current = requiredStakeUsd
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: requiredStakeUsd,
+      })
+    } else if (queryType.dailyActiveNodes) {
+      let timestamp: number
+      let activeNodes: number
+      let standbyNodes: number
+
+      if (networkResponseType === 'array') {
+        // Array format: [dateStartTime, stabilityFactorStr, transactionFeeUsdStr, stakeRequiredUsdStr, nodeRewardAmountUsdStr, nodePenaltyUsdStr, defaultTollUsdStr, minTollUsdStr, activeNodes, standbyNodes]
+        const networkStat = stat as number[]
+        timestamp = networkStat[0]
+        activeNodes = networkStat[8] || 0
+        standbyNodes = networkStat[9] || 0
+      } else {
+        const networkStat = stat as DailyNetworkStats
+        timestamp = networkStat.dateStartTime
+        activeNodes = networkStat.activeNodes || 0
+        standbyNodes = networkStat.standbyNodes || 0
+      }
+
+      if (activeNodes > highest.value) {
+        highest = { timestamp, value: activeNodes }
+      }
+      if (activeNodes < lowest.value && activeNodes > 0) {
+        lowest = { timestamp, value: activeNodes }
+      }
+
+      current = activeNodes
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: activeNodes,
+        activeNodesChartData: {
+          standbyNodes,
         },
       })
     }
