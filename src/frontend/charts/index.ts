@@ -11,6 +11,10 @@ export {
   DailyTransactionFeeChart,
   DailyDistributedSupplyChart,
   DailyNetworkStakeChart,
+  DailyTxFeeSetChart,
+  DailyNodeRewardRateChart,
+  DailyRequiredStakeChart,
+  DailyActiveNodesChart,
 } from './DetailChart'
 export { OverviewSection } from './OverviewSection'
 export { BlockchainDataSection } from './BlockchainDataSection'

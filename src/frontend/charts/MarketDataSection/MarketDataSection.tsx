@@ -69,6 +69,13 @@ export const MarketDataSection: React.FC = () => {
     { title: 'LIB Market Capitalization Chart', chartSvgName: 'ethMarketCap', route: '/charts/marketcap' },
     { title: 'Total Supply & Market Cap Chart', chartSvgName: 'pieChart', route: '/charts/supply' },
     { title: 'LIB Supply Growth Chart', chartSvgName: 'ethSupplyGrowth', route: '/charts/libsupplygrowth' },
+    { title: 'Transaction Fee Set (USD) Chart', chartSvgName: 'avgTxnFee', route: '/charts/txfeeset' },
+    {
+      title: 'Node Reward Rate (USD) Chart',
+      chartSvgName: 'dailyBlockRewards',
+      route: '/charts/noderewardrate',
+    },
+    { title: 'Required Stake (USD) Chart', chartSvgName: 'blockCount', route: '/charts/requiredstake' },
   ]
 
   return (
