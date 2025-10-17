@@ -193,7 +193,7 @@ export const OverviewSection: React.FC = () => {
       route: '/charts/marketcap',
     },
     {
-      title: '$Total Staked',
+      title: 'Total Staked',
       value: `$${(totalStake * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
@@ -201,14 +201,15 @@ export const OverviewSection: React.FC = () => {
       route: '/charts/networkstake',
     },
     {
-      title: '$Network Rev (24H)',
+      title: 'Network Rev (24H)',
       value: `$${(newBurntFee * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      ...formatPercentage(newBurntFeeChange),
       route: '/charts/dailylibburnt',
     },
     {
-      title: '$Network Exp (24H)',
+      title: 'Network Exp (24H)',
       value: `$${(newNetworkExpense * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,

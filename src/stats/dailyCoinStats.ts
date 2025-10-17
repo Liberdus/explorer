@@ -1,4 +1,3 @@
-/* eslint-disable no-empty */
 import { config } from '../config'
 import * as db from '../storage/sqlite3storage'
 import { dailyCoinStatsDatabase } from '.'
@@ -15,7 +14,7 @@ export interface DailyCoinStats {
   penaltyAmount: number
 }
 
-export type DailyCoinStatsSummary = Omit<DailyCoinStats, 'dateStartTime'> &
+export type DailyCoinStatsSummary = DailyCoinStats &
   TotalCoinStats &
   DailyCoinDerivedMetrics &
   TotalCoinMetricChanges &
