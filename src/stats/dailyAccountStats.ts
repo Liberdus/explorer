@@ -1,4 +1,3 @@
-/* eslint-disable no-empty */
 import { config } from '../config'
 import * as db from '../storage/sqlite3storage'
 import { dailyAccountStatsDatabase } from '.'
