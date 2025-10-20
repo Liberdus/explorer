@@ -135,7 +135,6 @@ export const initializeDB = async (): Promise<void> => {
       afterStates JSON,
       beforeStates JSON,
       appReceiptData JSON,
-      executionShardKey TEXT NOT NULL,
       globalModification BOOLEAN NOT NULL
     )`
   )

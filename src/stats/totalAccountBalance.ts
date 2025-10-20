@@ -13,12 +13,26 @@ export interface TotalAccountBalance {
   accountsProcessed: number
 }
 
+const TOTAL_ACCOUNT_BALANCE_COLUMNS: readonly (keyof TotalAccountBalance)[] = [
+  'cycleNumber',
+  'timestamp',
+  'totalBalance',
+  'calculatedSupply',
+  'difference',
+  'differencePercentage',
+  'isWithinTolerance',
+  'accountsProcessed',
+] as const
+
 export async function insertTotalAccountBalance(totalAccountBalance: TotalAccountBalance): Promise<void> {
   try {
-    const fields = Object.keys(totalAccountBalance).join(', ')
-    const placeholders = Object.keys(totalAccountBalance).fill('?').join(', ')
-    const values = db.extractValues(totalAccountBalance)
-    const sql = 'INSERT OR REPLACE INTO total_account_balances (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${TOTAL_ACCOUNT_BALANCE_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${TOTAL_ACCOUNT_BALANCE_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `totalAccountBalance` object to match the columns
+    const values = TOTAL_ACCOUNT_BALANCE_COLUMNS.map((column) => totalAccountBalance[column])
+
+    const sql = `INSERT OR REPLACE INTO total_account_balances ${fields} VALUES ${placeholders}`
     await db.run(totalAccountBalanceDatabase, sql, values)
     if (config.verbose)
       console.log('Successfully inserted TotalAccountBalance', totalAccountBalance.cycleNumber)

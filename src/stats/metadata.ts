@@ -10,16 +10,24 @@ export interface Metadata {
   cycleNumber: number
 }
 
+const METADATA_COLUMNS: readonly (keyof Metadata)[] = [
+  'type',
+  'cycleNumber',
+] as const
+
 export function isMetadata(obj: Metadata): obj is Metadata {
   return obj.type && obj.cycleNumber ? true : false
 }
 
 export async function insertOrUpdateMetadata(metadata: Metadata): Promise<void> {
   try {
-    const fields = Object.keys(metadata).join(', ')
-    const placeholders = Object.keys(metadata).fill('?').join(', ')
-    const values = db.extractValues(metadata)
-    const sql = 'INSERT OR REPLACE INTO metadata (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${METADATA_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${METADATA_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `metadata` object to match the columns
+    const values = METADATA_COLUMNS.map((column) => metadata[column])
+
+    const sql = `INSERT OR REPLACE INTO metadata ${fields} VALUES ${placeholders}`
     await db.run(metadataDatabase, sql, values)
   } catch (e) {
     console.error(e)

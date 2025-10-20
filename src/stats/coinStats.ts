@@ -11,12 +11,24 @@ export interface CoinStats {
   networkCommission: number
 }
 
+const COIN_STATS_COLUMNS: readonly (keyof CoinStats)[] = [
+  'cycle',
+  'timestamp',
+  'totalSupplyChange',
+  'totalStakeChange',
+  'transactionFee',
+  'networkCommission',
+] as const
+
 export async function insertCoinStats(coinStats: CoinStats): Promise<void> {
   try {
-    const fields = Object.keys(coinStats).join(', ')
-    const placeholders = Object.keys(coinStats).fill('?').join(', ')
-    const values = db.extractValues(coinStats)
-    const sql = 'INSERT OR REPLACE INTO coin_stats (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${COIN_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${COIN_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `coinStats` object to match the columns
+    const values = COIN_STATS_COLUMNS.map((column) => coinStats[column])
+
+    const sql = `INSERT OR REPLACE INTO coin_stats ${fields} VALUES ${placeholders}`
     await db.run(coinStatsDatabase, sql, values)
     console.log('Successfully inserted coinStats', coinStats.cycle)
   } catch (e) {
@@ -26,13 +38,16 @@ export async function insertCoinStats(coinStats: CoinStats): Promise<void> {
 
 export async function bulkInsertCoinsStats(coinStats: CoinStats[]): Promise<void> {
   try {
-    const fields = Object.keys(coinStats[0]).join(', ')
-    const placeholders = Object.keys(coinStats[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(coinStats)
-    let sql = 'INSERT OR REPLACE INTO coin_stats (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < coinStats.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${COIN_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${COIN_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(coinStats.length).fill(placeholders).join(', ')
+
+    // Flatten the `coinStats` array into a single list of values
+    const values = coinStats.flatMap((stat) => COIN_STATS_COLUMNS.map((column) => stat[column]))
+
+    const sql = `INSERT OR REPLACE INTO coin_stats ${fields} VALUES ${allPlaceholders}`
     await db.run(coinStatsDatabase, sql, values)
     const addedCycles = coinStats.map((v) => v.cycle)
     console.log('Successfully inserted CoinStats', coinStats.length, 'for cycles', addedCycles)

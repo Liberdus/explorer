@@ -13,6 +13,15 @@ export interface AccountHistoryState {
   balance: number
 }
 
+const ACCOUNT_HISTORY_STATE_COLUMNS: readonly (keyof AccountHistoryState)[] = [
+  'accountId',
+  'beforeStateHash',
+  'afterStateHash',
+  'timestamp',
+  'receiptId',
+  'balance',
+] as const
+
 export interface BalanceChange {
   accountId: string
   before: number
@@ -21,10 +30,13 @@ export interface BalanceChange {
 
 export async function insertAccountHistoryState(accountHistoryState: AccountHistoryState): Promise<void> {
   try {
-    const fields = Object.keys(accountHistoryState).join(', ')
-    const placeholders = Object.keys(accountHistoryState).fill('?').join(', ')
-    const values = db.extractValues(accountHistoryState)
-    const sql = 'INSERT OR REPLACE INTO accountHistoryState (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${ACCOUNT_HISTORY_STATE_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${ACCOUNT_HISTORY_STATE_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `accountHistoryState` object to match the columns
+    const values = ACCOUNT_HISTORY_STATE_COLUMNS.map((column) => accountHistoryState[column])
+
+    const sql = `INSERT OR REPLACE INTO accountHistoryState ${fields} VALUES ${placeholders}`
     await db.run(accountHistoryStateDatabase, sql, values)
     if (config.verbose)
       console.log(
@@ -46,13 +58,18 @@ export async function bulkInsertAccountHistoryStates(
   accountHistoryStates: AccountHistoryState[]
 ): Promise<void> {
   try {
-    const fields = Object.keys(accountHistoryStates[0]).join(', ')
-    const placeholders = Object.keys(accountHistoryStates[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(accountHistoryStates)
-    let sql = 'INSERT OR REPLACE INTO accountHistoryState (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < accountHistoryStates.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${ACCOUNT_HISTORY_STATE_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${ACCOUNT_HISTORY_STATE_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(accountHistoryStates.length).fill(placeholders).join(', ')
+
+    // Flatten the `accountHistoryStates` array into a single list of values
+    const values = accountHistoryStates.flatMap((state) =>
+      ACCOUNT_HISTORY_STATE_COLUMNS.map((column) => state[column])
+    )
+
+    const sql = `INSERT OR REPLACE INTO accountHistoryState ${fields} VALUES ${allPlaceholders}`
     await db.run(accountHistoryStateDatabase, sql, values)
     console.log('Successfully bulk inserted AccountHistoryStates', accountHistoryStates.length)
   } catch (e) {

@@ -10,16 +10,31 @@ type DbCycle = Cycle & {
   cycleRecord: string
 }
 
+const CYCLE_COLUMNS: readonly (keyof Cycle)[] = [
+  'cycleMarker',
+  'counter',
+  'start',
+  'cycleRecord',
+] as const
+
 export function isCycle(obj: Cycle): obj is Cycle {
   return (obj as Cycle).cycleRecord !== undefined && (obj as Cycle).cycleMarker !== undefined
 }
 
 export async function insertCycle(cycle: Cycle): Promise<void> {
   try {
-    const fields = Object.keys(cycle).join(', ')
-    const placeholders = Object.keys(cycle).fill('?').join(', ')
-    const values = db.extractValues(cycle)
-    const sql = 'INSERT OR REPLACE INTO cycles (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${CYCLE_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${CYCLE_COLUMNS.map(() => '?').join(', ')})`
+
+    // Map the `cycle` object to match the columns
+    const values = CYCLE_COLUMNS.map((column) =>
+      typeof cycle[column] === 'object'
+        ? StringUtils.safeStringify(cycle[column]) // Serialize objects to JSON
+        : cycle[column]
+    )
+
+    const sql = `INSERT OR REPLACE INTO cycles ${fields} VALUES ${placeholders}`
     await db.run(cycleDatabase, sql, values)
     if (config.verbose)
       console.log('Successfully inserted Cycle', cycle.cycleRecord.counter, cycle.cycleMarker)
@@ -35,13 +50,22 @@ export async function insertCycle(cycle: Cycle): Promise<void> {
 
 export async function bulkInsertCycles(cycles: Cycle[]): Promise<void> {
   try {
-    const fields = Object.keys(cycles[0]).join(', ')
-    const placeholders = Object.keys(cycles[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(cycles)
-    let sql = 'INSERT OR REPLACE INTO cycles (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < cycles.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${CYCLE_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${CYCLE_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(cycles.length).fill(placeholders).join(', ')
+
+    // Flatten the `cycles` array into a single list of values
+    const values = cycles.flatMap((cycle) =>
+      CYCLE_COLUMNS.map((column) =>
+        typeof cycle[column] === 'object'
+          ? StringUtils.safeStringify(cycle[column]) // Serialize objects to JSON
+          : cycle[column]
+      )
+    )
+
+    const sql = `INSERT OR REPLACE INTO cycles ${fields} VALUES ${allPlaceholders}`
     await db.run(cycleDatabase, sql, values)
     console.log('Successfully bulk inserted Cycles', cycles.length)
   } catch (e) {

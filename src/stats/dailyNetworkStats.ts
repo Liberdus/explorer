@@ -31,12 +31,28 @@ export type DailyNetworkStats = BaseDailyNetworkStats
 
 export type DbDailyNetworkStats = BaseDailyNetworkStats
 
+const DAILY_NETWORK_STATS_COLUMNS: readonly (keyof DailyNetworkStats)[] = [
+  'dateStartTime',
+  'stabilityFactorStr',
+  'transactionFeeUsdStr',
+  'stakeRequiredUsdStr',
+  'nodeRewardAmountUsdStr',
+  'nodePenaltyUsdStr',
+  'defaultTollUsdStr',
+  'minTollUsdStr',
+  'activeNodes',
+  'standbyNodes',
+] as const
+
 export async function insertDailyNetworkStats(dailyNetworkStats: DbDailyNetworkStats): Promise<void> {
   try {
-    const fields = Object.keys(dailyNetworkStats).join(', ')
-    const placeholders = Object.keys(dailyNetworkStats).fill('?').join(', ')
-    const values = db.extractValues(dailyNetworkStats)
-    const sql = 'INSERT OR REPLACE INTO daily_network (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${DAILY_NETWORK_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${DAILY_NETWORK_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `dailyNetworkStats` object to match the columns
+    const values = DAILY_NETWORK_STATS_COLUMNS.map((column) => dailyNetworkStats[column])
+
+    const sql = `INSERT OR REPLACE INTO daily_network ${fields} VALUES ${placeholders}`
     await db.run(dailyNetworkStatsDatabase, sql, values)
     console.log('Successfully inserted DailyNetworkStats', dailyNetworkStats.dateStartTime)
   } catch (e) {
@@ -50,13 +66,18 @@ export async function insertDailyNetworkStats(dailyNetworkStats: DbDailyNetworkS
 
 export async function bulkInsertNetworkStats(dailyNetworkStats: DbDailyNetworkStats[]): Promise<void> {
   try {
-    const fields = Object.keys(dailyNetworkStats[0]).join(', ')
-    const placeholders = Object.keys(dailyNetworkStats[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(dailyNetworkStats)
-    let sql = 'INSERT OR REPLACE INTO daily_network (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < dailyNetworkStats.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${DAILY_NETWORK_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${DAILY_NETWORK_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(dailyNetworkStats.length).fill(placeholders).join(', ')
+
+    // Flatten the `dailyNetworkStats` array into a single list of values
+    const values = dailyNetworkStats.flatMap((stat) =>
+      DAILY_NETWORK_STATS_COLUMNS.map((column) => stat[column])
+    )
+
+    const sql = `INSERT OR REPLACE INTO daily_network ${fields} VALUES ${allPlaceholders}`
     await db.run(dailyNetworkStatsDatabase, sql, values)
     const addedStats = dailyNetworkStats.map((v) => v)
     console.log(

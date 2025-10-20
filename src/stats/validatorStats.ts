@@ -13,6 +13,17 @@ export interface ValidatorStats {
   timestamp: number
 }
 
+const VALIDATOR_STATS_COLUMNS: readonly (keyof ValidatorStats)[] = [
+  'cycle',
+  'active',
+  'activated',
+  'syncing',
+  'joined',
+  'removed',
+  'apoped',
+  'timestamp',
+] as const
+
 export function isValidatorStats(obj: ValidatorStats): obj is ValidatorStats {
   return obj.cycle &&
     obj.active &&
@@ -28,10 +39,13 @@ export function isValidatorStats(obj: ValidatorStats): obj is ValidatorStats {
 
 export async function insertValidatorStats(validator: ValidatorStats): Promise<void> {
   try {
-    const fields = Object.keys(validator).join(', ')
-    const placeholders = Object.keys(validator).fill('?').join(', ')
-    const values = db.extractValues(validator)
-    const sql = 'INSERT OR REPLACE INTO validators (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${VALIDATOR_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${VALIDATOR_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `validator` object to match the columns
+    const values = VALIDATOR_STATS_COLUMNS.map((column) => validator[column])
+
+    const sql = `INSERT OR REPLACE INTO validators ${fields} VALUES ${placeholders}`
     await db.run(validatorStatsDatabase, sql, values)
     console.log('Successfully inserted ValidatorStats', validator.cycle)
   } catch (e) {
@@ -42,13 +56,18 @@ export async function insertValidatorStats(validator: ValidatorStats): Promise<v
 
 export async function bulkInsertValidatorsStats(validators: ValidatorStats[]): Promise<void> {
   try {
-    const fields = Object.keys(validators[0]).join(', ')
-    const placeholders = Object.keys(validators[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(validators)
-    let sql = 'INSERT OR REPLACE INTO validators (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < validators.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${VALIDATOR_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${VALIDATOR_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(validators.length).fill(placeholders).join(', ')
+
+    // Flatten the `validators` array into a single list of values
+    const values = validators.flatMap((validator) =>
+      VALIDATOR_STATS_COLUMNS.map((column) => validator[column])
+    )
+
+    const sql = `INSERT OR REPLACE INTO validators ${fields} VALUES ${allPlaceholders}`
     await db.run(validatorStatsDatabase, sql, values)
     const addedCycles = validators.map((v) => v.cycle)
     console.log('Successfully bulk inserted ValidatorStats', validators.length, 'for cycles', addedCycles)

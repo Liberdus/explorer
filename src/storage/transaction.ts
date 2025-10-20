@@ -9,12 +9,32 @@ type DbTransaction = Transaction & {
   originalTxData: string
 }
 
+const TRANSACTION_COLUMNS: readonly (keyof Transaction)[] = [
+  'txId',
+  'timestamp',
+  'cycleNumber',
+  'transactionType',
+  'txFrom',
+  'txTo',
+  'txFee',
+  'data',
+  'originalTxData',
+] as const
+
 export async function insertTransaction(transaction: Transaction): Promise<void> {
   try {
-    const fields = Object.keys(transaction).join(', ')
-    const placeholders = Object.keys(transaction).fill('?').join(', ')
-    const values = db.extractValues(transaction)
-    const sql = 'INSERT OR REPLACE INTO transactions (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${TRANSACTION_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${TRANSACTION_COLUMNS.map(() => '?').join(', ')})`
+
+    // Map the `transaction` object to match the columns
+    const values = TRANSACTION_COLUMNS.map((column) =>
+      typeof transaction[column] === 'object'
+        ? StringUtils.safeStringify(transaction[column]) // Serialize objects to JSON
+        : transaction[column]
+    )
+
+    const sql = `INSERT OR REPLACE INTO transactions ${fields} VALUES ${placeholders}`
     await db.run(transactionDatabase, sql, values)
     if (config.verbose) console.log('Successfully inserted Transaction', transaction.txId)
   } catch (e) {
@@ -25,13 +45,22 @@ export async function insertTransaction(transaction: Transaction): Promise<void>
 
 export async function bulkInsertTransactions(transactions: Transaction[]): Promise<void> {
   try {
-    const fields = Object.keys(transactions[0]).join(', ')
-    const placeholders = Object.keys(transactions[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(transactions)
-    let sql = 'INSERT OR REPLACE INTO transactions (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < transactions.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${TRANSACTION_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${TRANSACTION_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(transactions.length).fill(placeholders).join(', ')
+
+    // Flatten the `transactions` array into a single list of values
+    const values = transactions.flatMap((transaction) =>
+      TRANSACTION_COLUMNS.map((column) =>
+        typeof transaction[column] === 'object'
+          ? StringUtils.safeStringify(transaction[column]) // Serialize objects to JSON
+          : transaction[column]
+      )
+    )
+
+    const sql = `INSERT OR REPLACE INTO transactions ${fields} VALUES ${allPlaceholders}`
     await db.run(transactionDatabase, sql, values)
     console.log('Successfully bulk inserted transactions', transactions.length)
   } catch (e) {

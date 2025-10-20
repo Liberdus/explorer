@@ -8,14 +8,32 @@ type DbOriginalTxData = OriginalTxData & {
   originalTxData: string
 }
 
+const ORIGINAL_TX_DATA_COLUMNS: readonly (keyof OriginalTxData)[] = [
+  'txId',
+  'timestamp',
+  'cycle',
+  'originalTxData',
+  'transactionType',
+  'txFrom',
+  'txTo',
+] as const
+
 export const originalTxsMap: Map<string, number> = new Map()
 
 export async function insertOriginalTxData(originalTxData: OriginalTxData): Promise<void> {
   try {
-    const fields = Object.keys(originalTxData).join(', ')
-    const placeholders = Object.keys(originalTxData).fill('?').join(', ')
-    const values = db.extractValues(originalTxData)
-    const sql = `INSERT OR REPLACE INTO originalTxsData (` + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${ORIGINAL_TX_DATA_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${ORIGINAL_TX_DATA_COLUMNS.map(() => '?').join(', ')})`
+
+    // Map the `originalTxData` object to match the columns
+    const values = ORIGINAL_TX_DATA_COLUMNS.map((column) =>
+      typeof originalTxData[column] === 'object'
+        ? StringUtils.safeStringify(originalTxData[column]) // Serialize objects to JSON
+        : originalTxData[column]
+    )
+
+    const sql = `INSERT OR REPLACE INTO originalTxsData ${fields} VALUES ${placeholders}`
     await db.run(originalTxDataDatabase, sql, values)
     if (config.verbose) console.log(`Successfully inserted OriginalTxData`, originalTxData.txId)
   } catch (e) {
@@ -26,13 +44,22 @@ export async function insertOriginalTxData(originalTxData: OriginalTxData): Prom
 
 export async function bulkInsertOriginalTxsData(originalTxsData: OriginalTxData[]): Promise<void> {
   try {
-    const fields = Object.keys(originalTxsData[0]).join(', ')
-    const placeholders = Object.keys(originalTxsData[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(originalTxsData)
-    let sql = `INSERT OR REPLACE INTO originalTxsData (` + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < originalTxsData.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${ORIGINAL_TX_DATA_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${ORIGINAL_TX_DATA_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(originalTxsData.length).fill(placeholders).join(', ')
+
+    // Flatten the `originalTxsData` array into a single list of values
+    const values = originalTxsData.flatMap((originalTxData) =>
+      ORIGINAL_TX_DATA_COLUMNS.map((column) =>
+        typeof originalTxData[column] === 'object'
+          ? StringUtils.safeStringify(originalTxData[column]) // Serialize objects to JSON
+          : originalTxData[column]
+      )
+    )
+
+    const sql = `INSERT OR REPLACE INTO originalTxsData ${fields} VALUES ${allPlaceholders}`
     await db.run(originalTxDataDatabase, sql, values)
     console.log(`Successfully bulk inserted OriginalTxsData`, originalTxsData.length)
   } catch (e) {

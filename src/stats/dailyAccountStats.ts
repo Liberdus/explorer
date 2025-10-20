@@ -36,12 +36,22 @@ export type DailyAccountStats = BaseDailyAccountStats
 
 export type DbDailyAccountStats = BaseDailyAccountStats
 
+const DAILY_ACCOUNT_STATS_COLUMNS: readonly (keyof BaseDailyAccountStats)[] = [
+  'dateStartTime',
+  'newAccounts',
+  'newUserAccounts',
+  'activeAccounts',
+] as const
+
 export async function insertDailyAccountStats(dailyAccountStats: DbDailyAccountStats): Promise<void> {
   try {
-    const fields = Object.keys(dailyAccountStats).join(', ')
-    const placeholders = Object.keys(dailyAccountStats).fill('?').join(', ')
-    const values = db.extractValues(dailyAccountStats)
-    const sql = 'INSERT OR REPLACE INTO daily_accounts (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${DAILY_ACCOUNT_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${DAILY_ACCOUNT_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `dailyAccountStats` object to match the columns
+    const values = DAILY_ACCOUNT_STATS_COLUMNS.map((column) => dailyAccountStats[column])
+
+    const sql = `INSERT OR REPLACE INTO daily_accounts ${fields} VALUES ${placeholders}`
     await db.run(dailyAccountStatsDatabase, sql, values)
     console.log('Successfully inserted DailyAccountStats', dailyAccountStats.dateStartTime)
   } catch (e) {
@@ -55,13 +65,18 @@ export async function insertDailyAccountStats(dailyAccountStats: DbDailyAccountS
 
 export async function bulkInsertAccountsStats(dailyAccountsStats: DbDailyAccountStats[]): Promise<void> {
   try {
-    const fields = Object.keys(dailyAccountsStats[0]).join(', ')
-    const placeholders = Object.keys(dailyAccountsStats[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(dailyAccountsStats)
-    let sql = 'INSERT OR REPLACE INTO daily_accounts (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < dailyAccountsStats.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${DAILY_ACCOUNT_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${DAILY_ACCOUNT_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(dailyAccountsStats.length).fill(placeholders).join(', ')
+
+    // Flatten the `dailyAccountsStats` array into a single list of values
+    const values = dailyAccountsStats.flatMap((stat) =>
+      DAILY_ACCOUNT_STATS_COLUMNS.map((column) => stat[column])
+    )
+
+    const sql = `INSERT OR REPLACE INTO daily_accounts ${fields} VALUES ${allPlaceholders}`
     await db.run(dailyAccountStatsDatabase, sql, values)
     const addedCycles = dailyAccountsStats.map((v) => v)
     console.log(
