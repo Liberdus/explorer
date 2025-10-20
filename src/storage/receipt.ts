@@ -87,13 +87,30 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
   let combineTransactions: Transaction[] = []
   let accountHistoryStateList: AccountHistoryStateDB.AccountHistoryState[] = []
   for (const receiptObj of receipts) {
-    const { afterStates, cycle, appReceiptData, tx, timestamp, signedReceipt } = receiptObj
+    const {
+      afterStates,
+      cycle,
+      appReceiptData,
+      tx,
+      timestamp,
+      signedReceipt,
+      applyTimestamp,
+      globalModification,
+    } = receiptObj
     if (receiptsMap.has(tx.txId) && receiptsMap.get(tx.txId) === timestamp) {
       continue
+    }
+
+    let calculatedApplyTimestamp = applyTimestamp
+    if (!applyTimestamp) {
+      const sortedVoteOffsets = globalModification ? [] : [...signedReceipt.voteOffsets].sort((a, b) => a - b)
+      const medianOffset = sortedVoteOffsets[Math.floor(sortedVoteOffsets.length / 2)] ?? 0
+      calculatedApplyTimestamp = tx.timestamp + medianOffset * 1000
     }
     const modifiedReceiptObj = {
       ...receiptObj,
       beforeStates: config.storeReceiptBeforeStates ? receiptObj.beforeStates : [],
+      applyTimestamp: applyTimestamp ?? calculatedApplyTimestamp,
     }
     if (saveOnlyNewData) {
       const receiptExist = await queryReceiptByReceiptId(tx.txId)
