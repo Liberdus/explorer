@@ -6,42 +6,27 @@ import { breadcrumbsList } from '../../types'
 
 import styles from './ChartsPage.module.scss'
 import { MarketDataSection } from '../MarketDataSection'
+import { NetworkDataSection } from '../NetworkDataSection'
 
-export type ChartsSectionType =
-  | 'overview'
-  | 'market'
-  | 'blockchain-data'
-  | 'network-stats'
-  | 'transaction-stats'
-  | 'transaction-charts'
-  | 'validator-charts'
-  | 'network-charts'
+export type ChartsSectionType = 'overview' | 'market-data' | 'blockchain-data' | 'network-data'
 
 export const ChartsPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<ChartsSectionType>('overview')
   const [isScrolling, setIsScrolling] = useState(false)
 
   const overviewRef = useRef<HTMLDivElement>(null)
-  const marketRef = useRef<HTMLDivElement>(null)
+  const marketDataRef = useRef<HTMLDivElement>(null)
   const blockchainDataRef = useRef<HTMLDivElement>(null)
-  const networkStatsRef = useRef<HTMLDivElement>(null)
-  const transactionStatsRef = useRef<HTMLDivElement>(null)
-  const transactionChartsRef = useRef<HTMLDivElement>(null)
-  const validatorChartsRef = useRef<HTMLDivElement>(null)
-  const networkChartsRef = useRef<HTMLDivElement>(null)
+  const networkDataRef = useRef<HTMLDivElement>(null)
 
   const breadcrumbs = [breadcrumbsList.dashboard]
 
   const scrollToSection = (sectionId: ChartsSectionType): void => {
     const refs = {
       overview: overviewRef,
-      market: marketRef,
+      'market-data': marketDataRef,
       'blockchain-data': blockchainDataRef,
-      'network-stats': networkStatsRef,
-      'transaction-stats': transactionStatsRef,
-      'transaction-charts': transactionChartsRef,
-      'validator-charts': validatorChartsRef,
-      'network-charts': networkChartsRef,
+      'network-data': networkDataRef,
     }
 
     const ref = refs[sectionId] as React.RefObject<HTMLDivElement> | undefined
@@ -78,13 +63,9 @@ export const ChartsPage: React.FC = () => {
 
       const sections = [
         { id: 'overview' as ChartsSectionType, ref: overviewRef },
-        { id: 'market' as ChartsSectionType, ref: marketRef },
+        { id: 'market-data' as ChartsSectionType, ref: marketDataRef },
         { id: 'blockchain-data' as ChartsSectionType, ref: blockchainDataRef },
-        { id: 'network-stats' as ChartsSectionType, ref: networkStatsRef },
-        { id: 'transaction-stats' as ChartsSectionType, ref: transactionStatsRef },
-        { id: 'transaction-charts' as ChartsSectionType, ref: transactionChartsRef },
-        { id: 'validator-charts' as ChartsSectionType, ref: validatorChartsRef },
-        { id: 'network-charts' as ChartsSectionType, ref: networkChartsRef },
+        { id: 'network-data' as ChartsSectionType, ref: networkDataRef },
       ]
 
       const scrollPosition = window.scrollY + 150 // Changed to window.scrollY
@@ -137,12 +118,12 @@ export const ChartsPage: React.FC = () => {
             </div>
             <div className={styles.sidebarItem}>
               <button
-                className={`${styles.sidebarButton} ${activeSection === 'market' ? styles.active : ''}`}
-                onClick={() => handleSectionChange('market')}
+                className={`${styles.sidebarButton} ${activeSection === 'market-data' ? styles.active : ''}`}
+                onClick={() => handleSectionChange('market-data')}
                 style={{
-                  backgroundColor: activeSection === 'market' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'market' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'market' ? '600' : '500',
+                  backgroundColor: activeSection === 'market-data' ? '#e7f3ff' : 'transparent',
+                  color: activeSection === 'market-data' ? '#0066cc' : '#6c757d',
+                  fontWeight: activeSection === 'market-data' ? '600' : '500',
                 }}
               >
                 Market Data
@@ -165,77 +146,15 @@ export const ChartsPage: React.FC = () => {
             </div>
             <div className={styles.sidebarItem}>
               <button
-                className={`${styles.sidebarButton} ${
-                  activeSection === 'network-stats' ? styles.active : ''
-                }`}
-                onClick={() => handleSectionChange('network-stats')}
+                className={`${styles.sidebarButton} ${activeSection === 'network-data' ? styles.active : ''}`}
+                onClick={() => handleSectionChange('network-data')}
                 style={{
-                  backgroundColor: activeSection === 'network-stats' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'network-stats' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'network-stats' ? '600' : '500',
+                  backgroundColor: activeSection === 'network-data' ? '#e7f3ff' : 'transparent',
+                  color: activeSection === 'network-data' ? '#0066cc' : '#6c757d',
+                  fontWeight: activeSection === 'network-data' ? '600' : '500',
                 }}
               >
-                Network Statistics
-              </button>
-            </div>
-            <div className={styles.sidebarItem}>
-              <button
-                className={`${styles.sidebarButton} ${
-                  activeSection === 'transaction-stats' ? styles.active : ''
-                }`}
-                onClick={() => handleSectionChange('transaction-stats')}
-                style={{
-                  backgroundColor: activeSection === 'transaction-stats' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'transaction-stats' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'transaction-stats' ? '600' : '500',
-                }}
-              >
-                Transaction Overview
-              </button>
-            </div>
-            <div className={styles.sidebarItem}>
-              <button
-                className={`${styles.sidebarButton} ${
-                  activeSection === 'transaction-charts' ? styles.active : ''
-                }`}
-                onClick={() => handleSectionChange('transaction-charts')}
-                style={{
-                  backgroundColor: activeSection === 'transaction-charts' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'transaction-charts' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'transaction-charts' ? '600' : '500',
-                }}
-              >
-                Transaction Charts
-              </button>
-            </div>
-            <div className={styles.sidebarItem}>
-              <button
-                className={`${styles.sidebarButton} ${
-                  activeSection === 'validator-charts' ? styles.active : ''
-                }`}
-                onClick={() => handleSectionChange('validator-charts')}
-                style={{
-                  backgroundColor: activeSection === 'validator-charts' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'validator-charts' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'validator-charts' ? '600' : '500',
-                }}
-              >
-                Validator Charts
-              </button>
-            </div>
-            <div className={styles.sidebarItem}>
-              <button
-                className={`${styles.sidebarButton} ${
-                  activeSection === 'network-charts' ? styles.active : ''
-                }`}
-                onClick={() => handleSectionChange('network-charts')}
-                style={{
-                  backgroundColor: activeSection === 'network-charts' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'network-charts' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'network-charts' ? '600' : '500',
-                }}
-              >
-                Network Charts
+                Network Data
               </button>
             </div>
           </div>
@@ -246,7 +165,7 @@ export const ChartsPage: React.FC = () => {
               <OverviewSection />
             </div>
 
-            <div ref={marketRef} className={styles.section} id="market">
+            <div ref={marketDataRef} className={styles.section} id="market-data">
               <MarketDataSection />
             </div>
 
@@ -254,39 +173,8 @@ export const ChartsPage: React.FC = () => {
               <BlockchainDataSection />
             </div>
 
-            <div ref={networkStatsRef} className={styles.section} id="network-stats">
-              <div className={styles.sectionPlaceholder}>
-                <h3>Network Statistics</h3>
-                <p>Network statistics section will be added here</p>
-              </div>
-            </div>
-
-            <div ref={transactionStatsRef} className={styles.section} id="transaction-stats">
-              <div className={styles.sectionPlaceholder}>
-                <h3>Transaction Overview</h3>
-                <p>Transaction statistics section will be added here</p>
-              </div>
-            </div>
-
-            <div ref={transactionChartsRef} className={styles.section} id="transaction-charts">
-              <div className={styles.sectionPlaceholder}>
-                <h3>Transaction Charts</h3>
-                <p>Transaction charts section will be added here</p>
-              </div>
-            </div>
-
-            <div ref={validatorChartsRef} className={styles.section} id="validator-charts">
-              <div className={styles.sectionPlaceholder}>
-                <h3>Validator Charts</h3>
-                <p>Validator charts section will be added here</p>
-              </div>
-            </div>
-
-            <div ref={networkChartsRef} className={styles.section} id="network-charts">
-              <div className={styles.sectionPlaceholder}>
-                <h3>Network Charts</h3>
-                <p>Network charts section will be added here</p>
-              </div>
+            <div ref={networkDataRef} className={styles.section} id="network-data">
+              <NetworkDataSection />
             </div>
           </div>
         </div>
