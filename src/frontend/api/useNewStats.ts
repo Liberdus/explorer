@@ -34,7 +34,6 @@ type EXCLUDED_NETWORK_STATS_FIELDS =
   | 'nodePenaltyUsdStrChange'
   | 'defaultTollUsdStrChange'
   | 'minTollUsdStrChange'
-  | 'standbyNodesChange'
 
 export const useNewStats = (query: {
   fetchAccountStats?: boolean
@@ -112,5 +111,6 @@ export const useNewStats = (query: {
     stakeRequiredUsdStrChange: networkStatsResponse.data?.stakeRequiredUsdStrChange || 0,
     activeNodesChange: networkStatsResponse.data?.activeNodesChange || 0,
     standbyNodes: networkStatsResponse.data?.standbyNodes || 0,
+    standbyNodesChange: networkStatsResponse.data?.standbyNodesChange || 0,
   }
 }
