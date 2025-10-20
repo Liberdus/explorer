@@ -8,15 +8,33 @@ type DbAccount = Account & {
   data: string
 }
 
+const ACCOUNT_COLUMNS: readonly (keyof Account)[] = [
+  'accountId',
+  'data',
+  'timestamp',
+  'hash',
+  'cycleNumber',
+  'isGlobal',
+  'createdTimestamp',
+  'accountType',
+] as const
+
 export async function insertAccount(account: Account): Promise<void> {
   try {
-    const fields = Object.keys(account).join(', ')
-    const placeholders = Object.keys(account).fill('?').join(', ')
-    const values = db.extractValues(account)
+    const fields = `(${ACCOUNT_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${ACCOUNT_COLUMNS.map(() => '?').join(', ')})`
+
+    // Map the `account` object to match the columns
+    const values = ACCOUNT_COLUMNS.map((column) =>
+      typeof account[column] === 'object'
+        ? StringUtils.safeStringify(account[column]) // Serialize objects to JSON
+        : account[column]
+    )
     const keepNewerData = (field: string): string =>
       `${field} = CASE WHEN excluded.timestamp > accounts.timestamp THEN excluded.${field} ELSE accounts.${field} END`
 
-    const sql = `INSERT INTO accounts (${fields}) VALUES (${placeholders})
+    const sql = `INSERT INTO accounts ${fields} VALUES ${placeholders}
       ON CONFLICT(accountId) DO UPDATE SET
         ${keepNewerData('cycleNumber')},
         ${keepNewerData('timestamp')},
@@ -35,23 +53,31 @@ export async function insertAccount(account: Account): Promise<void> {
 
 export async function bulkInsertAccounts(accounts: Account[]): Promise<void> {
   try {
+    const fields = `(${ACCOUNT_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${ACCOUNT_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(accounts.length).fill(placeholders).join(', ')
+
+    // Flatten the `accounts` array into a single list of values
+    const values = accounts.flatMap((account) =>
+      ACCOUNT_COLUMNS.map((column) =>
+        typeof account[column] === 'object'
+          ? StringUtils.safeStringify(account[column]) // Serialize objects to JSON
+          : account[column]
+      )
+    )
     const keepNewerData = (field: string): string =>
       `${field} = CASE WHEN excluded.timestamp > accounts.timestamp THEN excluded.${field} ELSE accounts.${field} END`
 
-    const fields = Object.keys(accounts[0]).join(', ')
-    const placeholders = Object.keys(accounts[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(accounts)
-    let sql = 'INSERT INTO accounts (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < accounts.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
-    sql += ` ON CONFLICT(accountId) DO UPDATE SET
-      ${keepNewerData('cycleNumber')},
-      ${keepNewerData('timestamp')},
-      ${keepNewerData('data')},
-      ${keepNewerData('hash')},
-      ${keepNewerData('accountType')},
-      ${keepNewerData('isGlobal')},
+    const sql = `INSERT INTO accounts ${fields} VALUES ${allPlaceholders}
+      ON CONFLICT(accountId) DO UPDATE SET
+        ${keepNewerData('cycleNumber')},
+        ${keepNewerData('timestamp')},
+        ${keepNewerData('data')},
+        ${keepNewerData('hash')},
+        ${keepNewerData('accountType')},
+        ${keepNewerData('isGlobal')},
       createdTimestamp = MIN(accounts.createdTimestamp, excluded.createdTimestamp)`
     await db.run(accountDatabase, sql, values)
     console.log('Successfully bulk inserted Accounts', accounts.length)

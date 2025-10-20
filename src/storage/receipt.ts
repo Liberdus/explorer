@@ -6,7 +6,6 @@ import * as TransactionDB from './transaction'
 import * as AccountHistoryStateDB from './accountHistoryState'
 import { Utils as StringUtils } from '@shardus/types'
 import { AccountType, Transaction, TransactionType, Receipt, Account } from '../types'
-import { extractValues, extractValuesFromArray } from './sqlite3storage'
 import { weiBNToEth } from '../class/StatsFunctions'
 
 type DbReceipt = Receipt & {
@@ -17,14 +16,35 @@ type DbReceipt = Receipt & {
   signedReceipt: string
 }
 
+const RECEIPT_COLUMNS: readonly (keyof Receipt)[] = [
+  'receiptId',
+  'tx',
+  'cycle',
+  'applyTimestamp',
+  'timestamp',
+  'signedReceipt',
+  'afterStates',
+  'beforeStates',
+  'appReceiptData',
+  'globalModification',
+] as const
+
 export const receiptsMap: Map<string, number> = new Map()
 
 export async function insertReceipt(receipt: Receipt): Promise<void> {
   try {
-    const fields = Object.keys(receipt).join(', ')
-    const placeholders = Object.keys(receipt).fill('?').join(', ')
-    const values = extractValues(receipt)
-    const sql = 'INSERT OR REPLACE INTO receipts (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${RECEIPT_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${RECEIPT_COLUMNS.map(() => '?').join(', ')})`
+
+    // Map the `receipt` object to match the columns
+    const values = RECEIPT_COLUMNS.map((column) =>
+      typeof receipt[column] === 'object'
+        ? StringUtils.safeStringify(receipt[column]) // Serialize objects to JSON
+        : receipt[column]
+    )
+
+    const sql = `INSERT OR REPLACE INTO receipts ${fields} VALUES ${placeholders}`
     await db.run(receiptDatabase, sql, values)
     if (config.verbose) console.log('Successfully inserted Receipt', receipt.receiptId)
   } catch (e) {
@@ -35,13 +55,22 @@ export async function insertReceipt(receipt: Receipt): Promise<void> {
 
 export async function bulkInsertReceipts(receipts: Receipt[]): Promise<void> {
   try {
-    const fields = Object.keys(receipts[0]).join(', ')
-    const placeholders = Object.keys(receipts[0]).fill('?').join(', ')
-    const values = extractValuesFromArray(receipts)
-    let sql = 'INSERT OR REPLACE INTO receipts (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < receipts.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${RECEIPT_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${RECEIPT_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(receipts.length).fill(placeholders).join(', ')
+
+    // Flatten the `receipts` array into a single list of values
+    const values = receipts.flatMap((receipt) =>
+      RECEIPT_COLUMNS.map((column) =>
+        typeof receipt[column] === 'object'
+          ? StringUtils.safeStringify(receipt[column]) // Serialize objects to JSON
+          : receipt[column]
+      )
+    )
+
+    const sql = `INSERT OR REPLACE INTO receipts ${fields} VALUES ${allPlaceholders}`
     await db.run(receiptDatabase, sql, values)
     console.log('Successfully bulk inserted receipts', receipts.length)
   } catch (e) {

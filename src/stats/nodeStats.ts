@@ -12,6 +12,17 @@ export interface NodeStats {
   timestamp: number
 }
 
+const NODE_STATS_COLUMNS: readonly (keyof NodeStats)[] = [
+  'nodeAddress',
+  'nominator',
+  'nodeId',
+  'currentState',
+  'totalStandbyTime',
+  'totalActiveTime',
+  'totalSyncTime',
+  'timestamp',
+] as const
+
 export function isNodeStats(obj: NodeStats): obj is NodeStats {
   return obj.nodeAddress &&
     obj.nominator &&
@@ -52,10 +63,13 @@ export async function getNodeStatsById(nodeId: string): Promise<NodeStats | null
 
 export async function insertOrUpdateNodeStats(nodeStats: NodeStats): Promise<void> {
   try {
-    const fields = Object.keys(nodeStats).join(', ')
-    const placeholders = Object.keys(nodeStats).fill('?').join(', ')
-    const values = db.extractValues(nodeStats)
-    const sql = 'INSERT OR REPLACE INTO node_stats (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${NODE_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${NODE_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `nodeStats` object to match the columns
+    const values = NODE_STATS_COLUMNS.map((column) => nodeStats[column])
+
+    const sql = `INSERT OR REPLACE INTO node_stats ${fields} VALUES ${placeholders}`
     await db.run(nodeStatsDatabase, sql, values)
   } catch (e) {
     console.error(e)

@@ -60,12 +60,27 @@ export interface DailyCoinStatsWithPrice extends DailyCoinStats {
 
 export type DbDailyCoinStats = DailyCoinStats
 
+const DAILY_COIN_STATS_COLUMNS: readonly (keyof DailyCoinStats)[] = [
+  'dateStartTime',
+  'mintedCoin',
+  'transactionFee',
+  'networkFee',
+  'stakeAmount',
+  'unStakeAmount',
+  'rewardAmountRealized',
+  'rewardAmountUnrealized',
+  'penaltyAmount',
+] as const
+
 export async function insertDailyCoinStats(dailyCoinStats: DbDailyCoinStats): Promise<void> {
   try {
-    const fields = Object.keys(dailyCoinStats).join(', ')
-    const placeholders = Object.keys(dailyCoinStats).fill('?').join(', ')
-    const values = db.extractValues(dailyCoinStats)
-    const sql = 'INSERT OR REPLACE INTO daily_coin_stats (' + fields + ') VALUES (' + placeholders + ')'
+    const fields = `(${DAILY_COIN_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${DAILY_COIN_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Map the `dailyCoinStats` object to match the columns
+    const values = DAILY_COIN_STATS_COLUMNS.map((column) => dailyCoinStats[column])
+
+    const sql = `INSERT OR REPLACE INTO daily_coin_stats ${fields} VALUES ${placeholders}`
     await db.run(dailyCoinStatsDatabase, sql, values)
     console.log('Successfully inserted DailyCoinStats', dailyCoinStats.dateStartTime)
   } catch (e) {
@@ -79,13 +94,16 @@ export async function insertDailyCoinStats(dailyCoinStats: DbDailyCoinStats): Pr
 
 export async function bulkInsertCoinStats(dailyCoinStats: DbDailyCoinStats[]): Promise<void> {
   try {
-    const fields = Object.keys(dailyCoinStats[0]).join(', ')
-    const placeholders = Object.keys(dailyCoinStats[0]).fill('?').join(', ')
-    const values = db.extractValuesFromArray(dailyCoinStats)
-    let sql = 'INSERT OR REPLACE INTO daily_coin_stats (' + fields + ') VALUES (' + placeholders + ')'
-    for (let i = 1; i < dailyCoinStats.length; i++) {
-      sql = sql + ', (' + placeholders + ')'
-    }
+    const fields = `(${DAILY_COIN_STATS_COLUMNS.join(', ')})`
+    // Create placeholders for one row
+    const placeholders = `(${DAILY_COIN_STATS_COLUMNS.map(() => '?').join(', ')})`
+    // Create multiple placeholder groups for bulk insert
+    const allPlaceholders = Array(dailyCoinStats.length).fill(placeholders).join(', ')
+
+    // Flatten the `dailyCoinStats` array into a single list of values
+    const values = dailyCoinStats.flatMap((stat) => DAILY_COIN_STATS_COLUMNS.map((column) => stat[column]))
+
+    const sql = `INSERT OR REPLACE INTO daily_coin_stats ${fields} VALUES ${allPlaceholders}`
     await db.run(dailyCoinStatsDatabase, sql, values)
     const addedStats = dailyCoinStats.map((v) => v)
     console.log('Successfully bulk inserted DailyCoinStats', dailyCoinStats.length, 'for entries', addedStats)
