@@ -75,6 +75,7 @@ export const OverviewSection: React.FC = () => {
     activeNodes,
     activeNodesChange,
     standbyNodes,
+    standbyNodesChange,
   } = useNewStats({
     fetchAccountStats: true,
     fetchTransactionStats: true,
@@ -95,6 +96,12 @@ export const OverviewSection: React.FC = () => {
       return { change: '0%', changeType: 'neutral' }
     }
   }
+
+  // Calculate LIB MarketCap change percentage
+  // Since MarketCap = Supply × Price, when both change, we multiply the growth factors
+  // Example: If supply grows 2% and price grows 3%, market cap grows by (1.02 × 1.03 - 1) = 5.06%
+  // This accounts for the compound effect of both supply and price changing together
+  const marketCapChange = ((1 + totalSupplyChange / 100) * (1 + stabilityFactorStrChange / 100) - 1) * 100
 
   // 👇 Prepare an array of stats
   const stats: StatsCardProps[] = [
@@ -190,6 +197,7 @@ export const OverviewSection: React.FC = () => {
       value: `$${(totalSupply * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
         maximumFractionDigits: 2,
       })}`,
+      ...formatPercentage(marketCapChange),
       route: '/charts/marketcap',
     },
     {
@@ -219,6 +227,8 @@ export const OverviewSection: React.FC = () => {
     {
       title: 'SA Ratio',
       value: `${standbyNodes} :  ${activeNodes}`,
+      ...formatPercentage(standbyNodesChange),
+      route: '/charts/activenodes',
     },
     {
       title: 'LIB Supply (24H)',
