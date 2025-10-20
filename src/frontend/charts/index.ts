@@ -19,3 +19,4 @@ export {
 export { OverviewSection } from './OverviewSection'
 export { BlockchainDataSection } from './BlockchainDataSection'
 export { MarketDataSection } from './MarketDataSection'
+export { NetworkDataSection } from './NetworkDataSection'
