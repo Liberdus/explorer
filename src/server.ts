@@ -1308,6 +1308,7 @@ const start = async (): Promise<void> => {
       allDailyCoinReport: string
       responseType: string
       fetchCoinStats: string
+      withTotalTxs: string
     }
   }>
 
@@ -1317,6 +1318,7 @@ const start = async (): Promise<void> => {
       allDailyCoinReport: 's?',
       responseType: 's?',
       fetchCoinStats: 's?',
+      withTotalTxs: 's?',
     })
     if (err) {
       reply.send({ success: false, error: err })
@@ -1371,8 +1373,20 @@ const start = async (): Promise<void> => {
           networkStatsMap.set(stat.dateStartTime, parseFloat(stat.stabilityFactorStr))
         })
 
+        // Create a map of transaction stats by dateStartTime if withTotalTxs is enabled
+        const transactionStatsMap: Map<number, number> = new Map()
+        if (query.withTotalTxs === 'true') {
+          const dailyTransactionStats = (
+            await DailyTransactionStatsDB.queryLatestDailyTransactionStats(0)
+          ).sort((a, b) => a.dateStartTime - b.dateStartTime)
+          dailyTransactionStats.forEach((stat) => {
+            transactionStatsMap.set(stat.dateStartTime, stat.totalUserTxs)
+          })
+        }
+
         const dailyCoinStatsWithPrice = dailyCoinStats.map((coinStat) => {
           const stabilityFactorStr = networkStatsMap.get(coinStat.dateStartTime) || '0'
+          const totalUserTxs = transactionStatsMap.get(coinStat.dateStartTime) || 0
 
           if (query.responseType === 'array') {
             return [
@@ -1386,6 +1400,7 @@ const start = async (): Promise<void> => {
               coinStat.rewardAmountUnrealized,
               coinStat.penaltyAmount,
               stabilityFactorStr,
+              ...(query.withTotalTxs === 'true' ? [totalUserTxs] : []),
             ]
           }
 
@@ -1393,13 +1408,13 @@ const start = async (): Promise<void> => {
             dateStartTime: coinStat.dateStartTime,
             ...coinStat,
             stabilityFactorStr,
+            ...(query.withTotalTxs === 'true' && { totalUserTxs }),
           }
         })
 
         reply.send({
           success: true,
           dailyCoinStats: dailyCoinStatsWithPrice,
-          highestPoint: {},
         })
         return
       } catch (e) {

@@ -52,7 +52,9 @@ export interface DailyTxsChartData {
 }
 
 export interface AvgTxFeeChartData {
-  stabilityFactor: number
+  priceUSD: number
+  totalTxFee?: number
+  totalUserTxs?: number
 }
 
 export interface BurntSupplyChartData {
@@ -151,7 +153,12 @@ export function convertTransactionStatsToSeriesData(
   ]
 
   transactionStats
-    .sort((a, b) => (transactionResponseType === 'array' ? a[0] - b[0] : a.timestamp - b.timestamp))
+    .sort((a, b) => {
+      if (transactionResponseType === 'array') {
+        return (a as number[])[0] - (b as number[])[0]
+      }
+      return (a as TransactionStats).timestamp - (b as TransactionStats).timestamp
+    })
     .forEach((transactionStat) => {
       if (transactionResponseType === 'array') {
         const stat = transactionStat as number[]
@@ -547,6 +554,7 @@ export function convertDailyCoinStatsToSeriesData(
     dailySupplyGrowth?: boolean
     dailyBurntSupply?: boolean
     dailyTransactionFee?: boolean
+    dailyAvgTransactionFee?: boolean
     dailyDistributedSupply?: boolean
     dailyNetworkStake?: boolean
   }
@@ -562,6 +570,7 @@ export function convertDailyCoinStatsToSeriesData(
     !queryType.dailySupplyGrowth &&
     !queryType.dailyBurntSupply &&
     !queryType.dailyTransactionFee &&
+    !queryType.dailyAvgTransactionFee &&
     !queryType.dailyDistributedSupply &&
     !queryType.dailyNetworkStake
   ) {
@@ -578,6 +587,9 @@ export function convertDailyCoinStatsToSeriesData(
     seriesData[0].name = 'Daily LIB Burnt'
   } else if (queryType.dailyTransactionFee) {
     seriesData[0].name = 'Txn Fee (LIB)'
+  } else if (queryType.dailyAvgTransactionFee) {
+    seriesData[0].name = 'Avg Tx Fee (USD)'
+    seriesData[0].tooltip = 'Average Transaction Fee in USD'
   } else if (queryType.dailyDistributedSupply) {
     seriesData[0].name = 'Daily LIB Distributed'
   } else if (queryType.dailyNetworkStake) {
@@ -619,7 +631,7 @@ export function convertDailyCoinStatsToSeriesData(
       } else {
         const dailyCoinStat = stat as DailyCoinStatsWithPrice
         timestamp = dailyCoinStat.dateStartTime
-        priceUSD = dailyCoinStat.stabilityFactor
+        priceUSD = parseFloat(dailyCoinStat.stabilityFactorStr) || 0
         const totalSupplyChange = calculateTotalSupplyChange(
           dailyCoinStat.mintedCoin,
           dailyCoinStat.rewardAmountRealized,
@@ -767,6 +779,48 @@ export function convertDailyCoinStatsToSeriesData(
       seriesData[0].data.push({
         x: timestamp,
         y: transactionFee,
+      })
+    } else if (queryType.dailyAvgTransactionFee) {
+      // Convert average transaction fee data for chart
+      let timestamp: number
+      let transactionFee: number
+      let priceUSD: number
+      let totalUserTxs: number
+      if (coinResponseType === 'array') {
+        const dailyCoinStat = stat as number[]
+        timestamp = dailyCoinStat[0]
+        transactionFee = dailyCoinStat[2] || 0
+        priceUSD = parseFloat(dailyCoinStat[9] as unknown as string) || 0
+        totalUserTxs = dailyCoinStat[10] || 0
+      } else {
+        const dailyCoinStat = stat as DailyCoinStatsWithPrice & { totalUserTxs?: number }
+        timestamp = dailyCoinStat.dateStartTime
+        transactionFee = dailyCoinStat.transactionFee || 0
+        priceUSD = parseFloat(dailyCoinStat.stabilityFactorStr) || 0
+        totalUserTxs = dailyCoinStat.totalUserTxs || 0
+      }
+
+      // Convert transaction fee
+      const avgTransactionFee = totalUserTxs > 0 ? transactionFee / totalUserTxs : 0
+
+      // Calculate average transaction fee in USD
+      const avgTransactionFeeUsd = avgTransactionFee * priceUSD || 0
+
+      if (avgTransactionFeeUsd > highest.value) {
+        highest = { timestamp, value: avgTransactionFeeUsd }
+      }
+      if (avgTransactionFeeUsd < lowest.value && avgTransactionFeeUsd > 0) {
+        lowest = { timestamp, value: avgTransactionFeeUsd }
+      }
+
+      seriesData[0].data.push({
+        x: timestamp,
+        y: avgTransactionFee,
+        avgTxFeeChartData: {
+          priceUSD,
+          totalTxFee: transactionFee,
+          totalUserTxs,
+        },
       })
     } else if (queryType.dailyDistributedSupply) {
       // Convert distributed supply data for chart
@@ -954,18 +1008,18 @@ export function convertDailyNetworkStatsToSeriesData(
     } else if (queryType.dailyTransactionFee) {
       let timestamp: number
       let transactionFeeUsd: number
-      let stabilityFactor: number
+      let priceUSD: number
 
       if (networkResponseType === 'array') {
         // Array format for daily network stats: [dateStartTime, stabilityFactorStr, transactionFeeUsdStr, ...]
         const networkStat = stat as number[]
         timestamp = networkStat[0] // dateStartTime is already in milliseconds
-        stabilityFactor = parseFloat(networkStat[1] as any) || 0
-        transactionFeeUsd = parseFloat(networkStat[2] as any) || 0
+        priceUSD = parseFloat(networkStat[1] as unknown as string) || 0
+        transactionFeeUsd = parseFloat(networkStat[2] as unknown as string) || 0
       } else {
         const networkStat = stat as DailyNetworkStats
         timestamp = networkStat.dateStartTime
-        stabilityFactor = parseFloat(networkStat.stabilityFactorStr) || 0
+        priceUSD = parseFloat(networkStat.stabilityFactorStr) || 0
         transactionFeeUsd = parseFloat(networkStat.transactionFeeUsdStr) || 0
       }
 
@@ -981,7 +1035,7 @@ export function convertDailyNetworkStatsToSeriesData(
         x: timestamp,
         y: transactionFeeUsd,
         avgTxFeeChartData: {
-          stabilityFactor,
+          priceUSD,
         },
       })
     } else if (queryType.dailyTxFeeSet) {

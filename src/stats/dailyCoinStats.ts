@@ -55,7 +55,7 @@ export interface DailyCoinMetricChanges {
 }
 
 export interface DailyCoinStatsWithPrice extends DailyCoinStats {
-  stabilityFactor: number
+  stabilityFactorStr: string
 }
 
 export type DbDailyCoinStats = DailyCoinStats
