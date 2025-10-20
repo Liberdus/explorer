@@ -5,7 +5,7 @@ import { ContentLayout, DailyStatsChart } from '../../../components'
 import styles from './DailyAvgTransactionFeeChart.module.scss'
 import { useStats } from '../../../api'
 import {
-  convertDailyNetworkStatsToSeriesData,
+  convertDailyCoinStatsToSeriesData,
   AvgTxFeeChartData,
   DataPoint,
 } from '../../../utils/transformChartData'
@@ -17,21 +17,23 @@ export const DailyAvgTransactionFeeChart: React.FC = () => {
 
   const breadcrumbs = [breadcrumbsList.chart]
 
-  const networkResponseType = 'array'
+  const coinResponseType = 'array'
 
-  const { dailyNetworkStats, loading } = useStats({
-    networkResponseType,
-    allDailyNetworkReport: true,
+  const { dailyCoinStats, loading } = useStats({
+    coinResponseType,
+    allDailyCoinReport: true,
+    withTotalTxs: true,
   })
 
   const {
     seriesData,
     stats: { highest, lowest },
-  } = convertDailyNetworkStatsToSeriesData(dailyNetworkStats, networkResponseType, {
-    dailyTransactionFee: true,
+  } = convertDailyCoinStatsToSeriesData(dailyCoinStats, coinResponseType, {
+    dailyAvgTransactionFee: true,
   })
 
   // Tooltip formatter for average transaction fee
+  // Shows calculation: (Total Fee in LIB / Total Txs) × LIB Price = Avg Fee USD
   const tooltipFormatter = (
     timestamp: number,
     point: any,
@@ -42,25 +44,52 @@ export const DailyAvgTransactionFeeChart: React.FC = () => {
     const avgFee = point.y || 0
 
     const pointData = (point.point as DataPoint)?.avgTxFeeChartData as AvgTxFeeChartData
-    const stabilityFactor = pointData?.stabilityFactor || 0
+    const priceUSD = pointData?.priceUSD || 0
+    const totalTxFee = pointData?.totalTxFee || 0
+    const totalUserTxs = pointData?.totalUserTxs || 0
 
     return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
       <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
         ${xDateString}
       </div>
       <div style="margin-bottom: 4px;">
-        <span style="color: #666;">Average Transaction Fee:</span> <span style="font-weight: 600; color: #000;">$${parseFloat(
-          avgFee.toFixed(feeDecimalPoint)
-        )}</span>
+        <span style="color: #666;">Average Transaction Fee:</span> <span style="font-weight: 600; color: #000;">$${(
+          avgFee * priceUSD
+        ).toLocaleString()}</span>
       </div>
       <div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">
         <div>
-          <span style="color: #666;">LIB Price Set:</span> <span style="font-weight: 500; color: #000;">$${parseFloat(
-            stabilityFactor.toFixed(feeDecimalPoint)
-          )}</span>
+          <span style="color: #666;">Txn Fee(LIB):</span> <span style="font-weight: 500; color: #000;">${
+            totalTxFee / totalUserTxs || 0
+          } LIB</span>
         </div>
       </div>
     </div>`
+
+    // return `<div style="font-family: Inter, sans-serif; font-size: 13px;">
+    //   <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
+    //     ${xDateString}
+    //   </div>
+    //   <div style="margin-bottom: 4px;">
+    //     <span style="color: #666;">Average Transaction Fee:</span> <span style="font-weight: 600; color: #000;">$${avgFee * priceUSD}</span>
+    //   </div>
+    //   <div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">
+    //     <div style="margin-bottom: 4px;">
+    //       <span style="color: #666;">Total Transaction Fee:</span> <span style="font-weight: 500; color: #000;">${totalTxFee.toLocaleString()} LIB</span>
+    //     </div>
+    //     <div style="margin-bottom: 4px;">
+    //       <span style="color: #666;">Total Transactions:</span> <span style="font-weight: 500; color: #000;">${totalUserTxs.toLocaleString()}</span>
+    //     </div>
+    //     <div>
+    //       <span style="color: #666;">LIB Price Set:</span> <span style="font-weight: 500; color: #000;">$${priceUSD}</span>
+    //     </div>
+    //   </div>
+    //   <div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px; font-size: 11px; color: #888;">
+    //     <div style="font-style: italic;">
+    //       Calculation: (${totalTxFee} LIB / ${totalUserTxs.toLocaleString()} txs) × $${priceUSD} = $${avgFee}
+    //     </div>
+    //   </div>
+    // </div>`
   }
 
   return (

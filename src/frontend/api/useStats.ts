@@ -6,7 +6,7 @@ import { PATHS } from './paths'
 import { ValidatorStats } from '../../stats/validatorStats'
 import { TransactionStats } from '../../stats/transactionStats'
 import { DailyAccountStats } from '../../stats/dailyAccountStats'
-import { DailyCoinStats, DailyCoinStatsWithPrice } from '../../stats/dailyCoinStats'
+import { DailyCoinStats } from '../../stats/dailyCoinStats'
 import { DailyNetworkStats } from '../../stats/dailyNetworkStats'
 import { DailyTransactionStats } from '../../stats/dailyTransactionStats'
 
@@ -30,6 +30,7 @@ export const useStats = (query: {
   allDailyCoinReport?: boolean
   allDailyNetworkReport?: boolean
   fetchCoinStats?: boolean
+  withTotalTxs?: boolean
   transactionResponseType?: string | undefined
   validatorResponseType?: string | undefined
   accountResponseType?: string | undefined
@@ -46,6 +47,7 @@ export const useStats = (query: {
     allDailyCoinReport,
     allDailyNetworkReport,
     fetchCoinStats,
+    withTotalTxs,
     transactionResponseType,
     validatorResponseType,
     accountResponseType,
@@ -69,7 +71,9 @@ export const useStats = (query: {
     ? `${PATHS.STATS_ACCOUNT}?allDailyAccountReport=true&responseType=${accountResponseType}`
     : null
   const dailyCoinStatsQuery = allDailyCoinReport
-    ? `${PATHS.STATS_COIN}?allDailyCoinReport=true&responseType=${coinResponseType}`
+    ? `${PATHS.STATS_COIN}?allDailyCoinReport=true&responseType=${coinResponseType}${
+        withTotalTxs ? '&withTotalTxs=true' : ''
+      }`
     : null
   const dailyNetworkStatsQuery = allDailyNetworkReport
     ? `${PATHS.STATS_NETWORK}?allDailyNetworkReport=true&responseType=${networkResponseType}`

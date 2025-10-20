@@ -103,6 +103,15 @@ export const OverviewSection: React.FC = () => {
   // This accounts for the compound effect of both supply and price changing together
   const marketCapChange = ((1 + totalSupplyChange / 100) * (1 + stabilityFactorStrChange / 100) - 1) * 100
 
+  // Calculate Average Transaction Fee change percentage
+  // Since AvgFee = (TotalFee / TotalTxs) × Price
+  // When fee, txs count, and price all change, we calculate: (feeGrowth / txsGrowth) × priceGrowth
+  // Example: If fee grows 10%, txs grows 5%, price grows 2%, avgFee changes by (1.10/1.05 × 1.02 - 1) = 7.24%
+  const avgTransactionFeeChange =
+    (((1 + transactionFeeChange / 100) / (1 + newUserTxsChange / 100)) * (1 + stabilityFactorStrChange / 100) -
+      1) *
+    100
+
   // 👇 Prepare an array of stats
   const stats: StatsCardProps[] = [
     {
@@ -145,6 +154,7 @@ export const OverviewSection: React.FC = () => {
             })
           : 0
       }`,
+      ...formatPercentage(avgTransactionFeeChange),
       route: '/charts/avg-txfee-usd',
     },
     { title: 'Network Utilization (24H)', value: 0 },
