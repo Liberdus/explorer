@@ -35,6 +35,8 @@ export const addExitListeners = (): void => {
   })
 }
 
+const one_day_in_ms = 24 * 60 * 60 * 1000
+
 const measure_time = false
 let start_time
 
@@ -46,7 +48,6 @@ const start = async (): Promise<void> => {
   let lastCheckedCycleForValidators = -1
   let lastCheckedCycleForTxs = -1
   let lastCheckedCycleForCoinStats = -1
-  let lastCheckedDateStartTime = -1
 
   // Sliding window offset for recalculation (number of cycles before startCycle)
   const slidingWindowOffset = 5
@@ -55,48 +56,49 @@ const start = async (): Promise<void> => {
   const minutesToRecordAccountBalance = 10
   let lastCheckedTimestampForAccountBalance = minutesToRecordAccountBalance
 
+  const firstCycle = await CycleDB.queryCycleByCounter(0)
+  if (!firstCycle) {
+    console.log(`Cycle 0 not found`)
+    return
+  }
+  const firstCycleStartTime = firstCycle.cycleRecord.start * 1000
+  console.log('firstCycleStartTime', firstCycleStartTime)
+  // Convert it to be the start of the day
+  const date = new Date(firstCycleStartTime)
+  date.setUTCHours(0, 0, 0, 0)
+  let lastCheckedDateTime = date.getTime()
+
+  let lastCheckedDateTimeForTransactions = lastCheckedDateTime
+  let lastCheckedDateTimeForAccounts = lastCheckedDateTime
+  let lastCheckedDateTimeForNetworkStats = lastCheckedDateTime
+  let lastCheckedDateTimeForCoinStats = lastCheckedDateTime
+
+  console.log('Adjusted lastCheckedDateTime', lastCheckedDateTime)
+
   const lastStoredValidators = await ValidatorStatsDB.queryLatestValidatorStats(1)
   if (lastStoredValidators.length > 0) lastCheckedCycleForValidators = lastStoredValidators[0].cycle
 
   const lastStoredTransactions = await TransactionStatsDB.queryLatestTransactionStats(1)
   if (lastStoredTransactions.length > 0) lastCheckedCycleForTxs = lastStoredTransactions[0].cycle
 
+  const lastStoredCoinStats = await CoinStatsDB.queryLatestCoinStats(1)
+  if (lastStoredCoinStats.length > 0) lastCheckedCycleForCoinStats = lastStoredCoinStats[0].cycle
+
   const lastStoredDailyTransactions = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(1)
   if (lastStoredDailyTransactions.length > 0)
-    lastCheckedDateStartTime = lastStoredDailyTransactions[0].dateStartTime
+    lastCheckedDateTimeForTransactions = lastStoredDailyTransactions[0].dateStartTime + one_day_in_ms
 
   const lastStoredDailyAccounts = await DailyAccountStatsDB.queryLatestDailyAccountStats(1)
   if (lastStoredDailyAccounts.length > 0)
-    lastCheckedDateStartTime = Math.min(lastCheckedDateStartTime, lastStoredDailyAccounts[0].dateStartTime)
-  else lastCheckedDateStartTime = -1
+    lastCheckedDateTimeForAccounts = lastStoredDailyAccounts[0].dateStartTime + one_day_in_ms
 
   const lastStoredDailyNetwork = await DailyNetworkStatsDB.queryLatestDailyNetworkStats(1)
   if (lastStoredDailyNetwork.length > 0)
-    lastCheckedDateStartTime = Math.min(lastCheckedDateStartTime, lastStoredDailyNetwork[0].dateStartTime)
-  else lastCheckedDateStartTime = -1
+    lastCheckedDateTimeForNetworkStats = lastStoredDailyNetwork[0].dateStartTime + one_day_in_ms
 
   const lastStoredDailyCoinStats = await DailyCoinStatsDB.queryLatestDailyCoinStats(1)
   if (lastStoredDailyCoinStats.length > 0)
-    lastCheckedDateStartTime = Math.min(lastCheckedDateStartTime, lastStoredDailyCoinStats[0].dateStartTime)
-  else lastCheckedDateStartTime = -1
-
-  if (lastCheckedDateStartTime === -1) {
-    const firstCycle = await CycleDB.queryCycleByCounter(0)
-    if (!firstCycle) {
-      console.log(`Cycle 0 not found`)
-      return
-    }
-    lastCheckedDateStartTime = firstCycle.cycleRecord.start * 1000
-    console.log('lastCheckedDateStartTime', lastCheckedDateStartTime)
-    // Convert it to be the start of the day
-    const date = new Date(lastCheckedDateStartTime)
-    date.setUTCHours(0, 0, 0, 0)
-    lastCheckedDateStartTime = date.getTime()
-    console.log('New adjusted lastCheckedDateStartTime', lastCheckedDateStartTime)
-  }
-
-  const lastStoredCoinStats = await CoinStatsDB.queryLatestCoinStats(1)
-  if (lastStoredCoinStats.length > 0) lastCheckedCycleForCoinStats = lastStoredCoinStats[0].cycle
+    lastCheckedDateTimeForCoinStats = lastStoredDailyCoinStats[0].dateStartTime + one_day_in_ms
 
   let lastCheckedCycleForNodeStats = await MetadataDB.getLastStoredCycleNumber(
     MetadataDB.MetadataType.NodeStats
@@ -146,8 +148,7 @@ const start = async (): Promise<void> => {
 
     // ----- Daily Stats -----
     const currentTimestamp = Date.now()
-    const timeSinceLastChecked = currentTimestamp - lastCheckedDateStartTime
-    const one_day_in_ms = 24 * 60 * 60 * 1000
+    const timeSinceLastChecked = currentTimestamp - lastCheckedDateTime
     const isNewDay = timeSinceLastChecked >= one_day_in_ms
     // Check if day has changed
     if (isNewDay) {
@@ -156,9 +157,16 @@ const start = async (): Promise<void> => {
       if (timeSinceLastChecked > one_day_in_ms + extra_safety_margin) {
         // calculate end timestamp for the day
         const dateEndTimestamp = currentTimestamp - (timeSinceLastChecked % one_day_in_ms)
-        StatsFunctions.recordDailyStats(lastCheckedDateStartTime, dateEndTimestamp)
-        // Reset counter and update date/boundaries
-        lastCheckedDateStartTime = dateEndTimestamp
+        StatsFunctions.recordDailyTransactionStats(lastCheckedDateTimeForTransactions, dateEndTimestamp)
+        StatsFunctions.recordDailyAccountStats(lastCheckedDateTimeForAccounts, dateEndTimestamp)
+        StatsFunctions.recordDailyCoinStats(lastCheckedDateTimeForCoinStats, dateEndTimestamp)
+        StatsFunctions.recordDailyNetworkStats(lastCheckedDateTimeForNetworkStats, dateEndTimestamp)
+        // Reset lastCheckedDateTime
+        lastCheckedDateTime = dateEndTimestamp
+        lastCheckedDateTimeForTransactions = lastCheckedDateTime
+        lastCheckedDateTimeForAccounts = lastCheckedDateTime
+        lastCheckedDateTimeForNetworkStats = lastCheckedDateTime
+        lastCheckedDateTimeForCoinStats = lastCheckedDateTime
       }
     }
 

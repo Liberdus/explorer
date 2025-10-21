@@ -396,14 +396,14 @@ export const recordCoinStats = async (
   if (recordAccountBalance) await recordTotalAccountBalances(latestCycle)
 }
 
-export const recordDailyStats = async (dateStartTime: number, dateEndTime: number): Promise<void> => {
+export const recordDailyTransactionStats = async (
+  dateStartTime: number,
+  dateEndTime: number
+): Promise<void> => {
   const one_day_in_ms = 24 * 60 * 60 * 1000
   for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
-    const beforeTimestamp = startTimestamp + one_day_in_ms + 1 // we want to include the endTimestamp
-    const afterTimestamp = startTimestamp
-
-    // ----- Daily Transaction Stats -----
-
+    const beforeTimestamp = startTimestamp + one_day_in_ms // ( Before 00:00:00 )
+    const afterTimestamp = startTimestamp - 1 // ( After 23:59:59 )
     // Get transaction counts by type in a single query
     const txCountsByType = await TransactionDB.queryTransactionCountsByType(beforeTimestamp, afterTimestamp)
 
@@ -436,14 +436,17 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
 
     await DailyTransactionStatsDB.insertDailyTransactionStats(dailyTransactionStats)
     console.log(
-      `Stored daily transaction stats for ${new Date(startTimestamp)}, startTimestamp ${
-        startTimestamp + 1
-      } endTimestamp ${beforeTimestamp - 1}`,
+      `Stored daily transaction stats for ${new Date(startTimestamp).toUTCString()}`,
       dailyTransactionStats
     )
+  }
+}
 
-    // ----- Daily Account Stats -----
-
+export const recordDailyAccountStats = async (dateStartTime: number, dateEndTime: number): Promise<void> => {
+  const one_day_in_ms = 24 * 60 * 60 * 1000
+  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
+    const beforeTimestamp = startTimestamp + one_day_in_ms // ( Before 00:00:00 )
+    const afterTimestamp = startTimestamp - 1 // ( After 23:59:59 )
     // Query accounts created directly from accounts database (all types)
     const newAccounts = await AccountDB.queryAccountCountByCreatedTimestamp(afterTimestamp, beforeTimestamp)
 
@@ -461,30 +464,23 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       true
     )
 
-    // // Query user accounts with balance > 0 from AccountHistoryState within the 24-hour period
-    // const newActiveBalanceAccounts = await AccountHistoryStateDB.queryNewActiveBalanceAccountsCount(
-    //   beforeTimestamp,
-    //   afterTimestamp
-    // )
-
     const dailyAccountStats: DailyAccountStatsDB.DbDailyAccountStats = {
       dateStartTime: startTimestamp,
       newAccounts,
       newUserAccounts,
       activeAccounts,
-      // newActiveBalanceAccounts,
     }
 
     await DailyAccountStatsDB.insertDailyAccountStats(dailyAccountStats)
-    console.log(
-      `Stored daily account stats for ${new Date(startTimestamp)}, startTimestamp ${
-        startTimestamp + 1
-      } endTimestamp ${beforeTimestamp - 1}`,
-      dailyAccountStats
-    )
+    console.log(`Stored daily account stats for ${new Date(startTimestamp).toUTCString()}`, dailyAccountStats)
+  }
+}
 
-    // ----- Daily Network Stats -----
-
+export const recordDailyNetworkStats = async (dateStartTime: number, dateEndTime: number): Promise<void> => {
+  const one_day_in_ms = 24 * 60 * 60 * 1000
+  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
+    const beforeTimestamp = startTimestamp + one_day_in_ms // ( Before 00:00:00 )
+    const afterTimestamp = startTimestamp - 1 // ( After 23:59:59 )
     // Get network account data for this time period - look for any network account snapshot
     const networkAccount = await AccountDB.queryAccountByAccountId(NetworkAccountId)
 
@@ -497,6 +493,7 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       afterTimestampInSeconds,
       beforeTimestampInSeconds
     )
+    let lastCycleCounter = 0
     let totalActiveNodes = 0
     let totalStandbyNodes = 0
     for (const cycle of cycleRecords) {
@@ -511,7 +508,9 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
         lostSyncing,
         appRemoved,
         standbyRemove,
+        counter,
       } = cycle.cycleRecord
+      lastCycleCounter = counter
       const totalActive = activated.length + active - removed.length - appRemoved.length - apoptosized.length
       const totalSyncing = syncing - lostSyncing.length
       const totalStandby = standbyAdd.length + standby - standbyRemove.length
@@ -551,21 +550,22 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
     const changes = networkAccount.data.listOfChanges
     for (const change of changes) {
       if (change.cycle > lastCycleCounter) break
+      if (change.appData == null) continue
       for (const appDataKey of Object.keys(change.appData)) {
         dailyNetworkStats[appDataKey] = change.appData[appDataKey]
       }
     }
 
     await DailyNetworkStatsDB.insertDailyNetworkStats(dailyNetworkStats)
-    console.log(
-      `Stored daily network stats for ${new Date(startTimestamp)}, startTimestamp ${
-        startTimestamp + 1
-      } endTimestamp ${beforeTimestamp - 1}`,
-      dailyNetworkStats
-    )
+    console.log(`Stored daily network stats for ${new Date(startTimestamp).toUTCString()}`, dailyNetworkStats)
+  }
+}
 
-    // ----- Daily Coin Stats -----
-
+export const recordDailyCoinStats = async (dateStartTime: number, dateEndTime: number): Promise<void> => {
+  const one_day_in_ms = 24 * 60 * 60 * 1000
+  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
+    const beforeTimestamp = startTimestamp + one_day_in_ms // ( Before 00:00:00 )
+    const afterTimestamp = startTimestamp - 1 // ( After 23:59:59 )
     // Query transactions directly by timestamp
     const transactions = await TransactionDB.queryTransactions({
       limit: 0,
@@ -590,88 +590,79 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       (a) => a.transactionType === TransactionType.register && a.data.success === true
     )
 
-    try {
-      // Calculate total staked amount
-      const stakeAmount: bigint = depositStakeTransactions.reduce((sum, current) => {
-        const stakeAmount = (current.data as any)?.additionalInfo?.stake || BigInt(0)
-        return sum + stakeAmount
-      }, BigInt(0))
+    // Calculate total staked amount
+    const stakeAmount: bigint = depositStakeTransactions.reduce((sum, current) => {
+      const stakeAmount = (current.data as any)?.additionalInfo?.stake || BigInt(0)
+      return sum + stakeAmount
+    }, BigInt(0))
 
-      // Calculate total unstaked amount
-      const unStakeAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
-        const unStakeAmount = (current.data as any)?.additionalInfo?.stake || BigInt(0)
-        return sum + unStakeAmount
-      }, BigInt(0))
+    // Calculate total unstaked amount
+    const unStakeAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
+      const unStakeAmount = (current.data as any)?.additionalInfo?.stake || BigInt(0)
+      return sum + unStakeAmount
+    }, BigInt(0))
 
-      // Calculate total realized node rewards (withdraw stake)
-      const rewardAmountRealized: bigint = withdrawStakeTransactions.reduce((sum, current) => {
-        const reward = (current.data as any)?.additionalInfo?.reward || BigInt(0)
-        return sum + reward
-      }, BigInt(0))
+    // Calculate total realized node rewards (withdraw stake)
+    const rewardAmountRealized: bigint = withdrawStakeTransactions.reduce((sum, current) => {
+      const reward = (current.data as any)?.additionalInfo?.reward || BigInt(0)
+      return sum + reward
+    }, BigInt(0))
 
-      // Calculate total unrealized node rewards (claim reward)
-      const rewardAmountUnrealized: bigint = claimRewardTransactions.reduce((sum, current) => {
-        const reward = (current.data as any)?.additionalInfo?.rewardedAmount || BigInt(0)
-        return sum + reward
-      }, BigInt(0))
+    // Calculate total unrealized node rewards (claim reward)
+    const rewardAmountUnrealized: bigint = claimRewardTransactions.reduce((sum, current) => {
+      const reward = (current.data as any)?.additionalInfo?.rewardedAmount || BigInt(0)
+      return sum + reward
+    }, BigInt(0))
 
-      // Calculate total node penalties
-      const nodePenaltyAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
-        const nodePenaltyAmount = (current.data as any)?.additionalInfo?.penalty || BigInt(0)
-        return sum + nodePenaltyAmount
-      }, BigInt(0))
+    // Calculate total node penalties
+    const nodePenaltyAmount: bigint = withdrawStakeTransactions.reduce((sum, current) => {
+      const nodePenaltyAmount = (current.data as any)?.additionalInfo?.penalty || BigInt(0)
+      return sum + nodePenaltyAmount
+    }, BigInt(0))
 
-      // Calculate total gas burnt
-      const transactionFeeAmount: bigint = transactions.reduce((sum, current) => {
-        const transactionFee = (current.data as any).transactionFee || BigInt(0)
-        return sum + transactionFee
-      }, BigInt(0))
+    // Calculate total gas burnt
+    const transactionFeeAmount: bigint = transactions.reduce((sum, current) => {
+      const transactionFee = (current.data as any).transactionFee || BigInt(0)
+      return sum + transactionFee
+    }, BigInt(0))
 
-      // Calculate total network toll tax fee
-      const networkTollTaxFee: bigint = transactions.reduce((sum, current) => {
-        const networkTollTaxFee = (current.data as any)?.additionalInfo?.networkTollTaxFee || BigInt(0)
-        return sum + networkTollTaxFee
-      }, BigInt(0))
+    // Calculate total network toll tax fee
+    const networkTollTaxFee: bigint = transactions.reduce((sum, current) => {
+      const networkTollTaxFee = (current.data as any)?.additionalInfo?.networkTollTaxFee || BigInt(0)
+      return sum + networkTollTaxFee
+    }, BigInt(0))
 
-      // Calculate the total amount of tokens created
-      const createAmount: bigint = createTransactions.reduce((sum, current) => {
-        if (current.data?.additionalInfo?.amount !== undefined) {
-          const newAccountBalance =
-            current.data.additionalInfo.newAccount === true ? DEFAULT_ACCOUNT_BALANCE : BigInt(0)
-          return sum + current.data.additionalInfo.amount + newAccountBalance
-        }
-        const createAmount = (current.originalTxData as any).tx.amount || BigInt(0)
-        return sum + createAmount
-      }, BigInt(0))
-
-      const registerAmount = BigInt(registerTransactions.length) * DEFAULT_ACCOUNT_BALANCE
-
-      const mintedCoin = weiBNToEth(registerAmount + createAmount)
-      const transactionFee = weiBNToEth(transactionFeeAmount)
-      const networkFee = weiBNToEth(networkTollTaxFee)
-
-      const dailyCoinStats: DailyCoinStatsDB.DbDailyCoinStats = {
-        dateStartTime: startTimestamp,
-        transactionFee,
-        networkFee,
-        stakeAmount: weiBNToEth(stakeAmount),
-        unStakeAmount: weiBNToEth(unStakeAmount),
-        penaltyAmount: weiBNToEth(nodePenaltyAmount),
-        rewardAmountRealized: weiBNToEth(rewardAmountRealized),
-        rewardAmountUnrealized: weiBNToEth(rewardAmountUnrealized),
-        mintedCoin,
+    // Calculate the total amount of tokens created
+    const createAmount: bigint = createTransactions.reduce((sum, current) => {
+      if (current.data?.additionalInfo?.amount !== undefined) {
+        const newAccountBalance =
+          current.data.additionalInfo.newAccount === true ? DEFAULT_ACCOUNT_BALANCE : BigInt(0)
+        return sum + current.data.additionalInfo.amount + newAccountBalance
       }
+      const createAmount = (current.originalTxData as any).tx.amount || BigInt(0)
+      return sum + createAmount
+    }, BigInt(0))
 
-      await DailyCoinStatsDB.insertDailyCoinStats(dailyCoinStats)
-      console.log(
-        `Stored daily coin stats for ${new Date(startTimestamp)}, startTimestamp ${
-          startTimestamp + 1
-        } endTimestamp ${beforeTimestamp - 1}`,
-        dailyCoinStats
-      )
-    } catch (e) {
-      console.log(`Failed to calculate daily coin stats for ${new Date(startTimestamp)}`, e)
+    const registerAmount = BigInt(registerTransactions.length) * DEFAULT_ACCOUNT_BALANCE
+
+    const mintedCoin = weiBNToEth(registerAmount + createAmount)
+    const transactionFee = weiBNToEth(transactionFeeAmount)
+    const networkFee = weiBNToEth(networkTollTaxFee)
+
+    const dailyCoinStats: DailyCoinStatsDB.DbDailyCoinStats = {
+      dateStartTime: startTimestamp,
+      transactionFee,
+      networkFee,
+      stakeAmount: weiBNToEth(stakeAmount),
+      unStakeAmount: weiBNToEth(unStakeAmount),
+      penaltyAmount: weiBNToEth(nodePenaltyAmount),
+      rewardAmountRealized: weiBNToEth(rewardAmountRealized),
+      rewardAmountUnrealized: weiBNToEth(rewardAmountUnrealized),
+      mintedCoin,
     }
+
+    await DailyCoinStatsDB.insertDailyCoinStats(dailyCoinStats)
+    console.log(`Stored daily coin stats for ${new Date(startTimestamp).toUTCString()}`, dailyCoinStats)
   }
 }
 
@@ -847,6 +838,9 @@ export function updateNodeStats(
 }
 
 export const recordNodeStats = async (latestCycle: number, lastStoredCycle: number): Promise<void> => {
+  // Disable it for now; Need to re-check if the logic is still valid
+  const disable = true
+  if (disable) return
   try {
     const statesToIgnore = ['activatedPublicKeys', 'standbyRefresh', 'lost', 'refuted']
     const bucketSize = 1000
