@@ -82,7 +82,7 @@ export const DailyActiveAccountChart: React.FC = () => {
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Highest number of <strong>{highest.value.toLocaleString()}</strong> addresses on{' '}
+                      Highest number of <strong>{highest.value.toLocaleString()}</strong> accounts on{' '}
                       {new Date(highest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
@@ -99,7 +99,7 @@ export const DailyActiveAccountChart: React.FC = () => {
                   <div className={styles.highlightContent}>
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
-                      Lowest number of <strong>{lowest.value.toLocaleString()}</strong> addresses on{' '}
+                      Lowest number of <strong>{lowest.value.toLocaleString()}</strong> accounts on{' '}
                       {new Date(lowest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',

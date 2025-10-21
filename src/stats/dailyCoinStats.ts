@@ -365,10 +365,10 @@ export function calculateTotalSupplyChange(
   mintedCoin: number,
   rewardAmountRealized: number,
   transactionFee: number,
-  burntFee: number,
+  networkFee: number,
   penaltyAmount: number
 ): number {
-  return mintedCoin + rewardAmountRealized + transactionFee - burntFee - penaltyAmount
+  return mintedCoin + rewardAmountRealized - transactionFee - networkFee - penaltyAmount
 }
 
 export function calculateTotalStakeChange(
