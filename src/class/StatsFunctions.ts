@@ -497,35 +497,29 @@ export const recordDailyStats = async (dateStartTime: number, dateEndTime: numbe
       afterTimestampInSeconds,
       beforeTimestampInSeconds
     )
-    let lastCycleCounter = 0
     let totalActiveNodes = 0
     let totalStandbyNodes = 0
-    for (let i = 0; i < cycleRecords.length; i++) {
-      const { activated, active, removed, apoptosized, standbyAdd, standby, syncing, lostSyncing, counter } =
-        cycleRecords[i].cycleRecord
-      let totalActive = activated.length + active - removed.length
-      if (apoptosized.length) {
-        // To differentiate the apotosized is from active or lostSyncing nodes
-        if (i < cycleRecords.length - 1) {
-          // Check if the active count is decreased by the apotosized count in next cycle
-          const nextCycle = cycleRecords[i + 1].cycleRecord
-          if (active - apoptosized.length === nextCycle.active) {
-            totalActive += nextCycle.apoptosized.length
-          }
-        } else if (i === cycleRecords.length - 1) {
-          // For end cycle in the list, check if the lostSyncing nodes have the current
-          const previousCycle = cycleRecords[i - 1].cycleRecord
-          const lostSyncingNodes = apoptosized.filter((nodeId) => !previousCycle.lostSyncing.includes(nodeId))
-          totalActive += apoptosized.length - lostSyncingNodes.length
-        }
-        lastCycleCounter = counter
-      }
+    for (const cycle of cycleRecords) {
+      const {
+        activated,
+        active,
+        removed,
+        apoptosized,
+        standbyAdd,
+        standby,
+        syncing,
+        lostSyncing,
+        appRemoved,
+        standbyRemove,
+      } = cycle.cycleRecord
+      const totalActive = activated.length + active - removed.length - appRemoved.length - apoptosized.length
+      const totalSyncing = syncing - lostSyncing.length
+      const totalStandby = standbyAdd.length + standby - standbyRemove.length
       totalActiveNodes += totalActive
-      const totalStandby = standbyAdd.length + standby - lostSyncing.length
-      totalStandbyNodes += totalStandby
+      totalStandbyNodes += totalSyncing + totalStandby
     }
     const avgActiveNodes = totalActiveNodes > 0 ? Math.round(totalActiveNodes / cycleRecords.length) : 0
-    const avgStandbyNodes = totalStandbyNodes > 0 ? Math.round(totalStandbyNodes / cycleRecords.length) : 0
+    const avgStandbyNodes = totalStandbyNodes > 0 ? Math.ceil(totalStandbyNodes / cycleRecords.length) : 0
     console.log(
       `Total active nodes: ${totalActiveNodes}, total standby nodes: ${totalStandbyNodes} in ${cycleRecords.length} cycles`,
       `Average active nodes: ${avgActiveNodes}, average standby nodes: ${avgStandbyNodes}`
