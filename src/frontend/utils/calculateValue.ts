@@ -52,6 +52,13 @@ export const roundTokenValue = (value: string): string => {
   return Number(value).toFixed(18)
 }
 
+// Format numbers to show full precision, removing trailing zeros
+export const formatFullAmount = (num: number): string => {
+  // Use toFixed with high precision, then remove trailing zeros
+  const fixed = num.toFixed(18)
+  return fixed.replace(/\.?0+$/, '')
+}
+
 export const getBaseTxFeeLIB = (parameters: NetworkParameters): string => {
   if (!parameters) return '0'
   const { transactionFee, stabilityScaleDiv, stabilityScaleMul } = parameters

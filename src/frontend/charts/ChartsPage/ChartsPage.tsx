@@ -107,24 +107,14 @@ export const ChartsPage: React.FC = () => {
               <button
                 className={`${styles.sidebarButton} ${activeSection === 'overview' ? styles.active : ''}`}
                 onClick={() => handleSectionChange('overview')}
-                style={{
-                  backgroundColor: activeSection === 'overview' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'overview' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'overview' ? '600' : '500',
-                }}
               >
-                Overview
+                Overview Stats
               </button>
             </div>
             <div className={styles.sidebarItem}>
               <button
                 className={`${styles.sidebarButton} ${activeSection === 'market-data' ? styles.active : ''}`}
                 onClick={() => handleSectionChange('market-data')}
-                style={{
-                  backgroundColor: activeSection === 'market-data' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'market-data' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'market-data' ? '600' : '500',
-                }}
               >
                 Market Data
               </button>
@@ -135,11 +125,6 @@ export const ChartsPage: React.FC = () => {
                   activeSection === 'blockchain-data' ? styles.active : ''
                 }`}
                 onClick={() => handleSectionChange('blockchain-data')}
-                style={{
-                  backgroundColor: activeSection === 'blockchain-data' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'blockchain-data' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'blockchain-data' ? '600' : '500',
-                }}
               >
                 Blockchain Data
               </button>
@@ -148,11 +133,6 @@ export const ChartsPage: React.FC = () => {
               <button
                 className={`${styles.sidebarButton} ${activeSection === 'network-data' ? styles.active : ''}`}
                 onClick={() => handleSectionChange('network-data')}
-                style={{
-                  backgroundColor: activeSection === 'network-data' ? '#e7f3ff' : 'transparent',
-                  color: activeSection === 'network-data' ? '#0066cc' : '#6c757d',
-                  fontWeight: activeSection === 'network-data' ? '600' : '500',
-                }}
               >
                 Network Data
               </button>

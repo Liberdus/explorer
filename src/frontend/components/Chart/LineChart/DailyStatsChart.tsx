@@ -155,14 +155,6 @@ export const DailyStatsChart: React.FC<DailyStatsChartProps> = (props: DailyStat
           return Highcharts.dateFormat('%b %e', this.value)
         },
       },
-      title: {
-        text: 'Date',
-        style: {
-          color: '#666',
-          fontSize: '12px',
-          fontWeight: '500',
-        },
-      },
       events: {},
     },
     yAxis: {

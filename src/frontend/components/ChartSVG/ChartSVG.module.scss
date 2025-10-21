@@ -1,0 +1,21 @@
+@import '../../../styles/index.scss';
+
+.ChartSVG {
+  width: 100%;
+  height: 100%;
+  &.primary {
+    fill: color(primary);
+  }
+
+  &.black {
+    fill: color(gray-700);
+  }
+
+  &.white {
+    fill: color(white);
+  }
+
+  &.disabled {
+    fill: color(gray-300);
+  }
+}
