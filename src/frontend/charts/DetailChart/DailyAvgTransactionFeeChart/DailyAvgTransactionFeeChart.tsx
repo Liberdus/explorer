@@ -71,7 +71,9 @@ export const DailyAvgTransactionFeeChart: React.FC = () => {
     //     ${xDateString}
     //   </div>
     //   <div style="margin-bottom: 4px;">
-    //     <span style="color: #666;">Average Transaction Fee:</span> <span style="font-weight: 600; color: #000;">$${avgFee * priceUSD}</span>
+    //     <span style="color: #666;">Average Transaction Fee:</span> <span style="font-weight: 600; color: #000;">$${
+    //       avgFee * priceUSD
+    //     }</span>
     //   </div>
     //   <div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">
     //     <div style="margin-bottom: 4px;">
