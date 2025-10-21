@@ -1,6 +1,7 @@
 .DailyDistributedSupplyChart {
   width: 100%;
-  padding: 20px 0;
+  padding: 8px 0;
+  overflow-x: hidden;
 
   .chartContainer {
     display: flex;
@@ -10,12 +11,23 @@
 
     @media (max-width: 1024px) {
       flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    @media (max-width: 768px) {
+      gap: 12px;
     }
   }
 
   .chartWrapper {
     flex: 1;
     min-width: 0;
+
+    @media (max-width: 1024px) {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
   }
 
   .infoPanel {
@@ -98,5 +110,9 @@
     min-height: 400px;
     font-size: 16px;
     color: #666;
+  }
+
+  @media (max-width: 768px) {
+    padding: 0px 0;
   }
 }

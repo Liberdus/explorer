@@ -1,5 +1,6 @@
 .DailyActiveAccountChart {
-  padding: 20px;
+  padding: 8px;
+  overflow-x: hidden;
 }
 
 .chartContainer {
@@ -162,6 +163,13 @@
 @media (max-width: 1024px) {
   .chartContainer {
     flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  .chartWrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .infoPanel {
@@ -171,7 +179,11 @@
 
 @media (max-width: 768px) {
   .DailyActiveAccountChart {
-    padding: 12px;
+    padding: 0px;
+  }
+
+  .chartContainer {
+    gap: 12px;
   }
 
   .timeRangeSelector {

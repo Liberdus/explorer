@@ -1,6 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { toEthereumAddress, truncateAddress } from '../../../utils/transformAddress'
+import { formatFullAmount } from '../../../utils/calculateValue'
 
 import styles from './StateTab.module.scss'
 import { BalanceChange } from '../../../../storage/accountHistoryState'
@@ -29,20 +30,25 @@ export const StateTab: React.FC<StateTabProps> = ({ balanceChanges }) => {
         </div>
         <div className={styles.divider}></div>
         {balanceChanges.map((change, index) => {
-          const difference = change.after - change.before
+          // Calculate difference with high precision to avoid floating point errors
+          const beforeValue = Number(change.before)
+          const afterValue = Number(change.after)
+          const difference = afterValue - beforeValue
 
           return (
             <div key={index} className={styles.gridRow}>
-              <Link href={`/account/${change.accountId}`} className={styles.link}>
-                <div className={styles.value}>{truncateAddress(toEthereumAddress(change.accountId))} </div>
-              </Link>
-              <div className={styles.value}>{change.before.toLocaleString()}</div>
-              <div className={styles.value}>{change.after.toLocaleString()}</div>
+              <div className={styles.value}>
+                <Link href={`/account/${change.accountId}`} className={styles.link}>
+                  {truncateAddress(toEthereumAddress(change.accountId))}
+                </Link>
+              </div>
+              <div className={styles.value}>{formatFullAmount(beforeValue)}</div>
+              <div className={styles.value}>{formatFullAmount(afterValue)}</div>
               <div
                 className={difference > 0 ? styles.positive : difference < 0 ? styles.negative : styles.value}
               >
                 {difference > 0 ? '+' : ''}
-                {difference.toLocaleString()} LIB
+                {formatFullAmount(difference)} LIB
               </div>
             </div>
           )

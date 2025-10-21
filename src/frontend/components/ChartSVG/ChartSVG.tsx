@@ -1,4 +1,7 @@
 import React, { FC } from 'react'
+import cx from 'classnames'
+
+import styles from './ChartSVG.module.scss'
 
 import AvgBlockSize from './svgs/avg-block-size.svg'
 import AvgBlockTime from './svgs/avg-block-time.svg'
@@ -72,11 +75,22 @@ export const chartSVGTypes = {
 
 export interface ChartSvgProps {
   name: keyof typeof chartSVGTypes
+  className?: string
+  color?: 'primary' | 'black' | 'white' | 'disabled' | undefined
 }
 
-export const ChartSVG: FC<ChartSvgProps> = ({ name, ...props }): React.ReactElement | null => {
+export const ChartSVG: FC<ChartSvgProps> = ({
+  name,
+  className,
+  color,
+  ...props
+}): React.ReactElement | null => {
   // eslint-disable-next-line security/detect-object-injection
   const ChartComponent = chartSVGTypes[name]
 
-  return ChartComponent ? <ChartComponent {...props} /> : null
+  const style = cx(styles.ChartSVG, color && styles[color], className)
+
+  return ChartComponent ? (
+    <ChartComponent {...props} className={style} viewBox="0 0 300 120" preserveAspectRatio="meet" />
+  ) : null
 }

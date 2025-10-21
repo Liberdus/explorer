@@ -22,10 +22,20 @@
 
   .gridRow {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: spacing(10);
-    align-items: center;
-    padding: spacing(2) 0;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: spacing(16);
+    align-items: flex-start;
+    padding: spacing(8) 0;
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 200px 200px 200px 220px;
+      gap: spacing(8);
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: 200px 200px 200px 220px;
+      gap: spacing(8);
+    }
   }
 
   .divider {
@@ -33,29 +43,43 @@
     border-top: border(gray);
     opacity: 0.75;
     margin: spacing(2) 0;
+    min-width: 820px;
   }
 
   .link {
     color: color(info);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 
   .header {
     @include fontStyle(small, bold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    color: color(gray-700);
   }
 
   .value {
     @include fontStyle(small);
+    color: color(gray-800);
+    word-break: break-all;
+    overflow-wrap: break-word;
   }
 
   .positive {
     color: color(success);
     @include fontStyle(small, semi-bold);
+    word-break: break-all;
+    overflow-wrap: break-word;
   }
 
   .negative {
     color: color(danger);
     @include fontStyle(small, semi-bold);
+    word-break: break-all;
+    overflow-wrap: break-word;
   }
 }
