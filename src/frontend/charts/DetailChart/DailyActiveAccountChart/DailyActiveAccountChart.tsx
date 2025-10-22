@@ -20,7 +20,7 @@ export const DailyActiveAccountChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest },
+    highLight: { highest, lowest },
   } = convertDailyAccountStatsToSeriesData(dailyAccountStats, accountResponseType, {
     newAddress: false,
     activeAccount: true,

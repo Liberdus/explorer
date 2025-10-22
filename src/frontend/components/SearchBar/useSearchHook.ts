@@ -1,6 +1,12 @@
 import { useRouter } from 'next/router'
 import { useCallback, useState } from 'react'
-import { isTransactionHash, isAccount, isAliasAccount } from '../../utils/getSearchRoute'
+import {
+  isTransactionHash,
+  isAccount,
+  isAliasAccount,
+  isCycleMarker,
+  isCycleCounter,
+} from '../../utils/getSearchRoute'
 import { isEthereumAddress, isShardusAddress } from '../../utils/transformAddress'
 import { hash } from '@shardus/crypto-web'
 
@@ -22,23 +28,30 @@ export const useSearchHook = (): SearchHookResult => {
     setSearchError(null)
     const searchText = search.trim().toLowerCase()
 
-    const regex = /[a-z]/i
-
     try {
       if (isEthereumAddress(searchText)) {
         router.push(`/account/${searchText}`)
         return
       }
       if (isShardusAddress(searchText)) {
-        if (await isTransactionHash(searchText)) router.push(`/transaction/${searchText}`)
-        else if (await isAccount(searchText)) router.push(`/account/${searchText}`)
-        else router.push(`/cycle/${searchText}`)
-        return
+        if (await isTransactionHash(searchText)) {
+          router.push(`/transaction/${searchText}`)
+          return
+        } else if (await isAccount(searchText)) {
+          router.push(`/account/${searchText}`)
+          return
+        } else if (await isCycleMarker(searchText)) {
+          router.push(`/cycle/${searchText}`)
+          return
+        }
       }
       // Regex to check if the search text is a cycle number
+      const regex = /[a-z]/i
       if (!regex.test(searchText)) {
-        router.push(`/cycle/${searchText}`)
-        return
+        if (await isCycleCounter(searchText)) {
+          router.push(`/cycle/${searchText}`)
+          return
+        }
       }
       if (searchText.length >= 3) {
         const usernameHash = hash(searchText) as string

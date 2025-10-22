@@ -22,7 +22,7 @@ export const DailyPriceChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest, current },
+    highLight: { highest, lowest, current },
   } = convertDailyNetworkStatsToSeriesData(dailyNetworkStats, networkResponseType, {
     dailyPrice: true,
   })

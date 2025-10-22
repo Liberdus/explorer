@@ -25,7 +25,7 @@ export const DailyBurntSupplyChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest },
+    highLight: { highest, lowest },
   } = convertDailyCoinStatsToSeriesData(dailyCoinStats, coinResponseType, {
     dailyBurntSupply: true,
   })

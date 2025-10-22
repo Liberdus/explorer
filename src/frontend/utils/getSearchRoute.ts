@@ -16,6 +16,20 @@ export const isAccount = async (searchText: string): Promise<boolean> => {
   return success && accounts?.[0]?.accountId === searchText
 }
 
+export const isCycleMarker = async (searchText: string): Promise<boolean> => {
+  const {
+    data: { success, cycles },
+  } = await api.get(`${PATHS.CYCLE}?cycleMarker=${searchText}`)
+  return success && cycles?.[0]?.cycleMarker === searchText
+}
+
+export const isCycleCounter = async (searchText: string): Promise<boolean> => {
+  const {
+    data: { success, cycles },
+  } = await api.get(`${PATHS.CYCLE}?cycleNumber=${searchText}`)
+  return success && cycles?.[0]?.counter === Number(searchText)
+}
+
 export const isAliasAccount = async (
   searchText: string
 ): Promise<{ success: boolean; accountId?: string }> => {

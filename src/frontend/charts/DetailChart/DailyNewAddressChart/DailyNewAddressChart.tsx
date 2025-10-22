@@ -25,7 +25,7 @@ export const DailyNewAddressChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest },
+    highLight: { highest, lowest },
   } = convertDailyAccountStatsToSeriesData(dailyAccountStats, accountResponseType, {
     newAddress: true,
   })
@@ -96,7 +96,7 @@ export const DailyNewAddressChart: React.FC = () => {
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
                       Highest increase of <strong>{highest.value.toLocaleString()}</strong> new addresses was
-                      recorded on
+                      recorded on{' '}
                       {new Date(highest.timestamp).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
@@ -114,8 +114,13 @@ export const DailyNewAddressChart: React.FC = () => {
                     <div className={styles.highlightLabel}>HIGHLIGHT</div>
                     <div className={styles.highlightText}>
                       Lowest increase of <strong>{lowest.value.toLocaleString()}</strong> new addresses was
-                      recorded on
-                      {lowest.timestamp}
+                      recorded on{' '}
+                      {new Date(lowest.timestamp).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
                     </div>
                   </div>
                 </div>
