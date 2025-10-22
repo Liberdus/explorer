@@ -1,5 +1,5 @@
 import axios from 'axios'
-import * as crypto from '@shardeum-foundation/lib-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 import { config } from '../src/config'
 import { queryFromDistributor, DataType } from '../src/class/DataSync'
 import { isDeepStrictEqual } from 'util'
@@ -57,11 +57,18 @@ const runProgram = async (): Promise<void> => {
     }
     console.log('DISTRIBUTOR RESPONSES', distributor_responses.length, 'API SERVER RESPONSES', api_responses.length)
     console.log(isDeepStrictEqual(distributor_responses, api_responses))
-    // console.dir(responses, { depth: null })
+    // console.dir(distributor_responses, { depth: null })
+    // console.dir(api_responses, { depth: null })
     // save to file
-    if (saveToFile) {
-        writeFileSync(`distributor_${data_type}_${startCycle}_${endCycle}.json`, JSON.stringify(distributor_responses))
-        writeFileSync(`api_server_${data_type}_${startCycle}_${endCycle}.json`, JSON.stringify(api_responses))
-    }
+  if (saveToFile) {
+    writeFileSync(
+      `distributor_${data_type}_${startCycle}_${endCycle}.json`,
+      JSON.stringify(distributor_responses, null, 4)
+    )
+    writeFileSync(
+      `api_server_${data_type}_${startCycle}_${endCycle}.json`,
+      JSON.stringify(api_responses, null, 4)
+    )
+  }
 }
 runProgram()
