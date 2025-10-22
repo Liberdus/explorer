@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
-import * as crypto from '@shardeum-foundation/lib-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 import * as Storage from '../src/storage'
 import * as DataSync from '../src/class/DataSync'
 import * as StatsStorage from '../src/stats'
@@ -18,12 +18,27 @@ console.log('Start Cycle', startCycle)
 
 const patchOnlyMissingData = true
 
+export const addExitListeners = (): void => {
+  process.on('SIGINT', async () => {
+    console.log('Exiting on SIGINT')
+    await Storage.closeDatabase()
+    await StatsStorage.closeStatsDatabase()
+    process.exit(0)
+  })
+  process.on('SIGTERM', async () => {
+    console.log('Exiting on SIGTERM')
+    await Storage.closeDatabase()
+    await StatsStorage.closeStatsDatabase()
+    process.exit(0)
+  })
+}
+
 // Setup Log Directory
 const start = async (): Promise<void> => {
   crypto.init(config.hashKey)
   await Storage.initializeDB()
   await StatsStorage.initializeStatsDB()
-  Storage.addExitListeners()
+  addExitListeners()
 
   let totalCyclesToSync = 0
   const response = await DataSync.queryFromDistributor(DataSync.DataType.TOTALDATA, {})
@@ -46,6 +61,7 @@ const start = async (): Promise<void> => {
   console.log('Stats Patched!')
 
   await Storage.closeDatabase()
+  await StatsStorage.closeStatsDatabase()
   console.log('Patching done! from cycle', startCycle, 'to cycle', totalCyclesToSync)
 }
 

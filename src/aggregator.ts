@@ -35,7 +35,7 @@ export const addExitListeners = (): void => {
   })
 }
 
-const one_day_in_ms = 24 * 60 * 60 * 1000
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000
 
 const measure_time = false
 let start_time
@@ -86,19 +86,19 @@ const start = async (): Promise<void> => {
 
   const lastStoredDailyTransactions = await DailyTransactionStatsDB.queryLatestDailyTransactionStats(1)
   if (lastStoredDailyTransactions.length > 0)
-    lastCheckedDateTimeForTransactions = lastStoredDailyTransactions[0].dateStartTime + one_day_in_ms
+    lastCheckedDateTimeForTransactions = lastStoredDailyTransactions[0].dateStartTime + ONE_DAY_IN_MS
 
   const lastStoredDailyAccounts = await DailyAccountStatsDB.queryLatestDailyAccountStats(1)
   if (lastStoredDailyAccounts.length > 0)
-    lastCheckedDateTimeForAccounts = lastStoredDailyAccounts[0].dateStartTime + one_day_in_ms
+    lastCheckedDateTimeForAccounts = lastStoredDailyAccounts[0].dateStartTime + ONE_DAY_IN_MS
 
   const lastStoredDailyNetwork = await DailyNetworkStatsDB.queryLatestDailyNetworkStats(1)
   if (lastStoredDailyNetwork.length > 0)
-    lastCheckedDateTimeForNetworkStats = lastStoredDailyNetwork[0].dateStartTime + one_day_in_ms
+    lastCheckedDateTimeForNetworkStats = lastStoredDailyNetwork[0].dateStartTime + ONE_DAY_IN_MS
 
   const lastStoredDailyCoinStats = await DailyCoinStatsDB.queryLatestDailyCoinStats(1)
   if (lastStoredDailyCoinStats.length > 0)
-    lastCheckedDateTimeForCoinStats = lastStoredDailyCoinStats[0].dateStartTime + one_day_in_ms
+    lastCheckedDateTimeForCoinStats = lastStoredDailyCoinStats[0].dateStartTime + ONE_DAY_IN_MS
 
   let lastCheckedCycleForNodeStats = await MetadataDB.getLastStoredCycleNumber(
     MetadataDB.MetadataType.NodeStats
@@ -149,14 +149,14 @@ const start = async (): Promise<void> => {
     // ----- Daily Stats -----
     const currentTimestamp = Date.now()
     const timeSinceLastChecked = currentTimestamp - lastCheckedDateTime
-    const isNewDay = timeSinceLastChecked >= one_day_in_ms
+    const isNewDay = timeSinceLastChecked >= ONE_DAY_IN_MS
     // Check if day has changed
     if (isNewDay) {
       // Give some extra safety margin
       const extra_safety_margin = slidingWindowOffset * cycleDuration * 1000 // extra safety margin
-      if (timeSinceLastChecked > one_day_in_ms + extra_safety_margin) {
+      if (timeSinceLastChecked > ONE_DAY_IN_MS + extra_safety_margin) {
         // calculate end timestamp for the day
-        const dateEndTimestamp = currentTimestamp - (timeSinceLastChecked % one_day_in_ms)
+        const dateEndTimestamp = currentTimestamp - (timeSinceLastChecked % ONE_DAY_IN_MS)
         StatsFunctions.recordDailyTransactionStats(lastCheckedDateTimeForTransactions, dateEndTimestamp)
         StatsFunctions.recordDailyAccountStats(lastCheckedDateTimeForAccounts, dateEndTimestamp)
         StatsFunctions.recordDailyCoinStats(lastCheckedDateTimeForCoinStats, dateEndTimestamp)

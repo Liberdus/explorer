@@ -37,6 +37,8 @@ const GENESIS_ACCOUNT_BALANCES = [
 
 const GENESIS_SUPPLY = GENESIS_ACCOUNT_BALANCES.reduce((a, b) => a + BigInt(b), BigInt(0))
 
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000
+
 export const weiBNToEth = (bn: bigint): number => {
   return Number(bn) / 1e18
 }
@@ -400,9 +402,8 @@ export const recordDailyTransactionStats = async (
   dateStartTime: number,
   dateEndTime: number
 ): Promise<void> => {
-  const one_day_in_ms = 24 * 60 * 60 * 1000
-  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
-    const beforeTimestamp = startTimestamp + one_day_in_ms // ( Before 00:00:00 )
+  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += ONE_DAY_IN_MS) {
+    const beforeTimestamp = startTimestamp + ONE_DAY_IN_MS // ( Before 00:00:00 )
     const afterTimestamp = startTimestamp - 1 // ( After 23:59:59 )
     // Get transaction counts by type in a single query
     const txCountsByType = await TransactionDB.queryTransactionCountsByType(beforeTimestamp, afterTimestamp)
@@ -443,9 +444,8 @@ export const recordDailyTransactionStats = async (
 }
 
 export const recordDailyAccountStats = async (dateStartTime: number, dateEndTime: number): Promise<void> => {
-  const one_day_in_ms = 24 * 60 * 60 * 1000
-  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
-    const beforeTimestamp = startTimestamp + one_day_in_ms // ( Before 00:00:00 )
+  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += ONE_DAY_IN_MS) {
+    const beforeTimestamp = startTimestamp + ONE_DAY_IN_MS // ( Before 00:00:00 )
     const afterTimestamp = startTimestamp - 1 // ( After 23:59:59 )
     // Query accounts created directly from accounts database (all types)
     const newAccounts = await AccountDB.queryAccountCountByCreatedTimestamp(afterTimestamp, beforeTimestamp)
@@ -477,9 +477,8 @@ export const recordDailyAccountStats = async (dateStartTime: number, dateEndTime
 }
 
 export const recordDailyNetworkStats = async (dateStartTime: number, dateEndTime: number): Promise<void> => {
-  const one_day_in_ms = 24 * 60 * 60 * 1000
-  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
-    const beforeTimestamp = startTimestamp + one_day_in_ms // ( Before 00:00:00 )
+  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += ONE_DAY_IN_MS) {
+    const beforeTimestamp = startTimestamp + ONE_DAY_IN_MS // ( Before 00:00:00 )
     const afterTimestamp = startTimestamp - 1 // ( After 23:59:59 )
     // Get network account data for this time period - look for any network account snapshot
     const networkAccount = await AccountDB.queryAccountByAccountId(NetworkAccountId)
@@ -562,9 +561,8 @@ export const recordDailyNetworkStats = async (dateStartTime: number, dateEndTime
 }
 
 export const recordDailyCoinStats = async (dateStartTime: number, dateEndTime: number): Promise<void> => {
-  const one_day_in_ms = 24 * 60 * 60 * 1000
-  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += one_day_in_ms) {
-    const beforeTimestamp = startTimestamp + one_day_in_ms // ( Before 00:00:00 )
+  for (let startTimestamp = dateStartTime; startTimestamp < dateEndTime; startTimestamp += ONE_DAY_IN_MS) {
+    const beforeTimestamp = startTimestamp + ONE_DAY_IN_MS // ( Before 00:00:00 )
     const afterTimestamp = startTimestamp - 1 // ( After 23:59:59 )
     // Query transactions directly by timestamp
     const transactions = await TransactionDB.queryTransactions({
@@ -978,10 +976,40 @@ export const recordNodeStats = async (latestCycle: number, lastStoredCycle: numb
 }
 
 export const patchStatsBetweenCycles = async (startCycle: number, endCycle: number): Promise<void> => {
+  // Patch cycle-based stats
   await recordOldValidatorsStats(endCycle, startCycle - 1)
   await recordTransactionsStats(endCycle, startCycle - 1)
   await recordCoinStats(endCycle, startCycle - 1)
   await recordNodeStats(endCycle, startCycle - 1)
+
+  // Patch daily stats
+  // Get the timestamp range from cycles
+  const startCycleRecord = await CycleDB.queryCycleByCounter(startCycle)
+  const endCycleRecord = await CycleDB.queryCycleByCounter(endCycle)
+
+  if (startCycleRecord && endCycleRecord) {
+    // Convert cycle timestamps (seconds) to milliseconds
+    const startTimestampMs = startCycleRecord.cycleRecord.start * 1000
+    const endTimestampMs = endCycleRecord.cycleRecord.start * 1000
+
+    // Round to day boundaries (00:00:00 UTC)
+    const dateStartTime = new Date(startTimestampMs).setUTCHours(0, 0, 0, 0)
+    const dateEndTime = new Date(endTimestampMs).setUTCHours(0, 0, 0, 0) + ONE_DAY_IN_MS // Include the end day
+
+    console.log(
+      `Patching daily stats from ${new Date(dateStartTime).toUTCString()} to ${new Date(
+        dateEndTime
+      ).toUTCString()}`
+    )
+
+    // Record all daily stats for the date range
+    await recordDailyTransactionStats(dateStartTime, dateEndTime)
+    await recordDailyAccountStats(dateStartTime, dateEndTime)
+    await recordDailyNetworkStats(dateStartTime, dateEndTime)
+    await recordDailyCoinStats(dateStartTime, dateEndTime)
+  } else {
+    console.warn(`Could not find cycle records for cycles ${startCycle} or ${endCycle}`)
+  }
 }
 
 export async function insertOrUpdateMetadata(
