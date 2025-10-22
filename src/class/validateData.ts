@@ -48,7 +48,7 @@ export async function validateData(data: Data): Promise<boolean> {
 
   if (data.receipt) {
     if (config.dataLogWrite) ReceiptLogWriter.writeToLog(`${StringUtils.safeStringify(data.receipt)}\n`)
-    await processReceiptData([data.receipt])
+    await processReceiptData([data.receipt], false, true)
     return true
   }
   if (data.cycle) {
