@@ -25,7 +25,7 @@ export const DailyActiveNodesChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest, current },
+    highLight: { highest, lowest, current },
   } = convertDailyNetworkStatsToSeriesData(dailyNetworkStats, networkResponseType, {
     dailyActiveNodes: true,
   })

@@ -78,6 +78,17 @@ export interface ActiveNodesChartData {
   standbyNodes: number
 }
 
+export interface HighLightPoint {
+  timestamp: number
+  value: number
+}
+
+export interface HighLight {
+  highest: HighLightPoint | null
+  lowest: HighLightPoint | null
+  current?: number | null
+}
+
 export interface SeriesData {
   name: string
   data: DataPoint[]
@@ -297,20 +308,16 @@ export function convertDailyTransactionStatsToSeriesData(
   transactionResponseType = 'array'
 ): {
   seriesData: SeriesData[]
-  stats: {
-    highest: { timestamp: number; value: number } | null
-    lowest: { timestamp: number; value: number } | null
-  }
+  highLight: HighLight
 } {
   const seriesData: SeriesData[] = [
     { name: 'Total Txs', data: [], zIndex: 1, tooltip: 'Total transactions per day', visible: true },
   ]
-  let highest = { timestamp: 0, value: 0 }
-  let lowest = { timestamp: 0, value: Infinity }
   if (!transactionStats || transactionStats.length === 0) {
-    return { seriesData, stats: { highest, lowest } }
+    return { seriesData, highLight: { highest: null, lowest: null } }
   }
-
+  let highest: HighLightPoint = { timestamp: 0, value: 0 }
+  let lowest: HighLightPoint = { timestamp: 0, value: Infinity }
   transactionStats.forEach((stat) => {
     let timestamp: number
     let totalTxs: number
@@ -359,7 +366,7 @@ export function convertDailyTransactionStatsToSeriesData(
     })
   })
 
-  return { seriesData, stats: { highest, lowest } }
+  return { seriesData, highLight: { highest, lowest } }
 }
 
 export function convertDailyAccountStatsToSeriesData(
@@ -372,17 +379,12 @@ export function convertDailyAccountStatsToSeriesData(
   }
 ): {
   seriesData: SeriesData[]
-  stats: {
-    highest: { timestamp: number; value: number } | null
-    lowest: { timestamp: number; value: number } | null
-  }
+  highLight: HighLight
 } {
   if (!queryType.newAddress && !queryType.activeAccount && !queryType.newAccount) {
     throw new Error('No query type selected for daily account stats')
   }
   const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
-  let highest = { timestamp: 0, value: 0 }
-  let lowest = { timestamp: 0, value: Infinity }
   if (queryType.newAddress) {
     seriesData[0].name = 'New Addresses'
   } else if (queryType.activeAccount) {
@@ -392,8 +394,10 @@ export function convertDailyAccountStatsToSeriesData(
   }
 
   if (!dailyAccountStats || dailyAccountStats.length === 0) {
-    return { seriesData, stats: { highest, lowest } }
+    return { seriesData, highLight: { highest: null, lowest: null } }
   }
+  let highest: HighLightPoint = { timestamp: 0, value: 0 }
+  let lowest: HighLightPoint = { timestamp: 0, value: Infinity }
 
   let cumulativeTotal = 0
   dailyAccountStats.forEach((stat) => {
@@ -487,63 +491,7 @@ export function convertDailyAccountStatsToSeriesData(
     }
   })
 
-  return { seriesData, stats: { highest, lowest } }
-}
-
-export function convertActiveBalanceAccountStatsToDailyData(accountStats: any[] | number[][]): SeriesData[] {
-  if (!accountStats || accountStats.length === 0) {
-    return [
-      {
-        name: 'Active Balance Accounts',
-        data: [],
-        zIndex: 1,
-        tooltip: 'Active balance accounts per day',
-        visible: true,
-      },
-    ]
-  }
-
-  // Initialize series data array - only Active Balance Accounts
-  const seriesData: SeriesData[] = [
-    {
-      name: 'Active Balance Accounts',
-      data: [],
-      zIndex: 1,
-      tooltip: 'Active balance accounts per day',
-      visible: true,
-    },
-  ]
-
-  accountStats
-    .sort((a, b) => {
-      if (Array.isArray(a) && Array.isArray(b)) {
-        return a[0] - b[0] // Sort by dateStartTime (index 0 in array format for daily stats)
-      }
-      return a.dateStartTime - b.dateStartTime
-    })
-    .forEach((accountStat) => {
-      let timestamp: number
-      let activeBalanceAccounts: number
-
-      if (Array.isArray(accountStat)) {
-        // Array format for daily stats: [dateStartTime, newAccounts, newUserAccounts, activeAccounts, activeBalanceAccounts, ...]
-        timestamp = accountStat[0] // dateStartTime is already in milliseconds
-        activeBalanceAccounts = accountStat[4] || 0 // activeBalanceAccounts is at index 4
-      } else {
-        // Object format
-        timestamp = accountStat.dateStartTime
-        activeBalanceAccounts = accountStat.activeBalanceAccounts || 0
-      }
-
-      // Add data point for Active Balance Accounts
-      seriesData[0].data.push({
-        x: timestamp,
-        y: activeBalanceAccounts,
-        cycle: 0,
-      })
-    })
-
-  return seriesData
+  return { seriesData, highLight: { highest, lowest } }
 }
 
 export function convertDailyCoinStatsToSeriesData(
@@ -560,10 +508,7 @@ export function convertDailyCoinStatsToSeriesData(
   }
 ): {
   seriesData: SeriesData[]
-  stats: {
-    highest: { timestamp: number; value: number } | null
-    lowest: { timestamp: number; value: number } | null
-  }
+  highLight: HighLight
 } {
   if (
     !queryType.dailyMarketCap &&
@@ -577,8 +522,6 @@ export function convertDailyCoinStatsToSeriesData(
     throw new Error('No query type selected for daily coin stats')
   }
   const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
-  let highest = { timestamp: 0, value: 0 }
-  let lowest = { timestamp: 0, value: Infinity }
   if (queryType.dailyMarketCap) {
     seriesData[0].name = 'Market Cap (USD)'
   } else if (queryType.dailySupplyGrowth) {
@@ -596,8 +539,10 @@ export function convertDailyCoinStatsToSeriesData(
     seriesData[0].name = 'Network Stake'
   }
   if (!dailyCoinStats || dailyCoinStats.length === 0) {
-    return { seriesData, stats: { highest, lowest } }
+    return { seriesData, highLight: { highest: null, lowest: null } }
   }
+  let highest: HighLightPoint = { timestamp: 0, value: 0 }
+  let lowest: HighLightPoint = { timestamp: 0, value: Infinity }
 
   let cumulativeTotal = config.genesisLIBSupply
   let cumulativeTotalStake = 0
@@ -902,7 +847,7 @@ export function convertDailyCoinStatsToSeriesData(
     }
   })
 
-  return { seriesData, stats: { highest, lowest } }
+  return { seriesData, highLight: { highest, lowest } }
 }
 
 export function calculateTotalSupplyChange(
@@ -936,11 +881,7 @@ export function convertDailyNetworkStatsToSeriesData(
   }
 ): {
   seriesData: SeriesData[]
-  stats: {
-    highest: { timestamp: number; value: number } | null
-    lowest: { timestamp: number; value: number } | null
-    current: number | null
-  }
+  highLight: HighLight
 } {
   if (
     !queryType.dailyPrice &&
@@ -953,9 +894,6 @@ export function convertDailyNetworkStatsToSeriesData(
     throw new Error('No query type selected for daily network stats')
   }
   const seriesData: SeriesData[] = [{ name: '', data: [], zIndex: 1, tooltip: '', visible: true }]
-  let highest = { timestamp: 0, value: 0 }
-  let lowest = { timestamp: 0, value: Infinity }
-  let current = 0
 
   if (queryType.dailyPrice) {
     seriesData[0].name = 'LIB Price (USD)'
@@ -973,8 +911,11 @@ export function convertDailyNetworkStatsToSeriesData(
   }
 
   if (!dailyNetworkStats || dailyNetworkStats.length === 0) {
-    return { seriesData, stats: { highest, lowest, current } }
+    return { seriesData, highLight: { highest: null, lowest: null, current: null } }
   }
+  let highest: HighLightPoint = { timestamp: 0, value: 0 }
+  let lowest: HighLightPoint = { timestamp: 0, value: Infinity }
+  let current = 0
 
   dailyNetworkStats.forEach((stat) => {
     if (queryType.dailyPrice) {
@@ -1159,5 +1100,5 @@ export function convertDailyNetworkStatsToSeriesData(
     }
   })
 
-  return { seriesData, stats: { highest, lowest, current } }
+  return { seriesData, highLight: { highest, lowest, current } }
 }

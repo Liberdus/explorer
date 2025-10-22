@@ -22,7 +22,7 @@ export const DailyNodeRewardRateChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest, current },
+    highLight: { highest, lowest, current },
   } = convertDailyNetworkStatsToSeriesData(dailyNetworkStats, networkResponseType, {
     dailyNodeRewardRate: true,
   })

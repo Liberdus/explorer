@@ -26,7 +26,7 @@ export const DailyMarketCapChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest },
+    highLight: { highest, lowest },
   } = convertDailyCoinStatsToSeriesData(dailyCoinStats, coinResponseType, {
     dailyMarketCap: true,
   })

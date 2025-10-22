@@ -25,7 +25,7 @@ export const DailyDistributedSupplyChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest },
+    highLight: { highest, lowest },
   } = convertDailyCoinStatsToSeriesData(dailyCoinStats, coinResponseType, {
     dailyDistributedSupply: true,
   })

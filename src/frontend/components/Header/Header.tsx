@@ -9,6 +9,20 @@ import { Icon } from '../index'
 import styles from './Header.module.scss'
 import { TransactionType } from '../../../types'
 
+interface SubMenuItem {
+  name: string
+  href: string
+  external?: boolean
+}
+
+interface MenuItem {
+  name: string
+  href: string
+  current?: boolean
+  hasSubmenu?: boolean
+  submenu?: SubMenuItem[]
+}
+
 export const Header: React.FC<Record<string, never>> = () => {
   const router = useRouter()
 
@@ -17,7 +31,7 @@ export const Header: React.FC<Record<string, never>> = () => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false)
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { name: 'Home', href: '/', current: true },
     {
       name: 'Transactions',
@@ -89,24 +103,38 @@ export const Header: React.FC<Record<string, never>> = () => {
                 onMouseEnter={() => item.hasSubmenu && handleMouseEnter(item.name)}
                 onMouseLeave={handleMouseLeave}
               >
-                <a href={item.href} className={item.current ? 'active' : ''}>
+                <Link
+                  href={item.href}
+                  className={item.current ? 'active' : ''}
+                  onClick={(e) => {
+                    if (item.href === '#') {
+                      e.preventDefault()
+                    }
+                  }}
+                >
                   {item.name}
                   {item.hasSubmenu && <Icon name="arrow_down" size="medium" color="black" />}
-                </a>
+                </Link>
                 {item.hasSubmenu && activeSubmenu === item.name && (
                   <div className={styles.submenu}>
                     {item.submenu?.map((subItem) => (
-                      <>
-                        <a
-                          key={subItem.name}
-                          href={subItem.href}
-                          target={subItem.external ? '_blank' : '_self'}
-                          className={styles.submenu_item}
-                        >
-                          {subItem.name}
-                        </a>
+                      <React.Fragment key={subItem.name}>
+                        {subItem.external ? (
+                          <a
+                            href={subItem.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.submenu_item}
+                          >
+                            {subItem.name}
+                          </a>
+                        ) : (
+                          <Link href={subItem.href} className={styles.submenu_item}>
+                            {subItem.name}
+                          </Link>
+                        )}
                         <div className={styles.divider}></div>
-                      </>
+                      </React.Fragment>
                     ))}
                   </div>
                 )}
@@ -129,7 +157,7 @@ export const Header: React.FC<Record<string, never>> = () => {
           <div className={styles.mobile_menu}>
             {menuItems.map((item) => (
               <div key={item.name} className={styles.menu_item}>
-                <a
+                <Link
                   href={item.hasSubmenu ? '#' : item.href}
                   className={item.current ? 'active' : ''}
                   onClick={(e) => {
@@ -143,19 +171,26 @@ export const Header: React.FC<Record<string, never>> = () => {
                     {item.name}
                     {item.hasSubmenu && <Icon name="arrow_down" color="black" />}
                   </div>
-                </a>
+                </Link>
                 {item.hasSubmenu && activeSubmenu === item.name && (
                   <div className={styles.mobile_submenu}>
-                    {item.submenu?.map((subItem) => (
-                      <a
-                        key={subItem.name}
-                        href={subItem.href}
-                        target={subItem.external ? '_blank' : '_self'}
-                        className={styles.submenu_item}
-                      >
-                        {subItem.name}
-                      </a>
-                    ))}
+                    {item.submenu?.map((subItem) =>
+                      subItem.external ? (
+                        <a
+                          key={subItem.name}
+                          href={subItem.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.submenu_item}
+                        >
+                          {subItem.name}
+                        </a>
+                      ) : (
+                        <Link key={subItem.name} href={subItem.href} className={styles.submenu_item}>
+                          {subItem.name}
+                        </Link>
+                      )
+                    )}
                   </div>
                 )}
               </div>

@@ -21,7 +21,7 @@ export const DailyTransactionFeeChart: React.FC = () => {
 
   const {
     seriesData,
-    stats: { highest, lowest },
+    highLight: { highest, lowest },
   } = convertDailyCoinStatsToSeriesData(dailyCoinStats, coinResponseType, {
     dailyTransactionFee: true,
   })
