@@ -41,7 +41,7 @@ export const setupCollectorSocketServer = (): void => {
 
   wss.on('connection', (ws: WebSocket, req) => {
     const id = crypto.randomBytes(16).toString()
-    console.log(`New notification server registered ${id}`)
+    console.log(`New subscriber registered ${id}`)
 
     // Parse subscription types from URL parameters
     const url = new URL(req.url || '', `http://${req.headers.host}`)
@@ -86,7 +86,7 @@ export const setupCollectorSocketServer = (): void => {
     })
 
     ws.on('error', (err) => {
-      console.log(`notification ${id} error: ${err}. Disconnecting...`)
+      console.log(`subscriber ${id} error: ${err}. Disconnecting...`)
       removeSubscriber(id)
       ws.close()
     })
@@ -108,6 +108,10 @@ const removeSubscriber = (id: string): void => {
 }
 
 export const forwardData = (receipt: Receipt): void => {
+  if (subscribers.size === 0) {
+    if (CONFIG.verbose) console.log('No subscribers connected, skip sending data')
+    return
+  }
   const { cycle, appReceiptData, tx } = receipt
 
   if (forwardReceipt) {
@@ -154,10 +158,6 @@ export const sendToSubscribers = async (
     type !== AppReceiptDataWsEvent
   ) {
     console.log('Unknown data type, skip sending to subscribers', type)
-    return
-  }
-  if (subscribers.size === 0) {
-    console.log('No notification service connected, skip sending to subscribers')
     return
   }
 

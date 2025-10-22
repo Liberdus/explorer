@@ -80,7 +80,11 @@ export async function bulkInsertReceipts(receipts: Receipt[]): Promise<void> {
   }
 }
 
-export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = false): Promise<void> {
+export async function processReceiptData(
+  receipts: Receipt[],
+  saveOnlyNewData = false,
+  forwardToSubscribers = false
+): Promise<void> {
   if (receipts && receipts.length <= 0) return
   const bucketSize = 1000
   let combineReceipts: Receipt[] = []
@@ -120,7 +124,7 @@ export async function processReceiptData(receipts: Receipt[], saveOnlyNewData = 
     const txReceipt = appReceiptData
     receiptsMap.set(tx.txId, tx.timestamp)
 
-    if (config.collectorSockerServer.enabled) {
+    if (config.collectorSockerServer.enabled && forwardToSubscribers) {
       forwardData(receiptObj)
     }
 
