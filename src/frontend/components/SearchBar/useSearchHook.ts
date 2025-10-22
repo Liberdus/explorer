@@ -43,9 +43,10 @@ export const useSearchHook = (): SearchHookResult => {
       if (searchText.length >= 3) {
         const usernameHash = hash(searchText) as string
         const { success, accountId } = await isAliasAccount(usernameHash)
-        if (success) router.push(`/account/${accountId}`)
-        // Set error for no account found
-        else setSearchError(`No account found for username: ${searchText}`)
+        if (success) {
+          router.push(`/account/${accountId}`)
+          return
+        }
       }
       setSearchError('No data found for search: ' + searchText)
     } catch (error) {
