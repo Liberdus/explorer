@@ -168,11 +168,11 @@ export async function queryDailyCoinStatsSummary(): Promise<DailyCoinStatsSummar
       penaltyAmount,
     } = dailyCoinStat
 
-    const newBurntFee = calculateNewBurntFee(transactionFee, networkFee, penaltyAmount)
+    const newBurntFee = calculateBurntFee(transactionFee, networkFee, penaltyAmount)
 
-    const newNetworkExpense = calculateNewNetworkExpense(mintedCoin, rewardAmountRealized)
+    const newNetworkExpense = calculateNetworkExpense(mintedCoin, rewardAmountRealized)
 
-    const newSupply = calculateNewSupply(
+    const newSupply = calculateTotalSupplyChange(
       mintedCoin,
       rewardAmountRealized,
       transactionFee,
@@ -283,16 +283,13 @@ async function calculateCoinMetricChange(dailyCoinStats: DailyCoinStats[]): Prom
     }
 
     // Calculate current day's derived values using helper functions
-    const currentNewBurntFee = calculateNewBurntFee(
+    const currentNewBurntFee = calculateBurntFee(
       current.transactionFee,
       current.networkFee,
       current.penaltyAmount
     )
-    const currentNewNetworkExpense = calculateNewNetworkExpense(
-      current.mintedCoin,
-      current.rewardAmountRealized
-    )
-    const currentNewSupply = calculateNewSupply(
+    const currentNewNetworkExpense = calculateNetworkExpense(current.mintedCoin, current.rewardAmountRealized)
+    const currentNewSupply = calculateTotalSupplyChange(
       current.mintedCoin,
       current.rewardAmountRealized,
       current.transactionFee,
@@ -301,16 +298,16 @@ async function calculateCoinMetricChange(dailyCoinStats: DailyCoinStats[]): Prom
     )
 
     // Calculate previous day's derived values using helper functions
-    const previousNewBurntFee = calculateNewBurntFee(
+    const previousNewBurntFee = calculateBurntFee(
       previous.transactionFee,
       previous.networkFee,
       previous.penaltyAmount
     )
-    const previousNewNetworkExpense = calculateNewNetworkExpense(
+    const previousNewNetworkExpense = calculateNetworkExpense(
       previous.mintedCoin,
       previous.rewardAmountRealized
     )
-    const previousNewSupply = calculateNewSupply(
+    const previousNewSupply = calculateTotalSupplyChange(
       previous.mintedCoin,
       previous.rewardAmountRealized,
       previous.transactionFee,
@@ -379,24 +376,10 @@ export function calculateTotalStakeChange(
   return stakeAmount - unStakeAmount - penaltyAmount
 }
 
-export function calculateNewBurntFee(
-  transactionFee: number,
-  networkFee: number,
-  penaltyAmount: number
-): number {
+export function calculateBurntFee(transactionFee: number, networkFee: number, penaltyAmount: number): number {
   return transactionFee + networkFee + penaltyAmount
 }
 
-export function calculateNewNetworkExpense(mintedCoin: number, rewardAmountRealized: number): number {
+export function calculateNetworkExpense(mintedCoin: number, rewardAmountRealized: number): number {
   return mintedCoin + rewardAmountRealized
-}
-
-export function calculateNewSupply(
-  mintedCoin: number,
-  rewardAmountRealized: number,
-  transactionFee: number,
-  networkFee: number,
-  penaltyAmount: number
-): number {
-  return mintedCoin + rewardAmountRealized - transactionFee - networkFee - penaltyAmount
 }
