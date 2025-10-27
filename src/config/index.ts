@@ -56,8 +56,8 @@ export interface Config {
     collector: string
     server: string
   }
-  collectorSockerServer: {
-    enabled: true
+  collector_subscription: {
+    enabled: boolean
   }
   distributorInfo: {
     ip: string
@@ -68,9 +68,6 @@ export interface Config {
   fastifyDebugLog: boolean
   rateLimit: number
   patchData: boolean
-  subscription: {
-    enabled: boolean
-  }
   rpcUrl: string
   genesisLIBSupply: number
   apiUrl: string
@@ -113,7 +110,7 @@ let config: Config = {
     maxCycleEntries: 1000,
     maxOriginalTxEntries: 1000, // This value should be equivalent to the max TPS experiened by the network.
   },
-  subscription: {
+  collector_subscription: {
     enabled: false,
   },
   collectorInfo: {
@@ -149,9 +146,6 @@ let config: Config = {
   port: {
     collector: process.env.COLLECTORPORT || '4444',
     server: process.env.PORT || '6001',
-  },
-  collectorSockerServer: {
-    enabled: true,
   },
   distributorInfo: {
     ip: process.env.DISTRIBUTOR_IP || '127.0.0.1',
