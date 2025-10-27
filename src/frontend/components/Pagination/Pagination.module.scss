@@ -3,6 +3,7 @@
 .Pagination {
   display: flex;
   align-items: center;
+  overflow-x: auto;
 
   .label {
     @include fontStyle(small, bold);
