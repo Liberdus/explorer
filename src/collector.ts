@@ -377,7 +377,7 @@ const startServer = async (): Promise<void> => {
 
   addSigListeners()
 
-  if (config.collectorSockerServer.enabled) setupCollectorSocketServer()
+  if (config.collector_subscription.enabled) setupCollectorSocketServer()
 
   if (config.explorerMode === explorerMode.MQ) {
     startRMQEventsConsumers()

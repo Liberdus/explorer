@@ -124,7 +124,7 @@ export async function processReceiptData(
     const txReceipt = appReceiptData
     receiptsMap.set(tx.txId, tx.timestamp)
 
-    if (config.collectorSockerServer.enabled && forwardToSubscribers) {
+    if (config.collector_subscription.enabled && forwardToSubscribers) {
       forwardData(receiptObj)
     }
 
