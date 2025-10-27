@@ -164,6 +164,8 @@ export const Header: React.FC<Record<string, never>> = () => {
                     if (item.hasSubmenu) {
                       e.preventDefault()
                       handleMobileSubmenuClick(item.name)
+                    } else {
+                      setIsMenuOpen(false)
                     }
                   }}
                 >
@@ -182,11 +184,17 @@ export const Header: React.FC<Record<string, never>> = () => {
                           target="_blank"
                           rel="noopener noreferrer"
                           className={styles.submenu_item}
+                          onClick={() => setIsMenuOpen(false)}
                         >
                           {subItem.name}
                         </a>
                       ) : (
-                        <Link key={subItem.name} href={subItem.href} className={styles.submenu_item}>
+                        <Link
+                          key={subItem.name}
+                          href={subItem.href}
+                          className={styles.submenu_item}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
                           {subItem.name}
                         </Link>
                       )

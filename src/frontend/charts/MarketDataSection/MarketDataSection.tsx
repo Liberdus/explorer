@@ -67,7 +67,6 @@ export const MarketDataSection: React.FC = () => {
   const charts: ChartCardProps[] = [
     { title: 'LIB Daily Price (USD) Chart', chartSvgName: 'ethDailyPrice', route: '/charts/libprice' },
     { title: 'LIB Market Capitalization Chart', chartSvgName: 'ethMarketCap', route: '/charts/marketcap' },
-    { title: 'Total Supply & Market Cap Chart', chartSvgName: 'pieChart', route: '/charts/supply' },
     { title: 'LIB Supply Growth Chart', chartSvgName: 'ethSupplyGrowth', route: '/charts/libsupplygrowth' },
   ]
 

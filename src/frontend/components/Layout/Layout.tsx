@@ -1,4 +1,5 @@
 import React, { ReactNode, useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import { Header } from '../Header'
 import { Footer } from '../Footer'
 
@@ -11,7 +12,9 @@ export interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const router = useRouter()
   const [showUpButton, setShowUpButton] = useState<boolean>(false)
+  const isChartsPage = router.pathname.startsWith('/charts')
 
   useEffect(() => {
     const handleScrollButtonVisibility = (): void => {
@@ -32,7 +35,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className={styles.Layout}>
+    <div className={`${styles.Layout} ${!isChartsPage ? styles.overflowHidden : ''}`}>
       <Header />
       <main>{children}</main>
       <Footer />
