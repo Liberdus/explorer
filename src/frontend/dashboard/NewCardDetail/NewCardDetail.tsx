@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import React from 'react'
+import { useRouter } from 'next/router'
 import Image from 'next/image'
 
 import { Icon, LineChart } from '../../components'
@@ -22,6 +23,9 @@ export interface NewCardDetailProps {
 }
 
 export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
+  const router = useRouter()
+  const basePath = router.basePath || ''
+
   return (
     <div className={styles.NewCardDetail}>
       <div className={styles.column}>
@@ -31,7 +35,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
               {/* <div className={styles.icon}>
               <Icon name="cycle" size="medium" color="black" />
             </div> */}
-              <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} unoptimized />
+              <Image src={`${basePath}/favicon.ico`} alt="Image" width={32} height={32} className={styles.logo} unoptimized />
               <div>
                 <p className={styles.title}>LIB PRICE</p>
                 <p>${data?.tokenPrice?.toLocaleString('en-US')}</p>

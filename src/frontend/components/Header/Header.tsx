@@ -25,6 +25,7 @@ interface MenuItem {
 
 export const Header: React.FC<Record<string, never>> = () => {
   const router = useRouter()
+  const basePath = router.basePath || ''
 
   const isHomePage = router.pathname === '/'
 
@@ -89,7 +90,7 @@ export const Header: React.FC<Record<string, never>> = () => {
         <div className={styles.nav_content}>
           <Link href="/" className={styles.logoWrapper}>
             {/* <Icon name="logo" className={styles.logo} size="extraLarge" /> */}
-            <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} unoptimized />
+            <Image src={`${basePath}/favicon.ico`} alt="Image" width={32} height={32} className={styles.logo} unoptimized />
 
             <div className={styles.name}>Liberdus Explorer</div>
           </Link>

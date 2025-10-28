@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import ReactTooltip from 'react-tooltip'
 
 import { Icon, iconTypes } from '../Icon'
@@ -22,6 +23,8 @@ const socials = [
 ]
 
 export const Footer: React.FC = () => {
+  const router = useRouter()
+  const basePath = router.basePath || ''
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -33,7 +36,7 @@ export const Footer: React.FC = () => {
         <div>
           <div className={styles.logoItem}>
             {/* <Icon name="logo" className={styles.icon} size="large" /> */}
-            <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.icon} unoptimized />
+            <Image src={`${basePath}/favicon.ico`} alt="Image" width={32} height={32} className={styles.icon} unoptimized />
             <div className={styles.name}>
               Powered by <span>Liberdus</span>
             </div>
