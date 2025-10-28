@@ -4,10 +4,12 @@ import { config } from './../config/index'
 
 export default class MyDocument extends Document {
   render(): JSX.Element {
+    // Next.js automatically sets this when basePath is configured in next.config.js
+    const basePath = process.env.__NEXT_ROUTER_BASEPATH || ''
     return (
       <Html>
         <Head>
-          <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+          <link rel="icon" href={`${basePath}/favicon.ico`} type="image/x-icon" />
           {
             // Google Tag Manager
             config.GTM_Id && config.GTM_Id !== '' && (
