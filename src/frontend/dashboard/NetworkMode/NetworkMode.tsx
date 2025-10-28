@@ -56,15 +56,17 @@ const getColorAndTooltip = (mode: Modes | undefined): ModeData => {
 
 const NetworkMode: React.FC<ModeComponentProps> = ({ mode }) => {
   const { color, tooltipContent } = getColorAndTooltip(mode)
-  const [ringShadowColor, setRingShadowColor] = useState(color)
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
-    setRingShadowColor(color)
-  }, [color])
+    setIsMounted(true)
+  }, [])
 
-  const containerStyle = {
-    '--ring-shadow-color': ringShadowColor,
-  } as React.CSSProperties
+  const containerStyle = color
+    ? ({
+        '--ring-shadow-color': color,
+      } as React.CSSProperties)
+    : undefined
 
   return (
     <div className={styles.modeContainer}>
@@ -75,7 +77,7 @@ const NetworkMode: React.FC<ModeComponentProps> = ({ mode }) => {
         data-tip={tooltipContent}
         data-for="tooltip"
       ></div>
-      <ReactTooltip id="tooltip" place="top" type="dark" effect="solid" />
+      {isMounted && <ReactTooltip id="tooltip" place="top" type="dark" effect="solid" />}
     </div>
   )
 }

@@ -66,6 +66,9 @@ export const LineStockChart: React.FC<LineStockChartProps> = (props) => {
   }
 
   const option = {
+    accessibility: {
+      enabled: false,
+    },
     title: {
       text: title,
       align: centerTitle ? 'center' : 'left',

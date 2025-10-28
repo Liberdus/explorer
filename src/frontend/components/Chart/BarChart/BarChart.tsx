@@ -11,6 +11,9 @@ interface BarChartProps<D> {
 
 export const BarChart = <D,>({ title }: BarChartProps<D>): ReactNode => {
   const option = {
+    accessibility: {
+      enabled: false,
+    },
     chart: {
       type: 'column',
       backgroundColor: '#ffffff',

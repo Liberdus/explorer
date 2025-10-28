@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
 import cx from 'classnames'
 import ReactTooltip from 'react-tooltip'
@@ -19,6 +19,11 @@ export interface PaginationProps {
 
 export const Pagination: React.FC<PaginationProps> = (props) => {
   const { onPageChange, totalCount, siblingCount = 1, currentPage, pageSize, className } = props
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const paginationRange = usePagination({
     currentPage,
@@ -88,8 +93,12 @@ export const Pagination: React.FC<PaginationProps> = (props) => {
       >
         <Icon name="arrow_right" color={currentPage === lastPage ? 'disabled' : 'black'} />
       </Button>
-      <ReactTooltip effect="solid" backgroundColor="#6610f2" id="prev" />
-      <ReactTooltip effect="solid" backgroundColor="#6610f2" id="next" />
+      {isMounted && (
+        <>
+          <ReactTooltip effect="solid" backgroundColor="#6610f2" id="prev" />
+          <ReactTooltip effect="solid" backgroundColor="#6610f2" id="next" />
+        </>
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import React, { MouseEvent } from 'react'
+import React, { MouseEvent, useEffect } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import styles from './TokenDropdown.module.scss'
 import { Button, Icon, Menu, MenuItem, SortButton } from '../../components'
@@ -13,8 +13,13 @@ export const TokenDropdown: React.FC<TokenDropdownProps> = (props) => {
   const { tokens } = props
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false)
   const [isSortUp, setIsSortUp] = useState<boolean>(true)
+  const [isMounted, setIsMounted] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const open = useCallback(() => {
     setIsFilterOpen(true)
@@ -81,7 +86,7 @@ export const TokenDropdown: React.FC<TokenDropdownProps> = (props) => {
       >
         <Icon name="wallet" color="black" />
       </Button>
-      <ReactTooltip effect="solid" backgroundColor="#6610f2" id="tdd" />
+      {isMounted && <ReactTooltip effect="solid" backgroundColor="#6610f2" id="tdd" />}
     </div>
   )
 }

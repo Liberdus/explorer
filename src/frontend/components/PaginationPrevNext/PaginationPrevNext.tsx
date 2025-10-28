@@ -1,4 +1,4 @@
-import React, { MouseEventHandler } from 'react'
+import React, { MouseEventHandler, useEffect, useState } from 'react'
 import cx from 'classnames'
 
 import { Button } from '../Button'
@@ -16,6 +16,11 @@ export interface PaginationPrevNextProps {
 
 export const PaginationPrevNext: React.FC<PaginationPrevNextProps> = (props) => {
   const { page, onPrev, onNext, className } = props
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   return (
     <div className={cx(styles.PaginationPrevNext, className)}>
@@ -40,8 +45,12 @@ export const PaginationPrevNext: React.FC<PaginationPrevNextProps> = (props) => 
       >
         <Icon name="arrow_right" size="small" color="black" />
       </Button>
-      <ReactTooltip effect="solid" backgroundColor="#6610f2" id="prev" />
-      <ReactTooltip effect="solid" backgroundColor="#6610f2" id="nex" />
+      {isMounted && (
+        <>
+          <ReactTooltip effect="solid" backgroundColor="#6610f2" id="prev" />
+          <ReactTooltip effect="solid" backgroundColor="#6610f2" id="nex" />
+        </>
+      )}
     </div>
   )
 }

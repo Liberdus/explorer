@@ -1,4 +1,4 @@
-import React, { MouseEvent, MouseEventHandler, useState } from 'react'
+import React, { MouseEvent, MouseEventHandler, useState, useEffect } from 'react'
 import ReactTooltip from 'react-tooltip'
 
 import { Icon } from '../../Icon'
@@ -13,6 +13,11 @@ interface SortButtonProps {
 
 export const SortButton: React.FC<SortButtonProps> = ({ isUp, onSort }) => {
   const [up, setUp] = useState<boolean>(isUp || false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const onClick = (e: MouseEvent<Element>): void => {
     setUp(!up)
@@ -30,7 +35,7 @@ export const SortButton: React.FC<SortButtonProps> = ({ isUp, onSort }) => {
           className={styles.iconDown}
         />
       </button>
-      <ReactTooltip effect="solid" backgroundColor="#6610f2" id="sb" />
+      {isMounted && <ReactTooltip effect="solid" backgroundColor="#6610f2" id="sb" />}
     </>
   )
 }

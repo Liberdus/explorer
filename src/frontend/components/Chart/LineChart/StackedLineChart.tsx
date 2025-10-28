@@ -85,6 +85,9 @@ export const StackedLineChart: React.FC<StackedLineChartProps> = (props: Stacked
   }, [cycleMarkers])
 
   const option = {
+    accessibility: {
+      enabled: false,
+    },
     title: {
       text: title,
       align: centerTitle ? 'center' : 'left',

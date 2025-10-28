@@ -91,6 +91,6 @@ export const ChartSVG: FC<ChartSvgProps> = ({
   const style = cx(styles.ChartSVG, color && styles[color], className)
 
   return ChartComponent ? (
-    <ChartComponent {...props} className={style} viewBox="0 0 300 120" preserveAspectRatio="meet" />
+    <ChartComponent {...props} className={style} viewBox="0 0 300 120" preserveAspectRatio="xMidYMid meet" />
   ) : null
 }

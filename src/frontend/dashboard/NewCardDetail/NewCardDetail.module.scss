@@ -8,6 +8,7 @@
   border-radius: borderRadius(16);
   box-shadow: shadow(shadow1);
   padding: spacing(8) 0;
+  min-width: 300px;
 
   .cardRow {
     display: flex;
@@ -15,8 +16,8 @@
     align-items: center;
 
     @include tablet {
-      flex-direction: column;
-      gap: spacing(16);
+      flex-direction: row;
+      gap: spacing(0);
     }
 
     @include mobile {

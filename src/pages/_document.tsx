@@ -7,6 +7,7 @@ export default class MyDocument extends Document {
     return (
       <Html>
         <Head>
+          <link rel="icon" href="/favicon.ico" type="image/x-icon" />
           {
             // Google Tag Manager
             config.GTM_Id && config.GTM_Id !== '' && (

@@ -94,6 +94,9 @@ export const StackedLineStockChart: React.FC<StackedLineChartProps> = (props: St
   }
 
   const option = {
+    accessibility: {
+      enabled: false,
+    },
     title: {
       text: title,
       align: centerTitle ? 'center' : 'left',

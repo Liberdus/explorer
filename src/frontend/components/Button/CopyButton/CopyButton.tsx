@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import ReactTooltip from 'react-tooltip'
 
 import { Icon } from '../../Icon'
@@ -13,6 +13,11 @@ interface CopyButtonProps {
 
 export const CopyButton: React.FC<CopyButtonProps> = ({ title, text }) => {
   const [isCopied, setIsCopied] = useState<boolean>(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const onCopy = (): void => {
     setIsCopied(true)
@@ -30,7 +35,7 @@ export const CopyButton: React.FC<CopyButtonProps> = ({ title, text }) => {
     <>
       <button data-tip={t} data-for="cb" onClick={onCopy} className={styles.CopyButton}>
         <Icon name={isCopied ? 'check' : 'copy'} color="black" />
-        <ReactTooltip effect="solid" backgroundColor="#3498db" id="cb" />
+        {isMounted && <ReactTooltip effect="solid" backgroundColor="#3498db" id="cb" />}
       </button>
     </>
   )

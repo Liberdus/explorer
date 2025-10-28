@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import ReactTooltip from 'react-tooltip'
 
@@ -22,13 +22,18 @@ const socials = [
 ]
 
 export const Footer: React.FC = () => {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   return (
     <div className={styles.Footer}>
       <div className={styles.main}>
         <div>
           <div className={styles.logoItem}>
             {/* <Icon name="logo" className={styles.icon} size="large" /> */}
-            <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.icon} />
+            <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.icon} unoptimized />
             <div className={styles.name}>
               Powered by <span>Liberdus</span>
             </div>
@@ -74,7 +79,7 @@ export const Footer: React.FC = () => {
               <Icon name={social.iconName as keyof typeof iconTypes} color="black" />
             </a>
           ))}
-          <ReactTooltip effect="solid" backgroundColor="#6610f2" id="fsb" />
+          {isMounted && <ReactTooltip effect="solid" backgroundColor="#6610f2" id="fsb" />}
         </div>
       </div>
     </div>

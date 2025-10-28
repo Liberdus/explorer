@@ -90,6 +90,9 @@ export const DailyStatsChart: React.FC<DailyStatsChartProps> = (props: DailyStat
   }
 
   const option = {
+    accessibility: {
+      enabled: false,
+    },
     title: {
       text: title,
       align: 'left',

@@ -31,7 +31,7 @@ export const NewCardDetail: React.FC<NewCardDetailProps> = (data) => {
               {/* <div className={styles.icon}>
               <Icon name="cycle" size="medium" color="black" />
             </div> */}
-              <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} />
+              <Image src="/favicon.ico" alt="Image" width={32} height={32} className={styles.logo} unoptimized />
               <div>
                 <p className={styles.title}>LIB PRICE</p>
                 <p>${data?.tokenPrice?.toLocaleString('en-US')}</p>

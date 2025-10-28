@@ -23,6 +23,9 @@ export const LineChart: React.FC<LineChartProps> = (props: LineChartProps) => {
   const { title, centerTitle, subTitle, data, height = 150, name } = props
 
   const option = {
+    accessibility: {
+      enabled: false,
+    },
     title: {
       text: title,
       align: centerTitle ? 'center' : 'left',
