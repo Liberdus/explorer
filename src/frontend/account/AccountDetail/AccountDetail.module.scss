@@ -3,14 +3,30 @@
 .AccountDetail {
   .header {
     display: flex;
+    align-items: center;
+    @include mobile {
+      flex-wrap: wrap;
+      overflow-x: auto;
+    }
 
-    .title {
-      @include fontStyle(large, semi-bold);
+    .name {
+      @include fontStyle(medium, semi-bold);
       color: color(gray-700);
+    }
 
-      span {
-        @include fontStyle(small);
-        @include singleLineEllipsis();
+    .value {
+      @include fontStyle(small);
+      @include singleLineEllipsis();
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      gap: spacing(8);
+      margin-left: spacing(8);
+
+      @include mobile {
+        flex-direction: row-reverse;
+        justify-content: flex-end;
+        margin-left: spacing(0);
       }
     }
   }

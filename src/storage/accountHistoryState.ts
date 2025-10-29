@@ -198,30 +198,21 @@ export async function queryNewActiveBalanceAccountsCount(
 
 export async function queryBalanceChangesByReceiptId(receiptId: string): Promise<BalanceChange[]> {
   try {
-    // Single optimized query using correlated subquery
-    // Gets after balance from current row and before balance from most recent previous state
+    // Optimized join-based query for fastest lookup
     const sql = `
       SELECT
-        accountId,
-        balance as after,
-        COALESCE(
-          (
-            SELECT balance
-            FROM accountHistoryState prev
-            WHERE prev.accountId = current.accountId
-              AND prev.timestamp < current.timestamp
-            ORDER BY prev.timestamp DESC
-            LIMIT 1
-          ),
-          0
-        ) as before
-      FROM accountHistoryState current
-      WHERE receiptId = ?
-        AND balance > 0
+        current.accountId,
+        current.balance AS after,
+        COALESCE(prev.balance, 0) AS before
+      FROM accountHistoryState AS current
+      LEFT JOIN accountHistoryState AS prev
+          ON prev.accountId = current.accountId
+         AND prev.afterStateHash = current.beforeStateHash
+      WHERE current.receiptId = ?
+        AND (current.balance > 0 OR COALESCE(prev.balance, 0) > 0)
     `
-    const results = (await db.all(accountHistoryStateDatabase, sql, [receiptId])) as BalanceChange[]
 
-    console.log('Found balance changes for receiptId', receiptId, results.length)
+    const results = (await db.all(accountHistoryStateDatabase, sql, [receiptId])) as BalanceChange[]
     return results
   } catch (e) {
     console.log('Error querying balance changes by receiptId', receiptId, e)

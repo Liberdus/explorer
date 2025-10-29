@@ -197,6 +197,22 @@ export const initializeDB = async (): Promise<void> => {
       PRIMARY KEY (accountId, timestamp)
     )`
   )
+  await runCreate(
+    accountHistoryStateDatabase,
+    'CREATE INDEX if not exists `accountHistoryState_timestamp` ON `accountHistoryState` (`timestamp` DESC)'
+  )
+  await runCreate(
+    accountHistoryStateDatabase,
+    'CREATE INDEX if not exists `accountHistoryState_receiptId` ON `accountHistoryState` (`receiptId`)'
+  )
+  await runCreate(
+    accountHistoryStateDatabase,
+    'CREATE INDEX if not exists `accountHistoryState_accountId_beforeStateHash` ON `accountHistoryState` (`accountId`, `beforeStateHash`)'
+  )
+  await runCreate(
+    accountHistoryStateDatabase,
+    'CREATE INDEX if not exists `accountHistoryState_accountId_afterStateHash` ON `accountHistoryState` (`accountId`, `afterStateHash`)'
+  )
 }
 
 export const closeDatabase = async (): Promise<void> => {

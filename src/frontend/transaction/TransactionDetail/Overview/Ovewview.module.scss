@@ -21,7 +21,6 @@
 
     @include mobile {
       display: block;
-      min-width: 400px;
     }
   }
 
@@ -30,7 +29,6 @@
 
     @include mobile {
       margin-bottom: spacing(4);
-      font-size: 14px;
     }
   }
 
@@ -39,7 +37,6 @@
 
     @include mobile {
       white-space: nowrap;
-      font-size: 14px;
     }
   }
 

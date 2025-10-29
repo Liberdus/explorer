@@ -16,7 +16,7 @@ import { calculateFullValue } from '../../utils/calculateValue'
 import { TransactionTable } from '../../transaction'
 import { TransactionType } from '../../../types'
 import { breadcrumbsList } from '../../types'
-import { toEthereumAddress } from '../../utils/transformAddress'
+import { toEthereumAddress, truncateAddress } from '../../utils/transformAddress'
 
 export const AccountDetail: React.FC = () => {
   const router = useRouter()
@@ -165,10 +165,14 @@ export const AccountDetail: React.FC = () => {
       <ContentLayout
         title={
           <div className={styles.header}>
-            <div className={styles.title}>
-              Account ID -<span>&nbsp;&nbsp;{id ? toEthereumAddress(id as string) : ''}&nbsp;&nbsp;</span>
+            <div className={styles.name}>Account ID -</div>
+            <div className={styles.value}>
+              {id ? toEthereumAddress(id as string) : ''}{' '}
+              <CopyButton
+                text={id ? toEthereumAddress(id as string) : ''}
+                title="Copy address to clipboard"
+              />
             </div>
-            <CopyButton text={id ? toEthereumAddress(id as string) : ''} title="Copy address to clipboard" />
           </div>
         }
         breadcrumbItems={breadcrumbs}
@@ -220,7 +224,7 @@ export const AccountDetail: React.FC = () => {
                         key: 'Nominator',
                         value: account?.data?.nominator && (
                           <Link href={`/account/${account?.data?.nominator}`} className={styles.link}>
-                            {toEthereumAddress(account?.data?.nominator)}
+                            {truncateAddress(toEthereumAddress(account?.data?.nominator))}
                           </Link>
                         ),
                       },
@@ -248,13 +252,13 @@ export const AccountDetail: React.FC = () => {
                     title="More Info"
                     items={[
                       {
-                        key: 'Reward Start Time',
+                        key: 'Last Reward Start Time',
                         value:
                           account?.data?.rewardStartTime &&
                           moment(account?.data?.rewardStartTime * 1000).calendar(),
                       },
                       {
-                        key: 'Reward End Time',
+                        key: 'Last Reward End Time',
                         value:
                           account?.data?.rewardEndTime &&
                           moment(account?.data?.rewardEndTime * 1000).calendar(),
