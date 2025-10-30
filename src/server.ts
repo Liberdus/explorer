@@ -54,7 +54,7 @@ import { ValidatorStats } from './stats/validatorStats'
 import { TransactionStats, convertBaseTxStatsAsArray } from './stats/transactionStats'
 import { DailyTransactionStats } from './stats/dailyTransactionStats'
 import { DailyAccountStats } from './stats/dailyAccountStats'
-import { DailyCoinStats, DailyCoinStatsSummary } from './stats/dailyCoinStats'
+import { DailyCoinStats } from './stats/dailyCoinStats'
 
 if (config.env == envEnum.DEV) {
   //default debug mode
