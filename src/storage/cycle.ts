@@ -5,17 +5,13 @@ import { config } from '../config/index'
 import { cleanOldReceiptsMap } from './receipt'
 import { cleanOldOriginalTxsMap } from './originalTxData'
 import { Utils as StringUtils } from '@shardus/types'
+import { checkAndSyncDataByCycle } from '../class/DataSync'
 
 type DbCycle = Cycle & {
   cycleRecord: string
 }
 
-const CYCLE_COLUMNS: readonly (keyof Cycle)[] = [
-  'cycleMarker',
-  'counter',
-  'start',
-  'cycleRecord',
-] as const
+const CYCLE_COLUMNS: readonly (keyof Cycle)[] = ['cycleMarker', 'counter', 'start', 'cycleRecord'] as const
 
 export function isCycle(obj: Cycle): obj is Cycle {
   return (obj as Cycle).cycleRecord !== undefined && (obj as Cycle).cycleMarker !== undefined
@@ -109,6 +105,14 @@ export async function insertOrUpdateCycle(cycle: Cycle): Promise<void> {
       const CLEAN_UP_TIMESTMAP_MS = Date.now() - 5 * 60 * 1000
       cleanOldReceiptsMap(CLEAN_UP_TIMESTMAP_MS)
       cleanOldOriginalTxsMap(CLEAN_UP_TIMESTMAP_MS)
+    }
+
+    // Trigger cycle-based synchronization check when new cycle data is received
+    if (cycleInfo.counter > 0) {
+      // Run sync in background
+      checkAndSyncDataByCycle(cycleInfo.counter).catch((error) => {
+        console.error('Error in checkAndSyncDataByCycle:', error)
+      })
     }
   } else {
     console.log('No cycleRecord or cycleMarker in cycle,', cycle)
