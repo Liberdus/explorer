@@ -583,75 +583,45 @@ export function getSafeSyncCycle(newCycle: number): number {
   const CYCLE_BUFFER = 2
   return Math.max(0, newCycle - CYCLE_BUFFER)
 }
-
-/**
- * Check if data synchronization should be performed for a given data type
- * @param tracker - The sync tracker for the data type
- * @param newCycle - The current/latest cycle number
- * @returns Object with shouldSync flag and targetCycle to sync up to
- */
-export function shouldSyncData(
-  tracker: SyncTracker,
-  newCycle: number
-): { shouldSync: boolean; targetCycle: number; startCycle: number } {
-  const targetCycle = getSafeSyncCycle(newCycle)
-
-  // Initialize tracker if it's at 0 (first call) - set it to the safe sync cycle
-  // This prevents trying to sync from cycle 0 on first run
-  if (tracker.lastSavedCycle === 0) {
-    tracker.lastSavedCycle = targetCycle
-    if (config.verbose) {
-      console.log(`Initialized tracker lastSavedCycle to ${targetCycle} (current cycle: ${newCycle})`)
-    }
-  }
-
-  const startCycle = tracker.lastSavedCycle + 1
-  const shouldSync = targetCycle > tracker.lastSavedCycle
-
-  if (config.verbose) {
-    console.log(
-      `Sync check: lastSaved=${tracker.lastSavedCycle}, current=${newCycle}, target=${targetCycle}, shouldSync=${shouldSync}`
-    )
-  }
-
-  return {
-    shouldSync,
-    targetCycle,
-    startCycle,
-  }
-}
-
 /**
  * Validate and synchronize receipts data based on cycle tracker
  * @param newCycle - The current/latest cycle number from incoming data
  */
 export async function validateAndSyncReceipts(newCycle: number): Promise<void> {
-  const syncInfo = shouldSyncData(receiptTracker, newCycle)
+  const targetCycle = getSafeSyncCycle(newCycle)
 
-  if (!syncInfo.shouldSync) {
+  // Initialize tracker if it's at 0 (first call) - set it to the safe sync cycle
+  // This prevents trying to sync from cycle 0 on first run
+  if (receiptTracker.lastSavedCycle === 0) {
+    receiptTracker.lastSavedCycle = targetCycle
+    if (config.verbose) {
+      console.log(
+        `Initialized receipt sync tracker lastSavedCycle to ${targetCycle} (current cycle: ${newCycle})`
+      )
+    }
+  }
+
+  const startCycle = receiptTracker.lastSavedCycle + 1
+  const shouldSyncCheck = targetCycle > receiptTracker.lastSavedCycle
+
+  if (!shouldSyncCheck) {
     if (config.verbose) console.log('Receipts are already synchronized')
     return
   }
-
-  console.log(
-    `Syncing receipts from cycle ${syncInfo.startCycle} to ${syncInfo.targetCycle} (current cycle: ${newCycle})`
-  )
-
   try {
     // Compare and validate receipts count between cycles
-    const unmatchedCycles = await compareReceiptsCountByCycles(syncInfo.startCycle, syncInfo.targetCycle)
+    const unmatchedCycles = await compareReceiptsCountByCycles(startCycle, targetCycle)
 
     if (unmatchedCycles && unmatchedCycles.length > 0) {
-      console.log(`Found ${unmatchedCycles.length} cycles with mismatched receipt counts`)
+      console.log(`Found ${unmatchedCycles.length} cycles with mismatched receipt counts`, unmatchedCycles)
       await downloadReceiptsByCycle(unmatchedCycles)
     }
-
-    // Update the tracker after successful sync
-    receiptTracker.updateLastSavedCycle(syncInfo.targetCycle)
-    console.log(`✅ Receipts synchronized up to cycle ${syncInfo.targetCycle}`)
   } catch (error) {
-    console.error('Error syncing receipts:', error)
+    console.error('Error sync checking receipts:', newCycle, targetCycle, error)
   }
+  // Update the tracker after sync check
+  receiptTracker.updateLastSavedCycle(targetCycle)
+  console.log(`✅ Receipts synchronized up to cycle ${targetCycle}`)
 }
 
 /**
@@ -659,32 +629,41 @@ export async function validateAndSyncReceipts(newCycle: number): Promise<void> {
  * @param newCycle - The current/latest cycle number from incoming data
  */
 export async function validateAndSyncOriginalTxs(newCycle: number): Promise<void> {
-  const syncInfo = shouldSyncData(originalTxTracker, newCycle)
+  const targetCycle = getSafeSyncCycle(newCycle)
 
-  if (!syncInfo.shouldSync) {
+  // Initialize tracker if it's at 0 (first call) - set it to the safe sync cycle
+  // This prevents trying to sync from cycle 0 on first run
+  if (originalTxTracker.lastSavedCycle === 0) {
+    originalTxTracker.lastSavedCycle = targetCycle
+    if (config.verbose) {
+      console.log(
+        `Initialized originalTx sync tracker lastSavedCycle to ${targetCycle} (current cycle: ${newCycle})`
+      )
+    }
+  }
+
+  const startCycle = originalTxTracker.lastSavedCycle + 1
+  const shouldSyncCheck = targetCycle > originalTxTracker.lastSavedCycle
+
+  if (!shouldSyncCheck) {
     if (config.verbose) console.log('OriginalTxs are already synchronized')
     return
   }
-
-  console.log(
-    `Syncing originalTxs from cycle ${syncInfo.startCycle} to ${syncInfo.targetCycle} (current cycle: ${newCycle})`
-  )
-
+  console.log(`Syncing originalTxs from cycle ${startCycle} to ${targetCycle} (current cycle: ${newCycle})`)
   try {
     // Compare and validate originalTxs count between cycles
-    const unmatchedCycles = await compareOriginalTxsCountByCycles(syncInfo.startCycle, syncInfo.targetCycle)
+    const unmatchedCycles = await compareOriginalTxsCountByCycles(startCycle, targetCycle)
 
     if (unmatchedCycles && unmatchedCycles.length > 0) {
-      console.log(`Found ${unmatchedCycles.length} cycles with mismatched originalTx counts`)
+      console.log(`Found ${unmatchedCycles.length} cycles with mismatched originalTx counts`, unmatchedCycles)
       await downloadOriginalTxsDataByCycle(unmatchedCycles)
     }
-
-    // Update the tracker after successful sync
-    originalTxTracker.updateLastSavedCycle(syncInfo.targetCycle)
-    console.log(`✅ OriginalTxs synchronized up to cycle ${syncInfo.targetCycle}`)
   } catch (error) {
-    console.error('Error syncing originalTxs:', error)
+    console.error('Error sync checking originalTxs:', newCycle, targetCycle, error)
   }
+  // Update the tracker after sync check
+  originalTxTracker.updateLastSavedCycle(targetCycle)
+  console.log(`✅ OriginalTxs synchronized up to cycle ${targetCycle}`)
 }
 
 /**
@@ -692,41 +671,58 @@ export async function validateAndSyncOriginalTxs(newCycle: number): Promise<void
  * @param newCycle - The current/latest cycle number from incoming data
  */
 export async function validateAndSyncCycles(newCycle: number): Promise<void> {
-  const syncInfo = shouldSyncData(cycleTracker, newCycle)
+  const targetCycle = getSafeSyncCycle(newCycle)
 
-  if (!syncInfo.shouldSync) {
+  // Initialize tracker if it's at 0 (first call) - set it to the safe sync cycle
+  // This prevents trying to sync from cycle 0 on first run
+  if (cycleTracker.lastSavedCycle === 0) {
+    cycleTracker.lastSavedCycle = targetCycle
+    if (config.verbose) {
+      console.log(
+        `Initialized cycle sync tracker lastSavedCycle to ${targetCycle} (current cycle: ${newCycle})`
+      )
+    }
+  }
+
+  const startCycle = cycleTracker.lastSavedCycle + 1
+  const shouldSyncCheck = targetCycle > cycleTracker.lastSavedCycle
+
+  if (!shouldSyncCheck) {
     if (config.verbose) console.log('Cycles are already synchronized')
     return
   }
 
-  console.log(
-    `Syncing cycles from ${syncInfo.startCycle} to ${syncInfo.targetCycle} (current cycle: ${currentCycle})`
-  )
+  const isInSync = targetCycle === startCycle
 
-  try {
-    await downloadCyclcesBetweenCycles(syncInfo.startCycle, syncInfo.targetCycle, true)
-
-    // Update the tracker after successful sync
-    cycleTracker.updateLastSavedCycle(syncInfo.targetCycle)
-    console.log(`✅ Cycles synchronized up to cycle ${syncInfo.targetCycle}`)
-  } catch (error) {
-    console.error('Error syncing cycles:', error)
+  if (!isInSync) {
+    try {
+      console.log(`Syncing cycles from ${startCycle} to ${targetCycle} (current cycle: ${newCycle})`)
+      await downloadCyclcesBetweenCycles(startCycle, targetCycle, true)
+    } catch (error) {
+      console.error('Error syncing cycles:', error)
+    }
+  } else {
+    if (config.verbose) console.log('Cycles are already synchronized')
   }
+
+  // Update the tracker after sync check
+  cycleTracker.updateLastSavedCycle(targetCycle)
+  console.log(`✅ Cycles synchronized up to cycle ${targetCycle}`)
 }
 
 /**
  * Check and synchronize all data types based on the current cycle
  * This should be called when new cycle data is inserted/updated
- * @param currentCycle - The current cycle number from newly inserted/updated cycle
+ * @param newCycle - The current cycle number from newly inserted/updated cycle
  */
-export async function checkAndSyncDataByCycle(currentCycle: number): Promise<void> {
-  if (config.verbose) console.log(`Checking and syncing data for cycle: ${currentCycle}`)
+export async function checkAndSyncDataByCycle(newCycle: number): Promise<void> {
+  if (config.verbose) console.log(`Checking and syncing data for cycle: ${newCycle}`)
 
   // Run all sync operations in parallel
   await Promise.all([
-    validateAndSyncCycles(currentCycle),
-    validateAndSyncReceipts(currentCycle),
-    validateAndSyncOriginalTxs(currentCycle),
+    validateAndSyncCycles(newCycle),
+    validateAndSyncReceipts(newCycle),
+    validateAndSyncOriginalTxs(newCycle),
   ])
 }
 
