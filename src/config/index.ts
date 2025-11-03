@@ -94,6 +94,11 @@ export interface Config {
     MAX_ACCOUNT_HISTORY_STATES_PER_REQUEST: number
     MAX_STATS_PER_REQUEST: number
   }
+  parallelSyncConcurrency: number // Number of parallel workers for cycle sync
+  useParallelSync: boolean // Enable parallel sync with composite cursor
+  cyclesPerBatch: number // Number of cycles to batch together in multi-cycle requests (default: 10)
+  enablePrefetch: boolean // Enable prefetching of next batch while processing current batch (default: true)
+  syncRetryAttempts: number // Number of retry attempts for failed requests (default: 3)
   dexScreenerAPI: string // Dex Screener API URL for Liberdus token
   dexScreenerLink: string // Dex Screener Link for Liberdus token
 }
@@ -184,6 +189,11 @@ let config: Config = {
     MAX_ACCOUNT_HISTORY_STATES_PER_REQUEST: 100,
     MAX_STATS_PER_REQUEST: 1000000,
   },
+  parallelSyncConcurrency: Number(process.env.PARALLEL_SYNC_CONCURRENCY) || 10, // 10 parallel workers
+  useParallelSync: process.env.USE_PARALLEL_SYNC !== 'false', // Enable by default
+  cyclesPerBatch: Number(process.env.CYCLES_PER_BATCH) || 10, // Batch 10 cycles together
+  enablePrefetch: process.env.ENABLE_PREFETCH !== 'false', // Enable prefetch by default
+  syncRetryAttempts: Number(process.env.SYNC_RETRY_ATTEMPTS) || 3, // Retry failed requests 3 times
   dexScreenerAPI:
     'https://api.dexscreener.com/latest/dex/search?q=0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76',
   dexScreenerLink: 'https://dexscreener.com/polygon/0x041e48a5b11c29fdbd92498eb05573c52728398c',

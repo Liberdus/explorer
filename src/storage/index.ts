@@ -147,6 +147,11 @@ export const initializeDB = async (): Promise<void> => {
     receiptDatabase,
     'CREATE INDEX if not exists `receipts_cycle_timestamp` ON `receipts` (`cycle` DESC, `timestamp` DESC)'
   )
+  // Composite index for cursor-based pagination (optimal for parallel sync)
+  await runCreate(
+    receiptDatabase,
+    'CREATE INDEX if not exists `receipts_cycle_timestamp_receiptId` ON `receipts` (`cycle` ASC, `timestamp` ASC, `receiptId` ASC)'
+  )
   // be sure to adjust the data types of `transactionType`, `txFrom`, `txTo` as needed
   await runCreate(
     originalTxDataDatabase,
@@ -172,6 +177,11 @@ export const initializeDB = async (): Promise<void> => {
   await runCreate(
     originalTxDataDatabase,
     'CREATE INDEX if not exists `originalTxsData_cycle_timestamp` ON `originalTxsData` (`cycle` DESC, `timestamp` DESC)'
+  )
+  // Composite index for cursor-based pagination (optimal for parallel sync)
+  await runCreate(
+    originalTxDataDatabase,
+    'CREATE INDEX if not exists `originalTxsData_cycle_timestamp_txId` ON `originalTxsData` (`cycle` ASC, `timestamp` ASC, `txId` ASC)'
   )
   await runCreate(
     originalTxDataDatabase,

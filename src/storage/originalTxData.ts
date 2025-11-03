@@ -142,7 +142,7 @@ export async function queryOriginalTxDataCount(
     }
     if (startCycle || endCycle) {
       sql = db.updateSqlStatementClause(sql, values)
-      sql += `cycleNumber BETWEEN ? AND ?`
+      sql += `cycle BETWEEN ? AND ?`
       values.push(startCycle, endCycle)
     }
     if (afterTimestamp) {
@@ -176,7 +176,7 @@ export async function queryOriginalTxsData(query: QueryOriginalTxsDataParams): P
     }
     if (startCycle || endCycle) {
       sql = db.updateSqlStatementClause(sql, values)
-      sql += `cycleNumber BETWEEN ? AND ?`
+      sql += `cycle BETWEEN ? AND ?`
       values.push(startCycle, endCycle)
     }
     if (afterTimestamp) {
