@@ -9,6 +9,7 @@ import * as Crypto from './utils/crypto'
 import { CycleDB, ReceiptDB, OriginalTxDataDB } from './storage'
 import {
   downloadTxsDataAndCycles,
+  downloadTxsDataAndCyclesParallel,
   compareWithOldReceiptsData,
   compareWithOldCyclesData,
   downloadAndSyncGenesisAccounts,
@@ -224,6 +225,15 @@ export const checkAndSyncData = async (): Promise<() => Promise<void>> => {
   const syncData = async (): Promise<void> => {
     // If there is already some data in the db, we can assume that the genesis accounts data has been synced already
     if (lastStoredCycleCount === 0) await downloadAndSyncGenesisAccounts() // To sync accounts data that are from genesis accounts/accounts data that the network start with
+
+    // Use parallel sync if enabled (default)
+    if (config.useParallelSync) {
+      console.log('Using optimized parallel sync strategy')
+      await downloadTxsDataAndCyclesParallel(totalCyclesToSync, lastStoredCycleCount)
+      return
+    }
+
+    console.log('Using legacy sequential sync strategy')
     // Sync receipts and originalTxsData data first if there is old data
     if (
       lastStoredReceiptCycle > 0 &&
