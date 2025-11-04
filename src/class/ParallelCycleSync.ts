@@ -86,7 +86,10 @@ export class ParallelCycleSync {
       httpAgent: this.httpAgent,
       httpsAgent: this.httpsAgent,
       timeout: 45000,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept-Encoding': 'gzip, deflate', // Request compressed responses
+      },
       transformRequest: [
         (data) => {
           // Use custom stringify for request body
@@ -660,14 +663,19 @@ export class ParallelCycleSync {
 
         const receipts = response.data?.receipts || []
 
-        // Get response size from Content-Length header (fast) instead of re-stringifying (slow)
-        const responseSizeBytes = parseInt(response.headers['content-length'] || '0', 10)
-        const responseSizeKB = responseSizeBytes > 0 ? (responseSizeBytes / 1024).toFixed(2) : 'unknown'
+        // Get response size - with compression, Content-Length might not be accurate
+        const contentLength = response.headers['content-length']
+        const contentEncoding = response.headers['content-encoding']
+        const responseSizeBytes = contentLength ? parseInt(contentLength, 10) : 0
+        const responseSizeKB = responseSizeBytes > 0 ? (responseSizeBytes / 1024).toFixed(2) : '0.00'
 
-        if (config.verbose || networkElapsed > 1000) {
+        if (config.verbose || networkElapsed > 1000 || receipts.length === 0) {
           console.log(
             `[API Timing] Receipts fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
-              `records: ${receipts.length}, size: ${responseSizeKB}KB`
+              `records: ${receipts.length}, size: ${responseSizeKB}KB` +
+              (contentEncoding ? `, encoding: ${contentEncoding}` : '') +
+              (receipts.length === 0 && response.data ? ', response.data exists but empty' : '') +
+              (!response.data ? ', response.data is null/undefined!' : '')
           )
         }
 
@@ -739,14 +747,19 @@ export class ParallelCycleSync {
 
         const originalTxs = response.data?.originalTxs || []
 
-        // Get response size from Content-Length header (fast) instead of re-stringifying (slow)
-        const responseSizeBytes = parseInt(response.headers['content-length'] || '0', 10)
-        const responseSizeKB = responseSizeBytes > 0 ? (responseSizeBytes / 1024).toFixed(2) : 'unknown'
+        // Get response size - with compression, Content-Length might not be accurate
+        const contentLength = response.headers['content-length']
+        const contentEncoding = response.headers['content-encoding']
+        const responseSizeBytes = contentLength ? parseInt(contentLength, 10) : 0
+        const responseSizeKB = responseSizeBytes > 0 ? (responseSizeBytes / 1024).toFixed(2) : '0.00'
 
-        if (config.verbose || networkElapsed > 1000) {
+        if (config.verbose || networkElapsed > 1000 || originalTxs.length === 0) {
           console.log(
             `[API Timing] OriginalTxs fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
-              `records: ${originalTxs.length}, size: ${responseSizeKB}KB`
+              `records: ${originalTxs.length}, size: ${responseSizeKB}KB` +
+              (contentEncoding ? `, encoding: ${contentEncoding}` : '') +
+              (originalTxs.length === 0 && response.data ? ', response.data exists but empty' : '') +
+              (!response.data ? ', response.data is null/undefined!' : '')
           )
         }
 
