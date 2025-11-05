@@ -37,6 +37,23 @@ export interface SyncStats {
 }
 
 /**
+ * Response size metadata attached by transformResponse and interceptor
+ */
+interface ResponseSizeMetadata {
+  decompressedBytes: number
+  decompressedKB: string
+  compressedBytes?: number
+  compressedKB?: string
+  compressionRatio?: number
+  compressionSavings?: string
+}
+
+interface ResponseDataWithMetadata {
+  __responseSize?: ResponseSizeMetadata
+  [key: string]: unknown
+}
+
+/**
  * Parallel sync orchestrator using cycle-based partitioning with composite cursors
  * Implements the optimal sync strategy with:
  * - Cycle-level parallelization
@@ -108,9 +125,25 @@ export class ParallelCycleSync {
         (res) => {
           // Use custom parse for response with timing
           const startTime = Date.now()
-          const result = StringUtils.safeJsonParse(res)
+          const result = typeof res === 'string' ? StringUtils.safeJsonParse(res) : res
           const elapsed = Date.now() - startTime
-          const sizeKB = typeof res === 'string' ? (res.length / 1024).toFixed(2) : 'unknown'
+
+          // Calculate decompressed size from raw response string
+          const decompressedBytes = typeof res === 'string' ? Buffer.byteLength(res) : 0
+          const sizeKB = (decompressedBytes / 1024).toFixed(2)
+
+          // Attach size metadata to result for later use
+          if (result && typeof result === 'object') {
+            Object.defineProperty(result, '__responseSize', {
+              value: {
+                decompressedBytes,
+                decompressedKB: sizeKB,
+              },
+              enumerable: false, // Hidden from JSON.stringify and iteration
+              configurable: true,
+            })
+          }
+
           if (config.verbose && elapsed > 50) {
             console.log(`[Client] Response parse: ${elapsed}ms, size: ${sizeKB}KB`)
           }
@@ -118,6 +151,80 @@ export class ParallelCycleSync {
         },
       ],
     })
+
+    // Add response interceptor to capture compressed size from socket bytesRead
+    this.axiosInstance.interceptors.response.use(
+      (response) => {
+        // Get Content-Length header for fallback
+        const contentLength = response.headers['content-length']
+
+        // Get socket from the request object
+        const socket = response.request?.socket
+
+        let compressedBytes: number | undefined
+
+        // Try to calculate compressed size from socket bytesRead (most accurate)
+        // We track cumulative bytesRead on the socket across requests (due to keep-alive)
+        if (socket && typeof socket.bytesRead === 'number') {
+          const currentBytesRead = socket.bytesRead
+          const lastBytesRead = (socket as { _lastBytesRead?: number })._lastBytesRead
+
+          if (lastBytesRead !== undefined) {
+            const rawBytes = currentBytesRead - lastBytesRead
+
+            // Subtract estimated header size (HTTP response headers + status line)
+            // Typical: "HTTP/1.1 200 OK\r\n" + headers + "\r\n\r\n" ≈ 200-400 bytes
+            const estimatedHeaderSize = 250
+            if (rawBytes > estimatedHeaderSize) {
+              compressedBytes = rawBytes - estimatedHeaderSize
+            }
+          }
+
+          // Update last bytesRead for next request on this socket
+          ;(socket as { _lastBytesRead?: number })._lastBytesRead = currentBytesRead
+        }
+
+        // Fallback: Use Content-Length header if socket method didn't work
+        if (!compressedBytes && contentLength) {
+          compressedBytes = parseInt(contentLength, 10)
+        }
+
+        // Get existing metadata from transformResponse
+        const existingMetadata = (response.data as ResponseDataWithMetadata)?.__responseSize
+
+        // Merge compressed size with existing decompressed size metadata
+        if (existingMetadata && response.data && typeof response.data === 'object') {
+          const decompressedBytes = existingMetadata.decompressedBytes
+
+          // Calculate compression metrics if both sizes are available
+          const compressionRatio =
+            compressedBytes && decompressedBytes > 0
+              ? +(compressedBytes / decompressedBytes).toFixed(3)
+              : undefined
+
+          const compressionSavings =
+            compressionRatio && compressionRatio < 1
+              ? `${((1 - compressionRatio) * 100).toFixed(1)}%`
+              : undefined
+
+          // Update the metadata with compressed size info
+          Object.defineProperty(response.data, '__responseSize', {
+            value: {
+              ...existingMetadata,
+              compressedBytes,
+              compressedKB: compressedBytes ? (compressedBytes / 1024).toFixed(2) : undefined,
+              compressionRatio,
+              compressionSavings,
+            },
+            enumerable: false,
+            configurable: true,
+          })
+        }
+
+        return response
+      },
+      (error) => Promise.reject(error)
+    )
 
     // Add interval between tasks to prevent overwhelming the distributor
     this.queue = new PQueue({
@@ -663,20 +770,32 @@ export class ParallelCycleSync {
 
         const receipts = response.data?.receipts || []
 
-        // Get response size - with compression, Content-Length might not be accurate
-        const contentLength = response.headers['content-length']
-        const contentEncoding = response.headers['content-encoding']
-        const responseSizeBytes = contentLength ? parseInt(contentLength, 10) : 0
-        const responseSizeKB = responseSizeBytes > 0 ? (responseSizeBytes / 1024).toFixed(2) : '0.00'
+        // Get size metadata from transformResponse and interceptor
+        const sizeMetadata = (response.data as ResponseDataWithMetadata)?.__responseSize
+        const decompressedKB = sizeMetadata?.decompressedKB || '0.00'
+        const compressedKB = sizeMetadata?.compressedKB
+        const compressionRatio = sizeMetadata?.compressionRatio
+        const compressionSavings = sizeMetadata?.compressionSavings
 
         if (config.verbose || networkElapsed > 1000 || receipts.length === 0) {
-          console.log(
+          // Build log message with compression info if available
+          let logMessage =
             `[API Timing] Receipts fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
-              `records: ${receipts.length}, size: ${responseSizeKB}KB` +
-              (contentEncoding ? `, encoding: ${contentEncoding}` : '') +
-              (receipts.length === 0 && response.data ? ', response.data exists but empty' : '') +
-              (!response.data ? ', response.data is null/undefined!' : '')
-          )
+            `records: ${receipts.length}`
+
+          // Only show compression metrics if compression actually reduced the size (ratio < 1)
+          if (compressedKB !== undefined && compressionRatio !== undefined && compressionRatio < 1) {
+            logMessage += `, payload: ${compressedKB}KB, payloadUncompressed: ${decompressedKB}KB, ratio: ${compressionRatio}, savings: ${compressionSavings}`
+          } else {
+            // No compression or not effective, just show uncompressed size
+            logMessage += `, payload: ${decompressedKB}KB`
+          }
+
+          logMessage +=
+            (receipts.length === 0 && response.data ? ', response.data exists but empty' : '') +
+            (!response.data ? ', response.data is null/undefined!' : '')
+
+          console.log(logMessage)
         }
 
         if (response.data && response.data.receipts) {
@@ -747,20 +866,32 @@ export class ParallelCycleSync {
 
         const originalTxs = response.data?.originalTxs || []
 
-        // Get response size - with compression, Content-Length might not be accurate
-        const contentLength = response.headers['content-length']
-        const contentEncoding = response.headers['content-encoding']
-        const responseSizeBytes = contentLength ? parseInt(contentLength, 10) : 0
-        const responseSizeKB = responseSizeBytes > 0 ? (responseSizeBytes / 1024).toFixed(2) : '0.00'
+        // Get size metadata from transformResponse and interceptor
+        const sizeMetadata = (response.data as ResponseDataWithMetadata)?.__responseSize
+        const decompressedKB = sizeMetadata?.decompressedKB || '0.00'
+        const compressedKB = sizeMetadata?.compressedKB
+        const compressionRatio = sizeMetadata?.compressionRatio
+        const compressionSavings = sizeMetadata?.compressionSavings
 
         if (config.verbose || networkElapsed > 1000 || originalTxs.length === 0) {
-          console.log(
+          // Build log message with compression info if available
+          let logMessage =
             `[API Timing] OriginalTxs fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
-              `records: ${originalTxs.length}, size: ${responseSizeKB}KB` +
-              (contentEncoding ? `, encoding: ${contentEncoding}` : '') +
-              (originalTxs.length === 0 && response.data ? ', response.data exists but empty' : '') +
-              (!response.data ? ', response.data is null/undefined!' : '')
-          )
+            `records: ${originalTxs.length}`
+
+          // Only show compression metrics if compression actually reduced the size (ratio < 1)
+          if (compressedKB !== undefined && compressionRatio !== undefined && compressionRatio < 1) {
+            logMessage += `, payload: ${compressedKB}KB, payloadUncompressed: ${decompressedKB}KB, ratio: ${compressionRatio}, savings: ${compressionSavings}`
+          } else {
+            // No compression or not effective, just show uncompressed size
+            logMessage += `, payload: ${decompressedKB}KB`
+          }
+
+          logMessage +=
+            (originalTxs.length === 0 && response.data ? ', response.data exists but empty' : '') +
+            (!response.data ? ', response.data is null/undefined!' : '')
+
+          console.log(logMessage)
         }
 
         if (response.data && response.data.originalTxs) {
