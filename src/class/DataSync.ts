@@ -4,7 +4,6 @@ import { AccountDB, CycleDB, ReceiptDB, TransactionDB, OriginalTxDataDB } from '
 import { config, DISTRIBUTOR_URL } from '../config'
 import { Cycle } from '../types'
 import { Utils as StringUtils } from '@shardus/types'
-import { ParallelCycleSync } from './ParallelCycleSync'
 
 export enum DataType {
   CYCLE = 'cycleinfo',
@@ -832,29 +831,4 @@ export const downloadOriginalTxsDataBetweenCycles = async (
     startCycle = endCycle + 1
     endCycle += config.requestLimits.MAX_BETWEEN_CYCLES_PER_REQUEST
   }
-}
-
-/**
- * NEW: Parallel sync using cycle-based partitioning with composite cursors
- * This is the optimal sync strategy with 10x+ performance improvement
- */
-export const downloadTxsDataAndCyclesParallel = async (
-  totalCyclesToSync: number,
-  fromCycle = 0
-): Promise<void> => {
-  console.log('\n')
-  console.log('='.repeat(60))
-  console.log('Using PARALLEL SYNC with Composite Cursor')
-  console.log('This prevents data loss and provides 10x+ performance improvement')
-  console.log('='.repeat(60))
-  console.log('\n')
-
-  const parallelSync = new ParallelCycleSync({
-    concurrency: config.parallelSyncConcurrency,
-    batchSize: 500,
-    retryAttempts: 3,
-    retryDelayMs: 1000,
-  })
-
-  await parallelSync.syncCycleRange(fromCycle, totalCyclesToSync)
 }
