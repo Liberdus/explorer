@@ -28,7 +28,7 @@ import RMQCyclesConsumer from './collectors/rmq/cycles'
 import RMQOriginalTxsConsumer from './collectors/rmq/original_txs'
 import RMQReceiptsConsumer from './collectors/rmq/receipts'
 import { setupCollectorSocketServer } from './collectorServer'
-import { ParallelDataSync } from './class/ParallelDataSync'
+import { DataSyncManager } from './class/DataSyncManager'
 
 const DistributorFirehoseEvent = 'FIREHOSE'
 let ws: WebSocket
@@ -79,6 +79,7 @@ if (config.env == envEnum.DEV) {
 }
 
 export const checkAndSyncData = async (): Promise<() => Promise<void>> => {
+  console.log('Using legacy sequential sync strategy')
   // Check if there is any existing data in the db
   let lastStoredReceiptCount = await ReceiptDB.queryReceiptCount()
   let lastStoredOriginalTxDataCount = await OriginalTxDataDB.queryOriginalTxDataCount()
@@ -226,26 +227,6 @@ export const checkAndSyncData = async (): Promise<() => Promise<void>> => {
     // If there is already some data in the db, we can assume that the genesis accounts data has been synced already
     if (lastStoredCycleCount === 0) await downloadAndSyncGenesisAccounts() // To sync accounts data that are from genesis accounts/accounts data that the network start with
 
-    // Use parallel sync if enabled (default)
-    if (config.useParallelSync) {
-      console.log('\n')
-      console.log('='.repeat(60))
-      console.log('Using NEW EFFICIENT PARALLEL SYNC STRATEGY based on cycle batches!')
-      console.log('This strategy is more robust and provides 10x+ performance improvement')
-      console.log('='.repeat(60))
-      console.log('\n')
-
-      const parallelDataSync = new ParallelDataSync({
-        concurrency: config.parallelSyncConcurrency,
-        retryAttempts: 3,
-        retryDelayMs: 1000,
-      })
-
-      await parallelDataSync.startSyncing(lastStoredCycleCount, totalCyclesToSync)
-      return
-    }
-
-    console.log('Using legacy sequential sync strategy')
     // Sync receipts and originalTxsData data first if there is old data
     if (
       lastStoredReceiptCycle > 0 &&
@@ -273,6 +254,30 @@ export const checkAndSyncData = async (): Promise<() => Promise<void>> => {
     )
   }
   return syncData
+}
+
+export const startDataSyncManager = async (): Promise<() => Promise<void>> => {
+  console.log('\n')
+  console.log('='.repeat(60))
+  console.log('INITIALIZING DATA SYNC MANAGER')
+  console.log('='.repeat(60))
+  console.log('DataSyncManager provides intelligent data synchronization with:')
+  console.log('  • Early data anomaly detection before sync operations')
+  console.log('  • Automatic gap detection and recovery')
+  console.log('  • Lookback verification window for data integrity')
+  console.log('  • Parallel batch-cycle-based sync (10x+ performance improvement)')
+  console.log('='.repeat(60))
+  console.log('\n')
+
+  // Run anomaly detection BEFORE connecting to websocket
+  // This fails fast if there are data corruption issues
+  const syncManager = new DataSyncManager()
+  await syncManager.detectDataAnomalies()
+
+  console.log('✅ Data anomaly check passed - proceeding with sync')
+
+  // Return the sync function to be executed after WS connection
+  return syncManager.syncData
 }
 
 const attemptReconnection = (): void => {
@@ -394,7 +399,7 @@ const startServer = async (): Promise<void> => {
   await Storage.initializeDB()
   addExitListeners()
 
-  const syncData = await checkAndSyncData()
+  const syncData = config.useParallelSync ? await startDataSyncManager() : await checkAndSyncData()
   if (config.dataLogWrite) await initDataLogWriter()
 
   addSigListeners()
