@@ -271,13 +271,13 @@ export const startDataSyncManager = async (): Promise<() => Promise<void>> => {
 
   // Run anomaly detection BEFORE connecting to websocket
   // This fails fast if there are data corruption issues
-  const syncManager = new DataSyncManager()
-  await syncManager.detectDataAnomalies()
+  const dataSyncManager = new DataSyncManager()
+  await dataSyncManager.detectDataAnomalies()
 
   console.log('✅ Data anomaly check passed - proceeding with sync')
 
   // Return the sync function to be executed after WS connection
-  return syncManager.syncData
+  return dataSyncManager.syncData
 }
 
 const attemptReconnection = (): void => {

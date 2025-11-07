@@ -4,7 +4,6 @@ import { Utils as StringUtils } from '@shardus/types'
 import { config, DISTRIBUTOR_URL } from '../config'
 import { queryFromDistributor, DataType } from './DataSync'
 import { CycleDB, ReceiptDB, OriginalTxDataDB } from '../storage'
-import { ParallelSyncCheckpointManager } from './ParallelSyncCheckpoint'
 import { Cycle } from '../types'
 import axios, { AxiosInstance } from 'axios'
 import http from 'http'
@@ -69,11 +68,9 @@ export interface SyncTxDataByCycleRange {
  * Implements the optimal sync strategy with:
  * - Cycle-level parallelization
  * - Composite cursor (timestamp + txId ) to prevent data loss
- * - Automatic resume from database
  * - Work queue for load balancing
  */
 export class ParallelDataSync {
-  private checkpointManager: ParallelSyncCheckpointManager
   private queue: PQueue
   private syncConfig: ParallelSyncConfig
   private stats: SyncStats
@@ -82,7 +79,6 @@ export class ParallelDataSync {
   private axiosInstance: AxiosInstance
 
   constructor(syncConfig?: Partial<ParallelSyncConfig>) {
-    this.checkpointManager = new ParallelSyncCheckpointManager()
     this.syncConfig = {
       concurrency: syncConfig?.concurrency || config.parallelSyncConcurrency || 10,
       retryAttempts: syncConfig?.retryAttempts || config.syncRetryAttempts || 3,
@@ -299,7 +295,7 @@ export class ParallelDataSync {
       this.stats.endTime = Date.now()
 
       // Summary
-      await this.printSummary()
+      await this.printSummary(startCycle, endCycle)
     } catch (error) {
       console.error('Fatal error in parallel sync:', error)
       this.stats.errors++
@@ -779,7 +775,7 @@ export class ParallelDataSync {
   /**
    * Print sync summary
    */
-  private async printSummary(): Promise<void> {
+  private async printSummary(startCycle: number, endCycle: number): Promise<void> {
     const elapsedMs = (this.stats.endTime || Date.now()) - this.stats.startTime
     const elapsedSec = (elapsedMs / 1000).toFixed(2)
     const elapsedMin = (elapsedMs / 60000).toFixed(2)
@@ -787,6 +783,7 @@ export class ParallelDataSync {
     console.log(`\n${'='.repeat(60)}`)
     console.log('Parallel Sync Complete!')
     console.log(`${'='.repeat(60)}`)
+    console.log(`  Cycle Range:       ${startCycle} → ${endCycle}`)
     console.log(`  Cycles Synced:     ${this.stats.completedCycles}/${this.stats.totalCycles}`)
     console.log(`  Receipts Synced:   ${this.stats.totalReceipts}`)
     console.log(`  OriginalTxs Synced: ${this.stats.totalOriginalTxs}`)
@@ -796,9 +793,6 @@ export class ParallelDataSync {
       `  Throughput:        ${(this.stats.totalReceipts / (elapsedMs / 1000)).toFixed(0)} receipts/sec`
     )
     console.log(`${'='.repeat(60)}\n`)
-
-    // Print DB summary
-    await this.checkpointManager.printSyncSummary()
   }
 
   /**
