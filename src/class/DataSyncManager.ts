@@ -1,16 +1,8 @@
 import { CycleDB, ReceiptDB, OriginalTxDataDB } from '../storage'
+import { CycleGap } from '../storage/cycle'
 import { config } from '../config'
 import { queryFromDistributor, DataType, downloadAndSyncGenesisAccounts } from './DataSync'
 import { ParallelDataSync } from './ParallelDataSync'
-
-/**
- * Represents a gap in cycle sequence
- */
-export interface CycleGap {
-  startCycle: number
-  endCycle: number
-  gapSize: number
-}
 
 /**
  * Represents a cycle with mismatched transaction data
@@ -107,6 +99,9 @@ export class DataSyncManager {
       })
 
       await parallelDataSync.startSyncing(0, totalCycles - 1)
+
+      // Print final database summary
+      await this.printSyncSummary()
     } else {
       // Existing data - use DataSyncManager to identify and patch gaps/mismatches
       console.log('📊 Existing data detected - running recovery analysis')
@@ -122,12 +117,16 @@ export class DataSyncManager {
    * Throws error if critical anomalies are found
    * Fetches local cycle data internally
    */
-  async detectDataAnomalies(): Promise<{ lastLocalCycle: number; currentDistributorCycle: number }> {
-    console.log('\n📊 Running data anomaly detection...')
-
-    // Fetch local and distributor cycle info
+  async detectDataAnomalies(): Promise<void> {
+    // Fetch local cycle data
     const lastLocalCycles = await CycleDB.queryLatestCycleRecords(1)
     const lastLocalCycle = lastLocalCycles.length > 0 ? lastLocalCycles[0].counter : -1
+    if (lastLocalCycle === -1) {
+      console.log('No local data found, skipping anomaly detection')
+      return
+    }
+
+    console.log('\n📊 Running data anomaly detection...')
 
     const response = await this.getTotalDataFromDistributor()
     if (!response) {
@@ -138,129 +137,113 @@ export class DataSyncManager {
     console.log(`Last local cycle: ${lastLocalCycle}`)
     console.log(`Current distributor cycle: ${currentDistributorCycle}`)
 
-    const anomalies: string[] = []
-
     // Anomaly 1: Local DB has more cycles than distributor
     if (lastLocalCycle > currentDistributorCycle) {
-      anomalies.push(
+      throw new Error(
         `Local DB has newer cycle than distributor (Local: ${lastLocalCycle}, Distributor: ${currentDistributorCycle})`
       )
     }
 
-    // Anomaly 2: Verify last 10-15 cycles match with distributor
-    if (lastLocalCycle >= 15) {
-      const verificationCycles = 15
-      const startCycle = lastLocalCycle - verificationCycles + 1
-      const endCycle = lastLocalCycle
+    const verificationCycles = 15
 
-      console.log(
-        `Verifying last ${verificationCycles} cycles (${startCycle} to ${endCycle}) against distributor...`
-      )
+    // Anomaly 2: Verify last 15 cycles match with distributor
+    let startCycle = lastLocalCycle - verificationCycles + 1
+    if (startCycle < 0) {
+      startCycle = 0
+    }
+    const endCycle = lastLocalCycle
 
-      try {
-        // Compare cycles data
-        const localCycles = await CycleDB.queryCycleRecordsBetween(startCycle, endCycle)
-        const distributorResponse = await queryFromDistributor(DataType.CYCLE, {
-          start: startCycle,
-          end: endCycle,
-        })
+    console.log(
+      `Verifying last ${verificationCycles} cycles (${startCycle} to ${endCycle}) against distributor...`
+    )
 
-        if (distributorResponse?.data?.cycleInfo) {
-          const distributorCycles = distributorResponse.data.cycleInfo
+    try {
+      // Compare cycles data
+      const localCycles = await CycleDB.queryCycleRecordsBetween(startCycle, endCycle)
+      const distributorResponse = await queryFromDistributor(DataType.CYCLE, {
+        start: startCycle,
+        end: endCycle,
+      })
 
-          // Check if cycle counts match
-          if (localCycles.length !== distributorCycles.length) {
-            anomalies.push(
-              `Cycle count mismatch in range ${startCycle}-${endCycle}: ` +
-                `Local has ${localCycles.length}, Distributor has ${distributorCycles.length}`
-            )
-          } else {
-            // Verify each cycle's marker matches
-            for (let i = 0; i < localCycles.length; i++) {
-              /* eslint-disable security/detect-object-injection */
-              const localCycle = localCycles[i]
-              /* eslint-enable security/detect-object-injection */
-              const distributorCycle = distributorCycles.find(
-                (c: { counter: number; marker: string }) => c.counter === localCycle.counter
-              )
+      if (distributorResponse?.data?.cycleInfo) {
+        const distributorCycles = distributorResponse.data.cycleInfo
 
-              if (!distributorCycle) {
-                anomalies.push(`Cycle ${localCycle.counter} exists locally but not in distributor`)
-              } else if (localCycle.cycleMarker !== distributorCycle.marker) {
-                anomalies.push(
-                  `Cycle ${localCycle.counter} marker mismatch: ` +
-                    `Local ${localCycle.cycleMarker} vs Distributor ${distributorCycle.marker}`
-                )
-              }
-            }
-          }
-        }
-
-        // Compare receipts count
-        const receiptsResponse = await queryFromDistributor(DataType.RECEIPT, {
-          startCycle,
-          endCycle,
-          type: 'tally',
-        })
-
-        if (receiptsResponse?.data?.receipts) {
-          const distributorReceipts: { cycle: number; receipts: number }[] = receiptsResponse.data.receipts
-          const localReceiptsCount = await ReceiptDB.queryReceiptCountByCycles(startCycle, endCycle)
-
-          for (const distReceipt of distributorReceipts) {
-            const localReceipt = localReceiptsCount.find((r) => r.cycle === distReceipt.cycle)
-            if (localReceipt && localReceipt.receipts !== distReceipt.receipts) {
-              anomalies.push(
-                `Receipts count mismatch in cycle ${distReceipt.cycle}: ` +
-                  `Local has ${localReceipt.receipts}, Distributor has ${distReceipt.receipts}`
-              )
-            }
-          }
-        }
-
-        // Compare originalTxs count
-        const originalTxsResponse = await queryFromDistributor(DataType.ORIGINALTX, {
-          startCycle,
-          endCycle,
-          type: 'tally',
-        })
-
-        if (originalTxsResponse?.data?.originalTxs) {
-          const distributorOriginalTxs: { cycle: number; originalTxsData: number }[] =
-            originalTxsResponse.data.originalTxs
-          const localOriginalTxsCount = await OriginalTxDataDB.queryOriginalTxDataCountByCycles(
-            startCycle,
-            endCycle
+        // Verify each cycle's marker matches
+        for (let i = 0; i < localCycles.length; i++) {
+          /* eslint-disable security/detect-object-injection */
+          const localCycle = localCycles[i]
+          /* eslint-enable security/detect-object-injection */
+          const distributorCycle = distributorCycles.find(
+            (c: { counter: number; marker: string }) => c.counter === localCycle.counter
           )
 
-          for (const distTx of distributorOriginalTxs) {
-            const localTx = localOriginalTxsCount.find((t) => t.cycle === distTx.cycle)
-            if (localTx && localTx.originalTxsData !== distTx.originalTxsData) {
-              anomalies.push(
-                `OriginalTxs count mismatch in cycle ${distTx.cycle}: ` +
-                  `Local has ${localTx.originalTxsData}, Distributor has ${distTx.originalTxsData}`
-              )
-            }
+          if (!distributorCycle) {
+            throw new Error(`Cycle ${localCycle.counter} exists locally but not in distributor`)
+          } else if (localCycle.cycleMarker !== distributorCycle.marker) {
+            throw new Error(
+              `Cycle ${localCycle.counter} marker mismatch: ` +
+                `Local ${localCycle.cycleMarker} vs Distributor ${distributorCycle.marker}`
+            )
           }
         }
-      } catch (error) {
-        console.warn('Warning: Could not complete anomaly verification:', error)
-        // Don't fail on verification errors, just warn
       }
-    }
 
-    if (anomalies.length > 0) {
-      console.error('\n❌ DATA ANOMALIES DETECTED:')
-      anomalies.forEach((anomaly) => console.error(`  - ${anomaly}`))
-      throw new Error(
-        'Data anomalies detected! Local database may be corrupted or out of sync. ' +
-          'Please clear the database and restart the server.'
+      // Compare receipts count
+      const receiptsResponse = await queryFromDistributor(DataType.RECEIPT, {
+        startCycle,
+        endCycle,
+        type: 'tally',
+      })
+
+      if (receiptsResponse?.data?.receipts) {
+        const distributorReceipts: { cycle: number; receipts: number }[] = receiptsResponse.data.receipts
+        const localReceiptsCount = await ReceiptDB.queryReceiptCountByCycles(startCycle, endCycle)
+
+        for (const distReceipt of distributorReceipts) {
+          const localReceipt = localReceiptsCount.find((r) => r.cycle === distReceipt.cycle)
+          if (localReceipt && localReceipt.receipts > distReceipt.receipts) {
+            throw new Error(
+              `Receipts count in local DB has more in cycle ${distReceipt.cycle}: ` +
+                `Local has ${localReceipt.receipts}, Distributor has ${distReceipt.receipts}`
+            )
+          }
+        }
+      }
+
+      // Compare originalTxs count
+      const originalTxsResponse = await queryFromDistributor(DataType.ORIGINALTX, {
+        startCycle,
+        endCycle,
+        type: 'tally',
+      })
+
+      if (originalTxsResponse?.data?.originalTxs) {
+        const distributorOriginalTxs: { cycle: number; originalTxsData: number }[] =
+          originalTxsResponse.data.originalTxs
+        const localOriginalTxsCount = await OriginalTxDataDB.queryOriginalTxDataCountByCycles(
+          startCycle,
+          endCycle
+        )
+
+        for (const distTx of distributorOriginalTxs) {
+          const localTx = localOriginalTxsCount.find((t) => t.cycle === distTx.cycle)
+          if (localTx && localTx.originalTxsData > distTx.originalTxsData) {
+            throw new Error(
+              `OriginalTxs count mismatch in cycle ${distTx.cycle}: ` +
+                `Local has ${localTx.originalTxsData}, Distributor has ${distTx.originalTxsData}`
+            )
+          }
+        }
+      }
+    } catch (error) {
+      throw Error(
+        `Data anomalies detected! Local database may be corrupted or out of sync. ` +
+          `Please patch the database or clear the database and restart the server. ` +
+          `Error: ${error}`
       )
     }
 
     console.log('✅ No data anomalies detected')
-
-    return { lastLocalCycle, currentDistributorCycle }
   }
 
   /**
@@ -281,9 +264,11 @@ export class DataSyncManager {
 
   /**
    * Identify all missing cycle ranges by finding gaps in the cycles DB
+   * Uses efficient LEFT JOIN-based SQL query to find ranges directly - O(N) complexity
    *
    * Example:
    * - DB has cycles: 0-149999, 300001-300099, 300106-300200
+   * - Missing ranges: 150000-300000, 300100-300105
    * - Returns gaps: [{150000, 300000}, {300100, 300105}]
    */
   private async identifyMissingCycleRanges(targetCycle: number): Promise<CycleGap[]> {
@@ -292,67 +277,34 @@ export class DataSyncManager {
       console.log(`Identifying missing cycle ranges up to cycle ${targetCycle}`)
       console.log(`${'='.repeat(60)}`)
 
-      // Get all cycles from DB ordered by counter
-      const allCycles = await CycleDB.queryCycleRecordsBetween(0, targetCycle)
+      // Get missing cycle ranges directly from SQL using LEFT JOIN
+      const gaps = await CycleDB.queryMissingCycleRanges(targetCycle)
 
-      if (!allCycles || allCycles.length === 0) {
-        // No cycles in DB, everything from 0 to targetCycle is missing
-        console.log('No cycles found in DB, entire range is missing')
-        return [
-          {
-            startCycle: 0,
-            endCycle: targetCycle,
-            gapSize: targetCycle + 1,
-          },
-        ]
-      }
-
-      const gaps: CycleGap[] = []
-      const cycleNumbers = allCycles.map((c) => c.counter).sort((a, b) => a - b)
-
-      console.log(`Found ${cycleNumbers.length} cycles in DB`)
-      console.log(`First cycle: ${cycleNumbers[0]}, Last cycle: ${cycleNumbers[cycleNumbers.length - 1]}`)
-
-      // Check if there's a gap at the beginning
-      if (cycleNumbers[0] > 0) {
-        gaps.push({
-          startCycle: 0,
-          endCycle: cycleNumbers[0] - 1,
-          gapSize: cycleNumbers[0],
-        })
-        console.log(`Gap found at beginning: 0 to ${cycleNumbers[0] - 1}`)
-      }
-
-      // Find gaps in the middle
-      for (let i = 0; i < cycleNumbers.length - 1; i++) {
-        const currentCycle = cycleNumbers[i]
-        const nextCycle = cycleNumbers[i + 1]
-
-        // If next cycle is not immediately after current, there's a gap
-        if (nextCycle - currentCycle > 1) {
-          const gapStart = currentCycle + 1
-          const gapEnd = nextCycle - 1
-          gaps.push({
-            startCycle: gapStart,
-            endCycle: gapEnd,
-            gapSize: gapEnd - gapStart + 1,
-          })
-          console.log(`Gap found: ${gapStart} to ${gapEnd} (${gapEnd - gapStart + 1} cycles)`)
+      // Handle case where no cycles exist in DB
+      if (gaps.length === 0) {
+        const cycleCount = await CycleDB.queryCycleCount()
+        if (cycleCount === 0) {
+          // No cycles in DB, entire range is missing
+          console.log('No cycles found in DB, entire range is missing')
+          return [
+            {
+              startCycle: 0,
+              endCycle: targetCycle,
+              gapSize: targetCycle + 1,
+            },
+          ]
+        } else {
+          // All cycles present
+          console.log('✅ No missing cycles - database is complete up to target cycle')
+          return []
         }
       }
 
-      // Check if there's a gap at the end
-      const lastLocalCycle = cycleNumbers[cycleNumbers.length - 1]
-      if (lastLocalCycle < targetCycle) {
-        gaps.push({
-          startCycle: lastLocalCycle + 1,
-          endCycle: targetCycle,
-          gapSize: targetCycle - lastLocalCycle,
-        })
-        console.log(`Gap found at end: ${lastLocalCycle + 1} to ${targetCycle}`)
-      }
-
+      // Log results
       console.log(`\nTotal gaps found: ${gaps.length}`)
+      for (const gap of gaps) {
+        console.log(`  Gap: ${gap.startCycle} to ${gap.endCycle} (${gap.gapSize} cycles)`)
+      }
       const totalMissing = gaps.reduce((sum, gap) => sum + gap.gapSize, 0)
       console.log(`Total missing cycles: ${totalMissing}`)
 
@@ -641,6 +593,9 @@ export class DataSyncManager {
       console.log(`\n${'='.repeat(70)}`)
       console.log(`✅ DATA SYNC COMPLETED SUCCESSFULLY`)
       console.log(`${'='.repeat(70)}\n`)
+
+      // Print final database summary
+      await this.printSyncSummary()
     } catch (error) {
       console.error('Error executing sync with recovery:', error)
       throw error
@@ -723,5 +678,48 @@ export class DataSyncManager {
       console.log(`  - Verified cycles ${range.startCycle} to ${range.endCycle}`)
     }
     console.log(`${'='.repeat(70)}\n`)
+  }
+
+  /**
+   * Get overall sync statistics from database
+   */
+  async getSyncStats(): Promise<{
+    totalCycles: number
+    totalReceipts: number
+    totalOriginalTxs: number
+  }> {
+    try {
+      const [cycleCount, receiptCount, originalTxCount] = await Promise.all([
+        CycleDB.queryCycleCount(),
+        ReceiptDB.queryReceiptCount(),
+        OriginalTxDataDB.queryOriginalTxDataCount(),
+      ])
+
+      return {
+        totalCycles: cycleCount || 0,
+        totalReceipts: receiptCount || 0,
+        totalOriginalTxs: originalTxCount || 0,
+      }
+    } catch (error) {
+      console.error('Error getting sync stats:', error)
+      return {
+        totalCycles: 0,
+        totalReceipts: 0,
+        totalOriginalTxs: 0,
+      }
+    }
+  }
+
+  /**
+   * Print sync summary
+   */
+  async printSyncSummary(): Promise<void> {
+    const stats = await this.getSyncStats()
+    console.log('='.repeat(60))
+    console.log('Sync Summary:')
+    console.log(`  Total Cycles:      ${stats.totalCycles}`)
+    console.log(`  Total Receipts:    ${stats.totalReceipts}`)
+    console.log(`  Total OriginalTxs: ${stats.totalOriginalTxs}`)
+    console.log('='.repeat(60))
   }
 }

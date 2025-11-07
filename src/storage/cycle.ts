@@ -234,3 +234,95 @@ export async function queryCycleRecordsByTimestamp(
     return []
   }
 }
+
+export interface CycleGap {
+  startCycle: number
+  endCycle: number
+  gapSize: number
+}
+
+/**
+ * Efficiently query for missing cycle ranges
+ * Returns ranges of missing cycles from 0 to targetCycle
+ * Uses LEFT JOIN to find gaps between consecutive cycles - O(N) complexity
+ */
+export async function queryMissingCycleRanges(targetCycle: number): Promise<CycleGap[]> {
+  try {
+
+    // Get first and last cycle for edge gap detection
+    const firstCycleResult = (await db.get(
+      cycleDatabase,
+      'SELECT MIN(counter) as first_cycle FROM cycles',
+      []
+    )) as { first_cycle: number } | undefined
+
+    const lastCycleResult = (await db.get(
+      cycleDatabase,
+      'SELECT MAX(counter) as last_cycle FROM cycles WHERE counter <= ?',
+      [targetCycle]
+    )) as { last_cycle: number } | undefined
+
+    const firstCycle = firstCycleResult?.first_cycle ?? 0
+    const lastCycle = lastCycleResult?.last_cycle ?? -1
+
+    const ranges: CycleGap[] = []
+
+    // Check for gap at the beginning (0 to firstCycle - 1)
+    if (firstCycle > 0) {
+      ranges.push({
+        startCycle: 0,
+        endCycle: firstCycle - 1,
+        gapSize: firstCycle,
+      })
+    }
+
+    // Find gaps in the middle using LEFT JOIN
+    // For each cycle c1, check if the next cycle (c1.counter + 1) exists
+    // If not, find where the gap ends by looking for the next existing cycle
+    const sql = `
+      SELECT
+        c1.counter + 1 AS startCycle,
+        (SELECT MIN(c2.counter) - 1
+         FROM cycles c2
+         WHERE c2.counter > c1.counter AND c2.counter <= ?) AS endCycle
+      FROM cycles c1
+      WHERE NOT EXISTS (
+        SELECT 1 FROM cycles c3
+        WHERE c3.counter = c1.counter + 1
+      )
+      AND c1.counter < ?
+      ORDER BY c1.counter
+    `
+
+    const middleGaps = (await db.all(cycleDatabase, sql, [targetCycle, targetCycle])) as {
+      startCycle: number
+      endCycle: number
+    }[]
+
+    // Add middle gaps with calculated gapSize (filter out null endCycle values)
+    for (const gap of middleGaps) {
+      if (gap.endCycle !== null && gap.endCycle >= gap.startCycle) {
+        ranges.push({
+          startCycle: gap.startCycle,
+          endCycle: gap.endCycle,
+          gapSize: gap.endCycle - gap.startCycle + 1,
+        })
+      }
+    }
+
+    // Check for gap at the end (lastCycle + 1 to targetCycle)
+    if (lastCycle >= 0 && lastCycle < targetCycle) {
+      ranges.push({
+        startCycle: lastCycle + 1,
+        endCycle: targetCycle,
+        gapSize: targetCycle - lastCycle,
+      })
+    }
+
+    if (config.verbose) console.log(`Found ${ranges.length} missing cycle ranges`)
+    return ranges
+  } catch (e) {
+    console.log('Error querying missing cycle ranges:', e)
+    throw e
+  }
+}
