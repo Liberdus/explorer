@@ -204,6 +204,47 @@ export async function queryAccountByAccountId(accountId: string): Promise<Accoun
   return null
 }
 
+export async function queryAccountTimestamp(
+  accountId: string
+): Promise<{ timestamp: number; createdTimestamp: number } | null> {
+  try {
+    const sql = `SELECT timestamp, createdTimestamp FROM accounts WHERE accountId=?`
+    const dbAccount = (await db.get(accountDatabase, sql, [accountId])) as DbAccount
+    if (dbAccount) return { timestamp: dbAccount.timestamp, createdTimestamp: dbAccount.createdTimestamp }
+    return null
+  } catch (e) {
+    console.log(e)
+    return null
+  }
+}
+
+export async function queryAccountTimestampsBatch(
+  accountIds: string[]
+): Promise<Map<string, { timestamp: number; createdTimestamp: number }>> {
+  const resultMap = new Map<string, { timestamp: number; createdTimestamp: number }>()
+  if (accountIds.length === 0) return resultMap
+
+  try {
+    // Create placeholders for IN clause
+    const placeholders = accountIds.map(() => '?').join(', ')
+    const sql = `SELECT accountId, timestamp, createdTimestamp FROM accounts WHERE accountId IN (${placeholders})`
+    const accounts = (await db.all(accountDatabase, sql, accountIds)) as DbAccount[]
+
+    for (const account of accounts) {
+      resultMap.set(account.accountId, {
+        timestamp: account.timestamp,
+        createdTimestamp: account.createdTimestamp,
+      })
+    }
+
+    if (config.verbose) console.log('Batch queried accounts', accounts.length, 'of', accountIds.length)
+  } catch (e) {
+    console.log('Error in queryAccountTimestampsBatch', e)
+  }
+
+  return resultMap
+}
+
 export async function processAccountData(accounts: AccountsCopy[]): Promise<Account[]> {
   console.log('accounts size', accounts.length)
   if (accounts && accounts.length <= 0) return []

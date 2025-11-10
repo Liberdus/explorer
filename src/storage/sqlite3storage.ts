@@ -79,8 +79,11 @@ export const createDB = async (dbPath: string, dbName: string): Promise<Database
   await run(db, 'PRAGMA journal_mode=WAL')
   await run(db, 'PRAGMA synchronous = NORMAL')
   await run(db, 'PRAGMA temp_store = MEMORY')
-  await run(db, 'PRAGMA cache_size = -64000') // ~64MB cache
-  await run(db, 'PRAGMA wal_autocheckpoint = 1000') // Checkpoint every 1000 ( default value ) pages
+  await run(db, 'PRAGMA cache_size = -256000') // Increased to ~256MB cache for better performance
+  await run(db, 'PRAGMA wal_autocheckpoint = 5000') // Checkpoint every 5000 pages (less frequent = less lock contention)
+  await run(db, 'PRAGMA mmap_size = 536870912') // 512MB memory-mapped I/O for faster reads (reduced disk I/O)
+  await run(db, 'PRAGMA busy_timeout = 30000') // Wait up to 30s if database is locked
+  await run(db, 'PRAGMA threads = 4') // Use up to 4 threads for parallel operations
   db.on('profile', (sql, time) => {
     const engineMs = typeof time === 'number' ? time : Number(time)
     const queue = queuedBySql.get(sql)
