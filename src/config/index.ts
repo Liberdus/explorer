@@ -191,7 +191,7 @@ let config: Config = {
   },
   parallelSyncConcurrency: Number(process.env.PARALLEL_SYNC_CONCURRENCY) || 10, // 10 parallel workers
   useParallelSync: process.env.USE_PARALLEL_SYNC !== 'false', // Enable by default
-  cyclesPerBatch: Number(process.env.CYCLES_PER_BATCH) || 10, // Batch 10 cycles together
+  cyclesPerBatch: Number(process.env.CYCLES_PER_BATCH) || 100, // Batch 100 cycles together ( matching MAX_BETWEEN_CYCLES_PER_REQUEST, can be lower if needed )
   enablePrefetch: process.env.ENABLE_PREFETCH !== 'false', // Enable prefetch by default
   syncRetryAttempts: Number(process.env.SYNC_RETRY_ATTEMPTS) || 3, // Retry failed requests 3 times
   dexScreenerAPI:

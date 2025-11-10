@@ -1,4 +1,5 @@
-import { CycleDB, ReceiptDB, OriginalTxDataDB } from '../storage'
+import { P2P } from '@shardus/types'
+import { CycleDB, ReceiptDB, OriginalTxDataDB, AccountDB, TransactionDB } from '../storage'
 import { CycleGap } from '../storage/cycle'
 import { config } from '../config'
 import { queryFromDistributor, DataType, downloadAndSyncGenesisAccounts } from './DataSync'
@@ -59,6 +60,18 @@ export class DataSyncManager {
   private lookbackCycles: number
 
   constructor() {
+    console.log('\n')
+    console.log('='.repeat(60))
+    console.log('INITIALIZING DATA SYNC MANAGER')
+    console.log('='.repeat(60))
+    console.log('DataSyncManager provides intelligent data synchronization with:')
+    console.log('  • Early data anomaly detection before sync operations')
+    console.log('  • Automatic gap detection and recovery')
+    console.log('  • Lookback verification window for data integrity')
+    console.log('  • Parallel multi-cycle-based sync (10x+ performance improvement)')
+    console.log('='.repeat(60))
+    console.log('\n')
+
     // Calculate lookback window: cyclesPerBatch * parallelSyncConcurrency
     const cyclesPerBatch = config.cyclesPerBatch || 10
     const concurrency = config.parallelSyncConcurrency || 10
@@ -72,19 +85,12 @@ export class DataSyncManager {
    * Handles both fresh start and recovery from interruptions
    */
   async syncData(): Promise<void> {
-    const response = await this.getTotalDataFromDistributor()
-    if (!response) {
-      throw new Error('Failed to fetch total data from distributor')
+    const latestDistributorCycle = await this.getLatestCycleFromDistributor()
+    if (!latestDistributorCycle) {
+      throw new Error('Failed to fetch latest cycle from distributor')
     }
-    const { totalCycles } = response
     const lastLocalCycles = await CycleDB.queryLatestCycleRecords(1)
     const lastLocalCycle = lastLocalCycles.length > 0 ? lastLocalCycles[0].counter : -1
-
-    // Always sync genesis accounts first
-    if (lastLocalCycle === 0) {
-      console.log('Syncing genesis accounts...')
-      await downloadAndSyncGenesisAccounts()
-    }
 
     // Check if this is a fresh start
     const isFreshStart = lastLocalCycle === -1 || lastLocalCycle === 0
@@ -92,20 +98,26 @@ export class DataSyncManager {
     if (isFreshStart) {
       // Fresh start - no checkpoint needed, just sync from beginning
       console.log('🆕 Fresh start detected - syncing from cycle 0')
+      // Always sync genesis accounts first
+      console.log('Syncing genesis accounts...')
+      await downloadAndSyncGenesisAccounts()
+
       const parallelDataSync = new ParallelDataSync({
         concurrency: config.parallelSyncConcurrency,
         retryAttempts: 3,
         retryDelayMs: 1000,
       })
 
-      await parallelDataSync.startSyncing(0, totalCycles - 1)
+      const cycleBatches = await parallelDataSync.createCycleBatches(0, latestDistributorCycle)
+
+      await parallelDataSync.startSyncing(cycleBatches)
 
       // Print final database summary
       await this.printSyncSummary()
     } else {
       // Existing data - use DataSyncManager to identify and patch gaps/mismatches
       console.log('📊 Existing data detected - running recovery analysis')
-      const recoveryPlan = await this.generateRecoveryPlan(totalCycles)
+      const recoveryPlan = await this.generateRecoveryPlan(latestDistributorCycle)
 
       // Execute the complete sync (recovery + normal sync)
       await this.executeSyncWithRecovery(recoveryPlan)
@@ -128,11 +140,10 @@ export class DataSyncManager {
 
     console.log('\n📊 Running data anomaly detection...')
 
-    const response = await this.getTotalDataFromDistributor()
-    if (!response) {
-      throw new Error('Failed to fetch distributor cycle info')
+    const currentDistributorCycle = await this.getLatestCycleFromDistributor()
+    if (!currentDistributorCycle) {
+      throw new Error('Failed to fetch latest cycle from distributor')
     }
-    const currentDistributorCycle = response.totalCycles
 
     console.log(`Last local cycle: ${lastLocalCycle}`)
     console.log(`Current distributor cycle: ${currentDistributorCycle}`)
@@ -235,6 +246,7 @@ export class DataSyncManager {
           }
         }
       }
+      console.log('✅ No data anomalies detected')
     } catch (error) {
       throw Error(
         `Data anomalies detected! Local database may be corrupted or out of sync. ` +
@@ -243,7 +255,21 @@ export class DataSyncManager {
       )
     }
 
-    console.log('✅ No data anomalies detected')
+    console.log('✅ Data anomaly check passed - proceeding with sync')
+  }
+
+  /**
+   * Fetch latest cycle from distributor
+   */
+  private async getLatestCycleFromDistributor(): Promise<number | null> {
+    const response: { data: { cycleInfo: P2P.CycleCreatorTypes.CycleRecord[] } } = await queryFromDistributor(
+      DataType.CYCLE,
+      { count: 1 }
+    )
+    if (!response?.data || response.data?.cycleInfo?.[0]?.counter === undefined) {
+      return null
+    }
+    return response.data.cycleInfo[0].counter
   }
 
   /**
@@ -384,6 +410,7 @@ export class DataSyncManager {
 
   /**
    * Compare cycle data counts between local DB and distributor
+   * Queries in batches to respect MAX_CYCLES_PER_REQUEST limit
    */
   private async compareCycleDataWithDistributor(
     startCycle: number,
@@ -392,43 +419,61 @@ export class DataSyncManager {
     const mismatched: MismatchedCycle[] = []
 
     try {
-      // Fetch counts from distributor
-      const [receiptsResponse, originalTxsResponse] = await Promise.all([
-        queryFromDistributor(DataType.RECEIPT, { startCycle, endCycle, type: 'tally' }),
-        queryFromDistributor(DataType.ORIGINALTX, { startCycle, endCycle, type: 'tally' }),
-      ])
-
-      if (!receiptsResponse?.data?.receipts || !originalTxsResponse?.data?.originalTxs) {
-        console.warn(`Failed to fetch distributor data for cycles ${startCycle}-${endCycle}`)
-        return mismatched
+      // Split into batches if range is larger than max allowed
+      const batches: { start: number; end: number }[] = []
+      for (let i = startCycle; i <= endCycle; i += config.requestLimits.MAX_CYCLES_PER_REQUEST) {
+        const batchEnd = Math.min(i + config.requestLimits.MAX_CYCLES_PER_REQUEST, endCycle)
+        batches.push({ start: i, end: batchEnd })
       }
 
-      const distributorReceipts: { cycle: number; receipts: number }[] = receiptsResponse.data.receipts
-      const distributorOriginalTxs: { cycle: number; originalTxsData: number }[] =
-        originalTxsResponse.data.originalTxs
+      // Fetch all distributor data in batches
+      const allDistributorReceipts: { cycle: number; receipts: number }[] = []
+      const allDistributorOriginalTxs: { cycle: number; originalTxsData: number }[] = []
 
-      // Fetch counts from local DB
+      for (const batch of batches) {
+        const [receiptsResponse, originalTxsResponse] = await Promise.all([
+          queryFromDistributor(DataType.RECEIPT, {
+            startCycle: batch.start,
+            endCycle: batch.end,
+            type: 'tally',
+          }),
+          queryFromDistributor(DataType.ORIGINALTX, {
+            startCycle: batch.start,
+            endCycle: batch.end,
+            type: 'tally',
+          }),
+        ])
+
+        if (receiptsResponse?.data?.receipts) {
+          allDistributorReceipts.push(...receiptsResponse.data.receipts)
+        }
+        if (originalTxsResponse?.data?.originalTxs) {
+          allDistributorOriginalTxs.push(...originalTxsResponse.data.originalTxs)
+        }
+      }
+
+      // Sort distributor data by cycle
+      allDistributorReceipts.sort((a, b) => a.cycle - b.cycle)
+      allDistributorOriginalTxs.sort((a, b) => a.cycle - b.cycle)
+
+      // Fetch counts from local DB (single query for entire range)
       const [localReceipts, localOriginalTxs] = await Promise.all([
         ReceiptDB.queryReceiptCountByCycles(startCycle, endCycle),
         OriginalTxDataDB.queryOriginalTxDataCountByCycles(startCycle, endCycle),
       ])
 
-      // Create maps for easier lookup
-      const localReceiptsMap = new Map(localReceipts.map((r) => [r.cycle, r.receipts]))
-      const localOriginalTxsMap = new Map(localOriginalTxs.map((t) => [t.cycle, t.originalTxsData]))
+      console.log(
+        `Comparing cycles ${startCycle} to ${endCycle} with ${allDistributorReceipts.length} distributor receipts and ${allDistributorOriginalTxs.length} distributor originalTxs`
+      )
+      console.log(allDistributorReceipts, localReceipts)
+      console.log(allDistributorOriginalTxs, localOriginalTxs)
 
-      // Compare each cycle
-      const allCycles = new Set([
-        ...distributorReceipts.map((r) => r.cycle),
-        ...distributorOriginalTxs.map((t) => t.cycle),
-      ])
+      for (let cycle = startCycle; cycle <= endCycle; cycle++) {
+        const distReceipts = allDistributorReceipts.find((r) => r.cycle === cycle)?.receipts || 0
+        const distOriginalTxs = allDistributorOriginalTxs.find((t) => t.cycle === cycle)?.originalTxsData || 0
 
-      for (const cycle of allCycles) {
-        const distReceipts = distributorReceipts.find((r) => r.cycle === cycle)?.receipts || 0
-        const distOriginalTxs = distributorOriginalTxs.find((t) => t.cycle === cycle)?.originalTxsData || 0
-
-        const localReceiptsCount = localReceiptsMap.get(cycle) || 0
-        const localOriginalTxsCount = localOriginalTxsMap.get(cycle) || 0
+        const localReceiptsCount = localReceipts.find((r) => r.cycle === cycle)?.receipts || 0
+        const localOriginalTxsCount = localOriginalTxs.find((t) => t.cycle === cycle)?.originalTxsData || 0
 
         const receiptsMismatch = localReceiptsCount !== distReceipts
         const originalTxsMismatch = localOriginalTxsCount !== distOriginalTxs
@@ -574,18 +619,25 @@ export class DataSyncManager {
 
       // Step 4: Execute ParallelDataSync for all ranges
       if (mergedRanges.length > 0) {
+        console.log('\n📡 Starting data sync with recovery plan')
+
+        const parallelDataSync = new ParallelDataSync({
+          concurrency: config.parallelSyncConcurrency,
+          retryAttempts: 3,
+          retryDelayMs: 1000,
+        })
+
+        const cycleBatches = []
+        // For each range, create cycle batches and merge them into one
         for (const range of mergedRanges) {
-          console.log(`\nSyncing range: ${range.startCycle} to ${range.endCycle} (${range.gapSize} cycles)`)
-
-          const parallelSync = new ParallelDataSync({
-            concurrency: config.parallelSyncConcurrency || 10,
-            retryAttempts: 3,
-            retryDelayMs: 1000,
-          })
-
-          await parallelSync.startSyncing(range.startCycle, range.endCycle)
-          console.log(`✅ Completed range ${range.startCycle} to ${range.endCycle}`)
+          console.log(`\nFor range: ${range.startCycle} to ${range.endCycle} (${range.gapSize} cycles)`)
+          const cycleBatch = parallelDataSync.createCycleBatches(range.startCycle, range.endCycle)
+          cycleBatches.push(...cycleBatch)
         }
+
+        await parallelDataSync.startSyncing(cycleBatches)
+
+        console.log('\n✅ Data sync with recovery completed successfully')
       } else {
         console.log('\n✅ No data to sync, database is up to date')
       }
@@ -685,27 +737,35 @@ export class DataSyncManager {
    */
   async getSyncStats(): Promise<{
     totalCycles: number
+    totalAccounts: number
     totalReceipts: number
     totalOriginalTxs: number
+    totalTransactions: number
   }> {
     try {
-      const [cycleCount, receiptCount, originalTxCount] = await Promise.all([
+      const [cycleCount, accountCount, receiptCount, originalTxCount, transactionCount] = await Promise.all([
         CycleDB.queryCycleCount(),
+        AccountDB.queryAccountCount(),
         ReceiptDB.queryReceiptCount(),
         OriginalTxDataDB.queryOriginalTxDataCount(),
+        TransactionDB.queryTransactionCount(),
       ])
 
       return {
         totalCycles: cycleCount || 0,
+        totalAccounts: accountCount || 0,
         totalReceipts: receiptCount || 0,
         totalOriginalTxs: originalTxCount || 0,
+        totalTransactions: transactionCount || 0,
       }
     } catch (error) {
       console.error('Error getting sync stats:', error)
       return {
         totalCycles: 0,
+        totalAccounts: 0,
         totalReceipts: 0,
         totalOriginalTxs: 0,
+        totalTransactions: 0,
       }
     }
   }
@@ -715,11 +775,27 @@ export class DataSyncManager {
    */
   async printSyncSummary(): Promise<void> {
     const stats = await this.getSyncStats()
+    const distributorData = await this.getTotalDataFromDistributor()
+
     console.log('='.repeat(60))
     console.log('Sync Summary:')
+    console.log('\nLocal Database:')
     console.log(`  Total Cycles:      ${stats.totalCycles}`)
+    console.log(`  Total Accounts:    ${stats.totalAccounts}`)
     console.log(`  Total Receipts:    ${stats.totalReceipts}`)
     console.log(`  Total OriginalTxs: ${stats.totalOriginalTxs}`)
+    console.log(`  Total Transactions: ${stats.totalTransactions}`)
+
+    if (distributorData) {
+      console.log('\nDistributor:')
+      console.log(`  Total Cycles:      ${distributorData.totalCycles}`)
+      console.log(`  Total Accounts:    ${distributorData.totalAccounts}`)
+      console.log(`  Total Receipts:    ${distributorData.totalReceipts}`)
+      console.log(`  Total OriginalTxs: ${distributorData.totalOriginalTxs}`)
+    } else {
+      console.log('\nDistributor: Failed to fetch data')
+    }
+
     console.log('='.repeat(60))
   }
 }

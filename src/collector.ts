@@ -256,30 +256,6 @@ export const checkAndSyncData = async (): Promise<() => Promise<void>> => {
   return syncData
 }
 
-export const startDataSyncManager = async (): Promise<() => Promise<void>> => {
-  console.log('\n')
-  console.log('='.repeat(60))
-  console.log('INITIALIZING DATA SYNC MANAGER')
-  console.log('='.repeat(60))
-  console.log('DataSyncManager provides intelligent data synchronization with:')
-  console.log('  • Early data anomaly detection before sync operations')
-  console.log('  • Automatic gap detection and recovery')
-  console.log('  • Lookback verification window for data integrity')
-  console.log('  • Parallel batch-cycle-based sync (10x+ performance improvement)')
-  console.log('='.repeat(60))
-  console.log('\n')
-
-  // Run anomaly detection BEFORE connecting to websocket
-  // This fails fast if there are data corruption issues
-  const dataSyncManager = new DataSyncManager()
-  await dataSyncManager.detectDataAnomalies()
-
-  console.log('✅ Data anomaly check passed - proceeding with sync')
-
-  // Return the sync function to be executed after WS connection
-  return dataSyncManager.syncData
-}
-
 const attemptReconnection = (): void => {
   console.log(`Re-connecting Distributor in ${config.DISTRIBUTOR_RECONNECT_INTERVAL / 1000}s...`)
   reconnecting = true
@@ -298,7 +274,7 @@ const connectToDistributor = (): void => {
   ws = new WebSocket(URL)
   ws.onopen = () => {
     console.log(
-      `✅ Socket connected to the Distributor @ ${config.distributorInfo.ip}:${config.distributorInfo.port}}`
+      `✅ Socket connected to the Distributor @ ${config.distributorInfo.ip}:${config.distributorInfo.port}`
     )
     connected = true
     reconnecting = false
@@ -399,7 +375,15 @@ const startServer = async (): Promise<void> => {
   await Storage.initializeDB()
   addExitListeners()
 
-  const syncData = config.useParallelSync ? await startDataSyncManager() : await checkAndSyncData()
+  let dataSyncManager = null
+
+  if (config.useParallelSync) {
+    // Run anomaly detection BEFORE connecting to websocket
+    // This fails fast if there are data corruption issues
+    dataSyncManager = new DataSyncManager()
+    await dataSyncManager.detectDataAnomalies()
+  }
+  const syncData = !config.useParallelSync && (await checkAndSyncData())
   if (config.dataLogWrite) await initDataLogWriter()
 
   addSigListeners()
@@ -419,6 +403,11 @@ const startServer = async (): Promise<void> => {
         throw Error(`Cannot connect to the Distributor @ ${DISTRIBUTOR_URL}`)
       }
     }
+  }
+
+  if (config.useParallelSync) {
+    await dataSyncManager.syncData()
+    return
   }
 
   await syncData()

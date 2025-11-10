@@ -15,6 +15,7 @@ export enum DataType {
 }
 
 interface queryFromDistributorParameters {
+  count?: number
   start?: number
   end?: number
   page?: number
@@ -64,6 +65,7 @@ export const queryFromDistributor = async (
     const response = await axios.post(url, data, {
       headers: {
         'Content-Type': 'application/json',
+        'Accept-Encoding': 'gzip, deflate', // Request compressed responses
       },
       timeout: 45000,
       transformResponse: (res) => {

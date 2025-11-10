@@ -158,18 +158,19 @@ export async function processReceiptData(
           combineAccounts.push(accObj)
         }
       } else {
-        const accountExist = await AccountDB.queryAccountByAccountId(accObj.accountId)
-        if (config.verbose) console.log('accountExist', accountExist)
-        if (!accountExist) {
-          combineAccounts.push(accObj)
-        } else {
-          if (accountExist.timestamp < accObj.timestamp) {
-            await AccountDB.updateAccount(accObj)
-          }
-          if (accObj.createdTimestamp < accountExist.createdTimestamp) {
-            await AccountDB.updateCreatedTimestamp(accObj.accountId, accObj.createdTimestamp)
-          }
-        }
+        // const accountExist = await AccountDB.queryAccountTimestamp(accObj.accountId)
+        // if (config.verbose) console.log('accountExist', accountExist)
+        // if (accountExist) {
+        //     if (accountExist.timestamp < accObj.timestamp) {
+        //     await AccountDB.updateAccount(accObj)
+        //     // combineAccounts.push(accObj)
+        //   }
+        //   if (accObj.createdTimestamp < accountExist.createdTimestamp) {
+        //     await AccountDB.updateCreatedTimestamp(accObj.accountId, accObj.createdTimestamp)
+        //   }
+        // } else {
+        combineAccounts.push(accObj)
+        // }
       }
 
       // if tx receipt is saved as an account, create tx object from the account and save it
@@ -229,13 +230,13 @@ export async function processReceiptData(
       }
       txObj.data = {}
     }
-    const transactionExist = await TransactionDB.queryTransactionByTxId(tx.txId)
-    if (config.verbose) console.log('transactionExist', transactionExist)
-    if (!transactionExist) {
-      combineTransactions.push(txObj)
-    } else if (transactionExist.timestamp < txObj.timestamp) {
-      await TransactionDB.insertTransaction(txObj)
-    }
+    // const transactionExist = await TransactionDB.queryTransactionByTxId(tx.txId)
+    // if (config.verbose) console.log('transactionExist', transactionExist)
+    // if (!transactionExist) {
+    combineTransactions.push(txObj)
+    // } else if (transactionExist.timestamp < txObj.timestamp) {
+    //   await TransactionDB.insertTransaction(txObj)
+    // }
     if (config.saveAccountHistoryState) {
       // Note: This has to be changed once we change the way the global modification tx consensus is updated
       if (
@@ -286,8 +287,32 @@ export async function processReceiptData(
       accountHistoryStateList = []
     }
   }
+
+  // Batch query all collected account IDs once
+  const accountIdsToQuery = combineAccounts.map((acc) => acc.accountId)
+  const existingAccounts = await AccountDB.queryAccountTimestampsBatch(accountIdsToQuery)
+  for (const accObj of combineAccounts) {
+    const accountExist = existingAccounts.get(accObj.accountId)
+    if (accountExist) {
+      if (accountExist.timestamp > accObj.timestamp) {
+        // await AccountDB.updateAccount(accObj)
+        // Remove the account from the list
+        combineAccounts = combineAccounts.filter((acc) => acc.accountId !== accObj.accountId)
+      }
+      if (accountExist.createdTimestamp > accObj.createdTimestamp) {
+        await AccountDB.updateCreatedTimestamp(accObj.accountId, accObj.createdTimestamp)
+      }
+    }
+  }
+  // Insert the combined accounts in bucketSize
+  if (combineAccounts.length > 0) {
+    for (let i = 0; i < combineAccounts.length; i += bucketSize) {
+      const accounts = combineAccounts.slice(i, i + bucketSize)
+      await AccountDB.bulkInsertAccounts(accounts)
+    }
+  }
+
   if (combineReceipts.length > 0) await bulkInsertReceipts(combineReceipts)
-  if (combineAccounts.length > 0) await AccountDB.bulkInsertAccounts(combineAccounts)
   if (combineTransactions.length > 0) await TransactionDB.bulkInsertTransactions(combineTransactions)
   if (accountHistoryStateList.length > 0)
     await AccountHistoryStateDB.bulkInsertAccountHistoryStates(accountHistoryStateList)

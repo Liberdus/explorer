@@ -1,8 +1,8 @@
 import PQueue from 'p-queue'
 import * as crypto from '@shardus/crypto-utils'
-import { Utils as StringUtils } from '@shardus/types'
+import { P2P, Utils as StringUtils } from '@shardus/types'
 import { config, DISTRIBUTOR_URL } from '../config'
-import { queryFromDistributor, DataType } from './DataSync'
+import { DataType } from './DataSync'
 import { CycleDB, ReceiptDB, OriginalTxDataDB } from '../storage'
 import { Cycle } from '../types'
 import axios, { AxiosInstance } from 'axios'
@@ -48,6 +48,7 @@ interface ResponseSizeMetadata {
 
 interface ResponseDataWithMetadata {
   __responseSize?: ResponseSizeMetadata
+  __networkElapsed?: number
   [key: string]: unknown
 }
 
@@ -257,9 +258,38 @@ export class ParallelDataSync {
   }
 
   /**
+   * Creates batches of cycles for parallel processing.
+   * This is a preparatory step before calling startSyncing, which expects these batches.
+   * @param startCycle The starting cycle number.
+   * @param endCycle The ending cycle number.
+   * @returns An array of cycle batches, each with a start and end cycle.
+   */
+  public createCycleBatches(
+    startCycle: number,
+    endCycle: number
+  ): { startCycle: number; endCycle: number }[] {
+    const cycleBatches: { startCycle: number; endCycle: number }[] = []
+
+    for (let i = startCycle; i <= endCycle; i += this.syncConfig.cyclesPerBatch) {
+      const batchEndCycle = Math.min(i + this.syncConfig.cyclesPerBatch - 1, endCycle)
+      cycleBatches.push({ startCycle: i, endCycle: batchEndCycle })
+    }
+
+    return cycleBatches
+  }
+
+  /**
    * Main entry point for parallel sync
    */
-  async startSyncing(startCycle: number, endCycle: number): Promise<void> {
+  async startSyncing(cycleBatches: { startCycle: number; endCycle: number }[]): Promise<void> {
+    if (!cycleBatches || cycleBatches.length === 0) {
+      console.log('No cycle batches provided for syncing.')
+      return
+    }
+
+    const startCycle = cycleBatches[0].startCycle
+    const endCycle = cycleBatches[cycleBatches.length - 1].endCycle
+
     console.log(`\n${'='.repeat(60)}`)
     console.log(`Starting Parallel Cycle Sync: ${startCycle} → ${endCycle}`)
     console.log(`Concurrency: ${this.syncConfig.concurrency} workers`)
@@ -269,20 +299,8 @@ export class ParallelDataSync {
     this.stats.totalCycles = endCycle - startCycle
 
     try {
-      // Split cycles into batches
-      const cycleBatches: { startCycle: number; endCycle: number }[] = []
-
-      for (let i = startCycle; i <= endCycle; ) {
-        let batchEnd = i + this.syncConfig.cyclesPerBatch
-        if (batchEnd > endCycle) {
-          batchEnd = endCycle
-        }
-        cycleBatches.push({ startCycle: i, endCycle: batchEnd })
-        i = batchEnd + 1
-      }
-
       console.log(
-        `Created ${cycleBatches.length} cycle batches (${this.syncConfig.cyclesPerBatch} cycles per batch)`
+        `Syncing ${cycleBatches.length} cycle batches created with ${this.syncConfig.cyclesPerBatch} cycles per batch`
       )
 
       // Add all batch sync tasks to the queue
@@ -305,7 +323,7 @@ export class ParallelDataSync {
 
   /**
    * Sync data in parallel using adaptive multi-cycle fetching with prefetching on endpoints
-   * Adaptively handles partial cycle completion (e.g., if requesting cycles 1-10 but only get data from 1-5)
+   * Adaptively handles partial cycle completion (e.g., if requesting cycles 1-10 but only get data from 1-5, then sends next request for 5-10)
    */
   private async syncDataByCycleRange(startCycle: number, endCycle: number): Promise<void> {
     try {
@@ -318,12 +336,10 @@ export class ParallelDataSync {
 
       this.stats.completedCycles += endCycle - startCycle + 1
 
-      if (config.verbose || this.stats.completedCycles % 10 === 0) {
-        const progress = ((this.stats.completedCycles / this.stats.totalCycles) * 100).toFixed(1)
-        console.log(
-          `Progress: ${this.stats.completedCycles}/${this.stats.totalCycles} cycles (${progress}%) [batch: ${startCycle}-${endCycle}]`
-        )
-      }
+      const progress = ((this.stats.completedCycles / this.stats.totalCycles) * 100).toFixed(1)
+      console.log(
+        `Progress: ${this.stats.completedCycles}/${this.stats.totalCycles} cycles (${progress}%) [batch: ${startCycle}-${endCycle}]`
+      )
     } catch (error) {
       console.error(`Error syncing cycle batch ${startCycle}-${endCycle}:`, error)
       this.stats.errors++
@@ -336,17 +352,61 @@ export class ParallelDataSync {
    */
   private async syncCyclesByCycleRange(startCycle: number, endCycle: number): Promise<void> {
     try {
-      const response = await this.fetchCyclesByCycleRange(startCycle, endCycle)
+      const response = await this.fetchDataFromDistributor(
+        DataType.CYCLE,
+        startCycle,
+        endCycle,
+        this.signData({ start: startCycle, end: endCycle })
+      )
 
-      if (!response || response.length === 0) {
-        if (config.verbose) {
-          console.log(`[Cycles ${startCycle}-${endCycle}] No cycle data returned`)
+      const cycles = response?.data?.cycleInfo || []
+
+      // Get size metadata from transformResponse and interceptor
+      const sizeMetadata = (response.data as ResponseDataWithMetadata)?.__responseSize
+      const decompressedKB = sizeMetadata?.decompressedKB || '0.00'
+      const compressedKB = sizeMetadata?.compressedKB
+      const compressionRatio = sizeMetadata?.compressionRatio
+      const compressionSavings = sizeMetadata?.compressionSavings
+      const networkElapsed = (response.data as ResponseDataWithMetadata)?.__networkElapsed || 0
+
+      if (config.verbose || networkElapsed > 1000) {
+        // Build log message with compression info if available
+        let logMessage =
+          `[API Timing] Cycles fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
+          `records: ${cycles.length}`
+
+        // Only show compression metrics if compression actually reduced the size (ratio < 1)
+        if (compressedKB !== undefined && compressionRatio !== undefined && compressionRatio < 1) {
+          logMessage += `, payload: ${compressedKB}KB, payloadUncompressed: ${decompressedKB}KB, ratio: ${compressionRatio}, savings: ${compressionSavings}`
+        } else {
+          // No compression or not effective, just show uncompressed size
+          logMessage += `, payload: ${decompressedKB}KB`
         }
-        return
+
+        logMessage +=
+          (cycles.length === 0 && response.data ? ', response.data exists but empty' : '') +
+          (!response.data ? ', response.data is null/undefined!' : '')
+
+        console.log(logMessage)
       }
 
+      if (!response || !response.data || !response.data.cycleInfo) {
+        console.error(`Error fetching cycles for cycle batch ${startCycle}-${endCycle}:`, response)
+        return // Couldn't fetch any cycles
+      }
+
+      if (cycles.length === 0) {
+        return // No more originalTxs in this cycle range
+      }
+      const cycleRecords = cycles.map((cycleRecord: Cycle['cycleRecord']) => ({
+        counter: cycleRecord.counter,
+        cycleRecord,
+        start: cycleRecord.start,
+        cycleMarker: cycleRecord.marker,
+      }))
+
       // Process cycles using bulkInsertCycles
-      await CycleDB.bulkInsertCycles(response)
+      await CycleDB.bulkInsertCycles(cycleRecords)
 
       if (config.verbose) {
         console.log(`[Cycles ${startCycle}-${endCycle}] Cycles: +${response.length}`)
@@ -359,6 +419,7 @@ export class ParallelDataSync {
 
   /**
    * Sync receipts across a batch of cycles using adaptive multi-cycle fetching with prefetching
+   * Adaptively handles partial cycle completion (e.g., if requesting cycles 1-10 but only get data from 1-5, then sends next request for 5-10)
    */
   private async syncReceiptsByCycleRange(startCycle: number, endCycle: number): Promise<void> {
     let currentCycle = startCycle
@@ -366,90 +427,22 @@ export class ParallelDataSync {
     let afterTxId = ''
     let totalFetched = 0
 
-    // Prefetch: Start fetching first batch immediately
-    let nextFetchPromise: Promise<any[]> | null = this.syncConfig.enablePrefetch
-      ? this.fetchReceiptsByCycleRange({ startCycle: currentCycle, endCycle, afterTimestamp, afterTxId })
-      : null
-
-    while (currentCycle <= endCycle) {
-      try {
-        // Get the data (either from prefetch or fetch now)
-        const response = nextFetchPromise
-          ? await nextFetchPromise
-          : await this.fetchReceiptsByCycleRange({
-              startCycle: currentCycle,
-              endCycle,
-              afterTimestamp,
-              afterTxId,
-            })
-
-        if (!response || response.length === 0) {
-          break // No more receipts in this cycle range
-        }
-
-        // Update after timestamp and txId based on last receipt BEFORE starting next fetch
-        const lastReceipt = response[response.length - 1]
-        currentCycle = lastReceipt.cycle
-        afterTimestamp = lastReceipt.timestamp
-        afterTxId = lastReceipt.receiptId
-
-        // Prefetch next batch while processing current batch
-        if (
-          this.syncConfig.enablePrefetch &&
-          response.length >= config.requestLimits.MAX_RECEIPTS_PER_REQUEST
-        ) {
-          nextFetchPromise = this.fetchReceiptsByCycleRange({
-            startCycle: currentCycle,
-            endCycle,
-            afterTimestamp,
-            afterTxId,
-          })
-        } else {
-          nextFetchPromise = null
-        }
-
-        // Process receipts (overlaps with next fetch if prefetch enabled)
-        await ReceiptDB.processReceiptData(response)
-
-        totalFetched += response.length
-        this.stats.totalReceipts += response.length
-
-        if (config.verbose) {
-          console.log(
-            `[Cycles ${startCycle}-${endCycle}] Receipts: +${response.length} (total: ${totalFetched}), ` +
-              `last in cycle ${currentCycle}` +
-              (this.syncConfig.enablePrefetch ? ' [prefetch]' : '')
-          )
-        }
-
-        // If we got less than the max response size, we've exhausted this cycle range
-        if (response.length < config.requestLimits.MAX_RECEIPTS_PER_REQUEST) {
-          break
-        }
-      } catch (error) {
-        console.error(`Error fetching receipts for cycle batch ${startCycle}-${endCycle}:`, error)
-        throw error
-      }
-    }
-  }
-
-  /**
-   * Sync originalTxs across a batch of cycles using adaptive multi-cycle fetching with prefetching
-   */
-  private async syncOriginalTxsByCycleRange(startCycle: number, endCycle: number): Promise<void> {
-    let currentCycle = startCycle
-    let afterTimestamp = 0
-    let afterTxId = ''
-    let totalFetched = 0
+    const route = `receipt/cycle`
 
     // Prefetch: Start fetching first batch immediately
     let nextFetchPromise: Promise<any[]> | null = this.syncConfig.enablePrefetch
-      ? this.fetchOriginalTxsByCycleRange({
-          startCycle: currentCycle,
+      ? this.fetchDataFromDistributor(
+          route,
+          currentCycle,
           endCycle,
-          afterTimestamp,
-          afterTxId,
-        })
+          this.signData({
+            startCycle: currentCycle,
+            endCycle,
+            afterTimestamp,
+            afterTxId,
+            limit: config.requestLimits.MAX_RECEIPTS_PER_REQUEST,
+          })
+        )
       : null
 
     while (currentCycle <= endCycle) {
@@ -457,153 +450,20 @@ export class ParallelDataSync {
         // Get the data (either from prefetch or fetch now)
         const response = nextFetchPromise
           ? await nextFetchPromise
-          : await this.fetchOriginalTxsByCycleRange({
-              startCycle: currentCycle,
+          : await this.fetchDataFromDistributor(
+              route,
+              currentCycle,
               endCycle,
-              afterTimestamp,
-              afterTxId,
-            })
-
-        if (!response || response.length === 0) {
-          break // No more originalTxs in this cycle range
-        }
-
-        // Update after timestamp and txId based on last tx BEFORE starting next fetch
-        const lastTx = response[response.length - 1]
-        currentCycle = lastTx.cycle
-        afterTimestamp = lastTx.timestamp
-        afterTxId = lastTx.txId
-
-        // Prefetch next batch while processing current batch
-        if (
-          this.syncConfig.enablePrefetch &&
-          response.length >= config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST
-        ) {
-          nextFetchPromise = this.fetchOriginalTxsByCycleRange({
-            startCycle: currentCycle,
-            endCycle,
-            afterTimestamp,
-            afterTxId,
-          })
-        } else {
-          nextFetchPromise = null
-        }
-
-        // Process originalTxs (overlaps with next fetch if prefetch enabled)
-        await OriginalTxDataDB.processOriginalTxData(response)
-
-        totalFetched += response.length
-        this.stats.totalOriginalTxs += response.length
-
-        if (config.verbose) {
-          console.log(
-            `[Cycles ${startCycle}-${endCycle}] OriginalTxs: +${response.length} (total: ${totalFetched}), ` +
-              `last in cycle ${currentCycle}` +
-              (this.syncConfig.enablePrefetch ? ' [prefetch]' : '')
-          )
-        }
-
-        // If we got less than the max response size, we've exhausted this cycle range
-        if (response.length < config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST) {
-          break
-        }
-      } catch (error) {
-        console.error(`Error fetching originalTxs for cycle batch ${startCycle}-${endCycle}:`, error)
-        throw error
-      }
-    }
-  }
-
-  /**
-   * Fetch cycles by cycle range with retry logic
-   */
-  private async fetchCyclesByCycleRange(startCycle: number, endCycle: number): Promise<Cycle[]> {
-    // Retry with exponential backoff
-    for (let attempt = 0; attempt <= this.syncConfig.retryAttempts; attempt++) {
-      try {
-        const startTime = Date.now()
-        const response = await queryFromDistributor(DataType.CYCLE, {
-          start: startCycle,
-          end: endCycle,
-        })
-        const networkElapsed = Date.now() - startTime
-
-        if (response && response.data && response.data.cycleInfo) {
-          const cycleRecords = response.data.cycleInfo.map((cycleRecord: any) => ({
-            counter: cycleRecord.counter,
-            cycleRecord,
-            start: cycleRecord.start,
-            cycleMarker: cycleRecord.marker,
-          }))
-
-          if (config.verbose) {
-            console.log(
-              `[API Timing] Cycles fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
-                `records: ${cycleRecords.length}`
+              this.signData({
+                startCycle: currentCycle,
+                endCycle,
+                afterTimestamp,
+                afterTxId,
+                limit: config.requestLimits.MAX_RECEIPTS_PER_REQUEST,
+              })
             )
-          }
-          return cycleRecords
-        }
-      } catch (error: any) {
-        const isLastAttempt = attempt === this.syncConfig.retryAttempts
-        const isRetryableError =
-          error.code === 'ECONNRESET' ||
-          error.code === 'ETIMEDOUT' ||
-          error.code === 'ECONNREFUSED' ||
-          error.code === 'EPIPE'
 
-        if (isRetryableError && !isLastAttempt) {
-          const delay = this.syncConfig.retryDelayMs * Math.pow(2, attempt)
-          console.warn(
-            `Error on cycles fetch (cycles ${startCycle}-${endCycle}), ` +
-              `attempt ${attempt + 1}/${this.syncConfig.retryAttempts + 1}, ` +
-              `retrying in ${delay}ms...`
-          )
-          await this.sleep(delay)
-          continue
-        }
-
-        // Non-retryable error or last attempt failed
-        console.error(`Error fetching cycles (cycles ${startCycle}-${endCycle}):`, error.message)
-        throw error
-      }
-    }
-
-    return []
-  }
-
-  /**
-   * Fetch receipts by multi-cycle  range with retry logic
-   * Automatically adapts to cycle sizes - if cycles 1-10 only have data in 1-5, returns that subset
-   */
-  private async fetchReceiptsByCycleRange({
-    startCycle,
-    endCycle,
-    afterTimestamp,
-    afterTxId,
-  }: SyncTxDataByCycleRange): Promise<any[]> {
-    const data = {
-      startCycle,
-      endCycle,
-      afterTimestamp,
-      afterTxId,
-      limit: config.requestLimits.MAX_RECEIPTS_PER_REQUEST,
-      sender: config.collectorInfo.publicKey,
-      sign: undefined,
-    }
-
-    crypto.signObj(data, config.collectorInfo.secretKey, config.collectorInfo.publicKey)
-
-    const url = `${DISTRIBUTOR_URL}/receipt/cycle`
-
-    // Retry with exponential backoff
-    for (let attempt = 0; attempt <= this.syncConfig.retryAttempts; attempt++) {
-      try {
-        const startTime = Date.now()
-        const response = await this.axiosInstance.post(url, data)
-        const networkElapsed = Date.now() - startTime
-
-        const receipts = response.data?.receipts || []
+        const receipts = response?.data?.receipts || []
 
         // Get size metadata from transformResponse and interceptor
         const sizeMetadata = (response.data as ResponseDataWithMetadata)?.__responseSize
@@ -611,8 +471,9 @@ export class ParallelDataSync {
         const compressedKB = sizeMetadata?.compressedKB
         const compressionRatio = sizeMetadata?.compressionRatio
         const compressionSavings = sizeMetadata?.compressionSavings
+        const networkElapsed = (response.data as ResponseDataWithMetadata)?.__networkElapsed || 0
 
-        if (config.verbose || networkElapsed > 1000 || receipts.length === 0) {
+        if (config.verbose || networkElapsed > 1000) {
           // Build log message with compression info if available
           let logMessage =
             `[API Timing] Receipts fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
@@ -633,73 +494,114 @@ export class ParallelDataSync {
           console.log(logMessage)
         }
 
-        if (response.data && response.data.receipts) {
-          return response.data.receipts
+        if (!response || !response.data || !response.data.receipts) {
+          console.error(`Error fetching receipts for cycle batch ${startCycle}-${endCycle}:`, response)
+          break // Couldn't fetch any receipts
         }
 
-        return []
-      } catch (error: any) {
-        const isLastAttempt = attempt === this.syncConfig.retryAttempts
-        const isRetryableError =
-          error.code === 'ECONNRESET' ||
-          error.code === 'ETIMEDOUT' ||
-          error.code === 'ECONNREFUSED' ||
-          error.code === 'EPIPE'
+        if (receipts.length === 0) {
+          break // No more originalTxs in this cycle range
+        }
 
-        if (isRetryableError && !isLastAttempt) {
-          const delay = this.syncConfig.retryDelayMs * Math.pow(2, attempt)
-          console.warn(
-            `ECONNRESET on receipts fetch (cycles ${startCycle}-${endCycle}), ` +
-              `attempt ${attempt + 1}/${this.syncConfig.retryAttempts + 1}, ` +
-              `retrying in ${delay}ms...`
+        // Update after timestamp and txId based on last receipt BEFORE starting next fetch
+        const lastReceipt = receipts[receipts.length - 1]
+        currentCycle = lastReceipt.cycle
+        afterTimestamp = lastReceipt.timestamp
+        afterTxId = lastReceipt.receiptId
+
+        // Prefetch next batch while processing current batch
+        if (
+          this.syncConfig.enablePrefetch &&
+          receipts.length >= config.requestLimits.MAX_RECEIPTS_PER_REQUEST
+        ) {
+          nextFetchPromise = this.fetchDataFromDistributor(
+            route,
+            currentCycle,
+            endCycle,
+            this.signData({
+              startCycle: currentCycle,
+              endCycle,
+              afterTimestamp,
+              afterTxId,
+              limit: config.requestLimits.MAX_RECEIPTS_PER_REQUEST,
+            })
           )
-          await this.sleep(delay)
-          continue
+        } else {
+          nextFetchPromise = null
         }
 
-        // Non-retryable error or last attempt failed
-        console.error(
-          `Error fetching receipts multi-cycle (cycles ${startCycle}-${endCycle}):`,
-          error.message
-        )
+        // Process receipts (overlaps with next fetch if prefetch enabled)
+        await ReceiptDB.processReceiptData(receipts)
+
+        totalFetched += receipts.length
+        this.stats.totalReceipts += receipts.length
+
+        if (config.verbose) {
+          console.log(
+            `[Cycles ${startCycle}-${endCycle}] Receipts: +${receipts.length} (total: ${totalFetched}), ` +
+              `last in cycle ${currentCycle}` +
+              (this.syncConfig.enablePrefetch ? ' [prefetch]' : '')
+          )
+        }
+
+        // If we got less than the max receipts size, we've exhausted this cycle range
+        if (receipts.length < config.requestLimits.MAX_RECEIPTS_PER_REQUEST) {
+          break
+        }
+      } catch (error) {
+        console.error(`Error fetching receipts for cycle batch ${startCycle}-${endCycle}:`, error)
         throw error
       }
     }
-
-    return []
   }
 
   /**
-   * Fetch originalTxs by multi-cycle range with retry logic
+   * Sync originalTxs across a batch of cycles using adaptive multi-cycle fetching with prefetching
+   * Adaptively handles partial cycle completion (e.g., if requesting cycles 1-10 but only get data from 1-5, then sends next request for 5-10)
    */
-  private async fetchOriginalTxsByCycleRange({
-    startCycle,
-    endCycle,
-    afterTimestamp,
-    afterTxId,
-  }: SyncTxDataByCycleRange): Promise<any[]> {
-    const data = {
-      startCycle,
-      endCycle,
-      afterTimestamp,
-      afterTxId,
-      limit: config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST,
-      sender: config.collectorInfo.publicKey,
-      sign: undefined,
-    }
+  private async syncOriginalTxsByCycleRange(startCycle: number, endCycle: number): Promise<void> {
+    let currentCycle = startCycle
+    let afterTimestamp = 0
+    let afterTxId = ''
+    let totalFetched = 0
 
-    crypto.signObj(data, config.collectorInfo.secretKey, config.collectorInfo.publicKey)
+    const route = `originalTx/cycle`
 
-    const url = `${DISTRIBUTOR_URL}/originalTx/cycle`
+    // Prefetch: Start fetching first batch immediately
+    let nextFetchPromise: Promise<any[]> | null = this.syncConfig.enablePrefetch
+      ? this.fetchDataFromDistributor(
+          route,
+          currentCycle,
+          endCycle,
+          this.signData({
+            startCycle: currentCycle,
+            endCycle,
+            afterTimestamp,
+            afterTxId,
+            limit: config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST,
+          })
+        )
+      : null
 
-    // Retry with exponential backoff
-    for (let attempt = 0; attempt <= this.syncConfig.retryAttempts; attempt++) {
+    while (currentCycle <= endCycle) {
       try {
-        const startTime = Date.now()
-        const response = await this.axiosInstance.post(url, data)
-        const networkElapsed = Date.now() - startTime
+        // Get the data (either from prefetch or fetch now)
+        const response = nextFetchPromise
+          ? await nextFetchPromise
+          : await this.fetchDataFromDistributor(
+              route,
+              currentCycle,
+              endCycle,
+              this.signData({
+                startCycle: currentCycle,
+                endCycle,
+                afterTimestamp,
+                afterTxId,
+                limit: config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST,
+              })
+            )
 
-        const originalTxs = response.data?.originalTxs || []
+        const originalTxs = response?.data?.originalTxs || []
 
         // Get size metadata from transformResponse and interceptor
         const sizeMetadata = (response.data as ResponseDataWithMetadata)?.__responseSize
@@ -707,8 +609,9 @@ export class ParallelDataSync {
         const compressedKB = sizeMetadata?.compressedKB
         const compressionRatio = sizeMetadata?.compressionRatio
         const compressionSavings = sizeMetadata?.compressionSavings
+        const networkElapsed = (response.data as ResponseDataWithMetadata)?.__networkElapsed || 0
 
-        if (config.verbose || networkElapsed > 1000 || originalTxs.length === 0) {
+        if (config.verbose || networkElapsed > 1000) {
           // Build log message with compression info if available
           let logMessage =
             `[API Timing] OriginalTxs fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
@@ -729,11 +632,88 @@ export class ParallelDataSync {
           console.log(logMessage)
         }
 
-        if (response.data && response.data.originalTxs) {
-          return response.data.originalTxs
+        if (!response || !response.data || !response.data.originalTxs) {
+          console.error(`Error fetching originalTxs for cycle batch ${startCycle}-${endCycle}:`, response)
+          break // Couldn't fetch any originalTxs
         }
 
-        return []
+        if (originalTxs.length === 0) {
+          break // No more originalTxs in this cycle range
+        }
+
+        // Update after timestamp and txId based on last tx BEFORE starting next fetch
+        const lastTx = originalTxs[originalTxs.length - 1]
+        currentCycle = lastTx.cycle
+        afterTimestamp = lastTx.timestamp
+        afterTxId = lastTx.txId
+
+        // Prefetch next batch while processing current batch
+        if (
+          this.syncConfig.enablePrefetch &&
+          response.length >= config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST
+        ) {
+          nextFetchPromise = this.fetchDataFromDistributor(
+            route,
+            currentCycle,
+            endCycle,
+            this.signData({
+              startCycle: currentCycle,
+              endCycle,
+              afterTimestamp,
+              afterTxId,
+              limit: config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST,
+            })
+          )
+        } else {
+          nextFetchPromise = null
+        }
+
+        // Process originalTxs (overlaps with next fetch if prefetch enabled)
+        await OriginalTxDataDB.processOriginalTxData(originalTxs)
+
+        totalFetched += originalTxs.length
+        this.stats.totalOriginalTxs += originalTxs.length
+
+        if (config.verbose) {
+          console.log(
+            `[Cycles ${startCycle}-${endCycle}] OriginalTxs: +${originalTxs.length} (total: ${totalFetched}), ` +
+              `last in cycle ${currentCycle}` +
+              (this.syncConfig.enablePrefetch ? ' [prefetch]' : '')
+          )
+        }
+
+        // If we got less than the max originalTxs size, we've exhausted this cycle range
+        if (originalTxs.length < config.requestLimits.MAX_ORIGINAL_TXS_PER_REQUEST) {
+          break
+        }
+      } catch (error) {
+        console.error(`Error fetching originalTxs for cycle batch ${startCycle}-${endCycle}:`, error)
+        throw error
+      }
+    }
+  }
+
+  /**
+   * Fetch data by multi-cycle  range with retry logic
+   */
+  private async fetchDataFromDistributor(
+    route: string,
+    startCycle: number,
+    endCycle: number,
+    data: any
+  ): Promise<any> {
+    const url = `${DISTRIBUTOR_URL}/${route}`
+
+    // Retry with exponential backoff
+    for (let attempt = 0; attempt <= this.syncConfig.retryAttempts; attempt++) {
+      try {
+        const startTime = Date.now()
+        const response = await this.axiosInstance.post(url, data)
+        const networkElapsed = Date.now() - startTime
+        if (response && response.data) {
+          ;(response.data as ResponseDataWithMetadata).__networkElapsed = networkElapsed
+        }
+        return response
       } catch (error: any) {
         const isLastAttempt = attempt === this.syncConfig.retryAttempts
         const isRetryableError =
@@ -745,7 +725,7 @@ export class ParallelDataSync {
         if (isRetryableError && !isLastAttempt) {
           const delay = this.syncConfig.retryDelayMs * Math.pow(2, attempt)
           console.warn(
-            `ECONNRESET on originalTxs fetch (cycles ${startCycle}-${endCycle}), ` +
+            `ECONNRESET on ${route} fetch (cycles ${startCycle}-${endCycle}), ` +
               `attempt ${attempt + 1}/${this.syncConfig.retryAttempts + 1}, ` +
               `retrying in ${delay}ms...`
           )
@@ -754,15 +734,25 @@ export class ParallelDataSync {
         }
 
         // Non-retryable error or last attempt failed
-        console.error(
-          `Error fetching originalTxs multi-cycle (cycles ${startCycle}-${endCycle}):`,
-          error.message
-        )
+        console.error(`Error fetching ${route} for (cycles ${startCycle}-${endCycle}):`, error.message)
         throw error
       }
     }
 
-    return []
+    return null
+  }
+
+  /**
+   * Sign data
+   */
+  private signData(obj: SyncTxDataByCycleRange | { start: number; end: number }): P2P.P2PTypes.SignedObject {
+    const data = {
+      ...obj,
+      sender: config.collectorInfo.publicKey,
+      sign: undefined,
+    }
+    crypto.signObj(data, config.collectorInfo.secretKey, config.collectorInfo.publicKey)
+    return data
   }
 
   /**
