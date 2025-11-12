@@ -285,7 +285,7 @@ const connectToDistributor = (): void => {
     try {
       validateData(StringUtils.safeJsonParse(data))
     } catch (e) {
-      console.log('Error in processing received data!', e)
+      console.log('Error in processing received data!', data, e)
     }
   })
   ws.onerror = (error) => {

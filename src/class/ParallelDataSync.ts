@@ -27,8 +27,9 @@ export interface ParallelSyncConfig {
 export interface SyncStats {
   startTime: number
   endTime?: number
-  totalCycles: number
+  totalCyclesToSync: number
   completedCycles: number
+  totalCycles: number
   totalReceipts: number
   totalOriginalTxs: number
   errors: number
@@ -241,8 +242,9 @@ export class ParallelDataSync {
 
     this.stats = {
       startTime: Date.now(),
-      totalCycles: 0,
+      totalCyclesToSync: 0,
       completedCycles: 0,
+      totalCycles: 0,
       totalReceipts: 0,
       totalOriginalTxs: 0,
       errors: 0,
@@ -296,7 +298,7 @@ export class ParallelDataSync {
     console.log(`${'='.repeat(60)}\n`)
 
     this.stats.startTime = Date.now()
-    this.stats.totalCycles = endCycle - startCycle
+    this.stats.totalCyclesToSync = endCycle - startCycle
 
     try {
       console.log(
@@ -336,9 +338,9 @@ export class ParallelDataSync {
 
       this.stats.completedCycles += endCycle - startCycle + 1
 
-      const progress = ((this.stats.completedCycles / this.stats.totalCycles) * 100).toFixed(1)
+      const progress = ((this.stats.completedCycles / this.stats.totalCyclesToSync) * 100).toFixed(1)
       console.log(
-        `Progress: ${this.stats.completedCycles}/${this.stats.totalCycles} cycles (${progress}%) [batch: ${startCycle}-${endCycle}]`
+        `Progress: ${this.stats.completedCycles}/${this.stats.totalCyclesToSync} cycles (${progress}%) [batch: ${startCycle}-${endCycle}]`
       )
     } catch (error) {
       console.error(`Error syncing cycle batch ${startCycle}-${endCycle}:`, error)
@@ -405,8 +407,11 @@ export class ParallelDataSync {
         cycleMarker: cycleRecord.marker,
       }))
 
-      // Process cycles using bulkInsertCycles
+      // Bulk insert cycles
       await CycleDB.bulkInsertCycles(cycleRecords)
+
+      // Update stats
+      this.stats.totalCycles += cycleRecords.length
 
       if (config.verbose) {
         console.log(`[Cycles ${startCycle}-${endCycle}] Cycles: +${response.length}`)
@@ -770,18 +775,21 @@ export class ParallelDataSync {
     const elapsedSec = (elapsedMs / 1000).toFixed(2)
     const elapsedMin = (elapsedMs / 60000).toFixed(2)
 
+    const totalRecords = this.stats.totalCycles + this.stats.totalReceipts + this.stats.totalOriginalTxs
+    const throughput = (totalRecords / (elapsedMs / 1000)).toFixed(0)
+
     console.log(`\n${'='.repeat(60)}`)
     console.log('Parallel Sync Complete!')
     console.log(`${'='.repeat(60)}`)
     console.log(`  Cycle Range:       ${startCycle} → ${endCycle}`)
-    console.log(`  Cycles Synced:     ${this.stats.completedCycles}/${this.stats.totalCycles}`)
+    console.log(`  Data Cycles Synced:     ${this.stats.completedCycles}/${this.stats.totalCyclesToSync}`)
+    console.log(`  Cycles Synced: ${this.stats.totalCycles}`)
     console.log(`  Receipts Synced:   ${this.stats.totalReceipts}`)
     console.log(`  OriginalTxs Synced: ${this.stats.totalOriginalTxs}`)
+    console.log(`  Total Records:     ${totalRecords}`)
     console.log(`  Errors:            ${this.stats.errors}`)
     console.log(`  Time Elapsed:      ${elapsedSec}s (${elapsedMin} min)`)
-    console.log(
-      `  Throughput:        ${(this.stats.totalReceipts / (elapsedMs / 1000)).toFixed(0)} receipts/sec`
-    )
+    console.log(`  Throughput:        ${throughput} records/sec`)
     console.log(`${'='.repeat(60)}\n`)
   }
 
