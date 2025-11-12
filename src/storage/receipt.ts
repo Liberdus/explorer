@@ -413,7 +413,7 @@ export async function queryReceiptCountByCycles(
   })
 }
 
-function deserializeDbReceipt(receipt: DbReceipt): void {
+export function deserializeDbReceipt(receipt: DbReceipt): void {
   receipt.tx &&= StringUtils.safeJsonParse(receipt.tx)
   receipt.beforeStates &&= StringUtils.safeJsonParse(receipt.beforeStates)
   receipt.afterStates &&= StringUtils.safeJsonParse(receipt.afterStates)
