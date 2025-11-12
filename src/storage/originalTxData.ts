@@ -196,9 +196,7 @@ export async function queryOriginalTxsData(query: QueryOriginalTxsDataParams): P
       sql += ` OFFSET ${skip}`
     }
     originalTxsData = (await db.all(originalTxDataDatabase, sql, values)) as DbOriginalTxData[]
-    for (const originalTxData of originalTxsData) {
-      originalTxData.originalTxData = StringUtils.safeJsonParse(originalTxData.originalTxData)
-    }
+    originalTxsData.forEach((originalTxData: DbOriginalTxData) => deserializeDbOriginalTxData(originalTxData))
   } catch (e) {
     console.log(e)
   }
@@ -210,9 +208,7 @@ export async function queryOriginalTxDataByTxId(txId: string): Promise<OriginalT
   try {
     const sql = `SELECT * FROM originalTxsData WHERE txId=?`
     const originalTxData = (await db.get(originalTxDataDatabase, sql, [txId])) as DbOriginalTxData
-    if (originalTxData && originalTxData.originalTxData) {
-      originalTxData.originalTxData = StringUtils.safeJsonParse(originalTxData.originalTxData)
-    }
+    if (originalTxData) deserializeDbOriginalTxData(originalTxData)
     if (config.verbose) console.log('OriginalTxData txId', originalTxData)
     return originalTxData as unknown as OriginalTxData
   } catch (e) {
@@ -243,6 +239,10 @@ export async function queryOriginalTxDataCountByCycles(
       cycle: originalTxData.cycle,
     }
   })
+}
+
+export function deserializeDbOriginalTxData(originalTxData: DbOriginalTxData): void {
+  originalTxData.originalTxData &&= StringUtils.safeJsonParse(originalTxData.originalTxData)
 }
 
 export function cleanOldOriginalTxsMap(timestamp: number): void {

@@ -17,57 +17,6 @@ let queryIdSequence = 0
 const pendingQueries = new Map<number, QueryTiming>()
 const queuedBySql = new Map<string, number[]>()
 
-function formatSqlForLog(sql: string): string {
-  const normalized = sql.replace(/\s+/g, ' ').trim()
-  if (normalized.length <= SQL_LOG_MAX_LENGTH) return normalized
-  return `${normalized.slice(0, SQL_LOG_MAX_LENGTH - 3)}...`
-}
-
-function registerQuery(sql: string): QueryTiming {
-  const entry: QueryTiming = {
-    id: ++queryIdSequence,
-    sql,
-    startMs: Date.now(),
-  }
-  pendingQueries.set(entry.id, entry)
-  let queue = queuedBySql.get(sql)
-  if (!queue) {
-    queue = []
-    queuedBySql.set(sql, queue)
-  }
-  queue.push(entry.id)
-  return entry
-}
-
-function cleanupQuery(entry: QueryTiming): void {
-  pendingQueries.delete(entry.id)
-  const queue = queuedBySql.get(entry.sql)
-  if (!queue) return
-  const index = queue.indexOf(entry.id)
-  if (index !== -1) queue.splice(index, 1)
-  if (queue.length === 0) queuedBySql.delete(entry.sql)
-}
-
-function logTiming(operation: string, entry: QueryTiming, rows?: number): void {
-  const totalMs = Date.now() - entry.startMs
-  const engineMs = entry.engineMs ?? 0
-  const queueMs = Math.max(0, totalMs - engineMs)
-  const payload = {
-    operation,
-    totalMs: Number(totalMs.toFixed(2)),
-    queueMs: Number(queueMs.toFixed(2)),
-    engineMs: Number(engineMs.toFixed(2)),
-    sql: formatSqlForLog(entry.sql),
-    rows,
-  }
-
-  if (totalMs > SQL_TOTAL_WARN_THRESHOLD_MS || queueMs > SQL_QUEUE_WARN_THRESHOLD_MS) {
-    console.warn('[DB Timing]', payload)
-  } else {
-    console.log('[DB Timing]', payload)
-  }
-}
-
 export const createDB = async (dbPath: string, dbName: string): Promise<Database> => {
   console.log('dbName', dbName, 'dbPath', dbPath)
   const db = new Database(dbPath, (err) => {
@@ -89,8 +38,7 @@ export const createDB = async (dbPath: string, dbName: string): Promise<Database
     const queue = queuedBySql.get(sql)
     const id = queue && queue.length > 0 ? queue[0] : undefined
     if (id === undefined) {
-      console.warn('[DB Timing] profile event without pending query', {
-        pid: process.pid,
+      printQueryTimingLog('profile event without pending query', {
         engineMs,
         sql: formatSqlForLog(sql),
       })
@@ -98,8 +46,7 @@ export const createDB = async (dbPath: string, dbName: string): Promise<Database
     }
     const entry = pendingQueries.get(id)
     if (!entry) {
-      console.warn('[DB Timing] profile missing pending entry', {
-        pid: process.pid,
+      printQueryTimingLog('profile missing pending entry', {
         engineMs,
         sql: formatSqlForLog(sql),
       })
@@ -107,11 +54,7 @@ export const createDB = async (dbPath: string, dbName: string): Promise<Database
     }
     entry.engineMs = engineMs
     if (engineMs > SQL_ENGINE_WARN_THRESHOLD_MS) {
-      console.warn('[DB Engine] Slow engine execution detected', {
-        pid: process.pid,
-        engineMs: Number(engineMs.toFixed(2)),
-        sql: formatSqlForLog(sql),
-      })
+      console.warn(`[DB Engine] Slow Query: ${engineMs} ms for SQL: ${formatSqlForLog(sql)}`)
     }
   })
   console.log(`Database ${dbName} Initialized!`)
@@ -150,8 +93,8 @@ export async function run(
   sql: string,
   params: unknown[] | object = []
 ): Promise<{ id: number }> {
+  const entry = registerQuery(sql)
   return new Promise((resolve, reject) => {
-    const entry = registerQuery(sql)
     const finalize = (): void => {
       setImmediate(() => {
         logTiming('run', entry)
@@ -173,8 +116,8 @@ export async function run(
 }
 
 export async function get<T>(db: Database, sql: string, params = []): Promise<T> {
+  const entry = registerQuery(sql)
   return new Promise((resolve, reject) => {
-    const entry = registerQuery(sql)
     const finalize = (rows?: number): void => {
       setImmediate(() => {
         logTiming('get', entry, rows)
@@ -196,8 +139,8 @@ export async function get<T>(db: Database, sql: string, params = []): Promise<T>
 }
 
 export async function all<T>(db: Database, sql: string, params = []): Promise<T[]> {
+  const entry = registerQuery(sql)
   return new Promise((resolve, reject) => {
-    const entry = registerQuery(sql)
     const finalize = (rowsCount?: number): void => {
       setImmediate(() => {
         logTiming('all', entry, rowsCount)
@@ -253,4 +196,57 @@ export function updateSqlStatementClause(sql: string, inputs: any[]): string {
   if (inputs.length > 0) sql += ' AND '
   else sql += ' WHERE '
   return sql
+}
+
+function registerQuery(sql: string): QueryTiming {
+  const entry: QueryTiming = {
+    id: ++queryIdSequence,
+    sql,
+    startMs: Date.now(),
+  }
+  pendingQueries.set(entry.id, entry)
+  let queue = queuedBySql.get(sql)
+  if (!queue) {
+    queue = []
+    queuedBySql.set(sql, queue)
+  }
+  queue.push(entry.id)
+  return entry
+}
+
+function cleanupQuery(entry: QueryTiming): void {
+  pendingQueries.delete(entry.id)
+  const queue = queuedBySql.get(entry.sql)
+  if (!queue) return
+  const index = queue.indexOf(entry.id)
+  if (index !== -1) queue.splice(index, 1)
+  if (queue.length === 0) queuedBySql.delete(entry.sql)
+}
+
+function printQueryTimingLog(message: string, payload: object): void {
+  console.warn(`[DB Timing] ${message}`, JSON.stringify(payload))
+}
+
+function logTiming(operation: string, entry: QueryTiming, rows?: number): void {
+  const totalMs = Date.now() - entry.startMs
+  const engineMs = entry.engineMs ?? 0
+  const queueMs = Math.max(0, totalMs - engineMs)
+  const payload = {
+    operation,
+    totalMs: Number(totalMs.toFixed(2)),
+    queueMs: Number(queueMs.toFixed(2)),
+    engineMs: Number(engineMs.toFixed(2)),
+    sql: formatSqlForLog(entry.sql),
+    rows,
+  }
+
+  if (totalMs > SQL_TOTAL_WARN_THRESHOLD_MS || queueMs > SQL_QUEUE_WARN_THRESHOLD_MS) {
+    printQueryTimingLog('', payload)
+  }
+}
+
+function formatSqlForLog(sql: string): string {
+  const normalized = sql.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= SQL_LOG_MAX_LENGTH) return normalized
+  return `${normalized.slice(0, SQL_LOG_MAX_LENGTH - 3)}...`
 }

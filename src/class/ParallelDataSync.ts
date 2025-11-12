@@ -50,6 +50,7 @@ interface ResponseSizeMetadata {
 interface ResponseDataWithMetadata {
   __responseSize?: ResponseSizeMetadata
   __networkElapsed?: number
+  _deserializedTime?: number
   [key: string]: unknown
 }
 
@@ -133,7 +134,7 @@ export class ParallelDataSync {
           // Use custom parse for response with timing
           const startTime = Date.now()
           const result = typeof res === 'string' ? StringUtils.safeJsonParse(res) : res
-          const elapsed = Date.now() - startTime
+          const deserializedTime = Date.now() - startTime
 
           // Calculate decompressed size from raw response string
           const decompressedBytes = typeof res === 'string' ? Buffer.byteLength(res) : 0
@@ -149,10 +150,12 @@ export class ParallelDataSync {
               enumerable: false, // Hidden from JSON.stringify and iteration
               configurable: true,
             })
+            // Attach deserialization time
+            ;(result as ResponseDataWithMetadata)._deserializedTime = deserializedTime
           }
 
-          if (config.verbose && elapsed > 50) {
-            console.log(`[Client] Response parse: ${elapsed}ms, size: ${sizeKB}KB`)
+          if (config.verbose && deserializedTime > 50) {
+            console.log(`[Client] Response deserialization: ${deserializedTime}ms, size: ${sizeKB}KB`)
           }
           return result
         },
@@ -298,7 +301,7 @@ export class ParallelDataSync {
     console.log(`${'='.repeat(60)}\n`)
 
     this.stats.startTime = Date.now()
-    this.stats.totalCyclesToSync = endCycle - startCycle
+    this.stats.totalCyclesToSync = endCycle - startCycle + 1
 
     try {
       console.log(
@@ -310,12 +313,45 @@ export class ParallelDataSync {
         this.queue.add(() => this.syncDataByCycleRange(batch.startCycle, batch.endCycle))
       )
 
-      // Wait for all tasks to complete
-      await Promise.all(tasks)
+      console.log(`Waiting for ${tasks.length} tasks to complete...`)
+
+      // Wait for all tasks to complete (even if some fail)
+      const results = await Promise.allSettled(tasks)
+
+      console.log('All tasks completed, setting end time...')
       this.stats.endTime = Date.now()
 
+      // Count successful and failed tasks
+      const successful = results.filter((r) => r.status === 'fulfilled').length
+      const failed = results.filter((r) => r.status === 'rejected').length
+
+      console.log(`Tasks completed: ${successful} successful, ${failed} failed`)
+
+      // Log failed task errors
+      if (failed > 0) {
+        console.error(`\n${failed} tasks failed with errors:`)
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            const batch = cycleBatches[index]
+            console.error(
+              `  Batch ${index} (cycles ${batch.startCycle}-${batch.endCycle}): ${
+                result.reason?.message || result.reason
+              }`
+            )
+          }
+        })
+      }
+
+      console.log('Printing summary...')
       // Summary
       await this.printSummary(startCycle, endCycle)
+
+      console.log('Summary printed successfully')
+
+      // Throw if there were any failures so the caller knows sync was incomplete
+      if (failed > 0) {
+        throw new Error(`Parallel sync completed with ${failed} failed batches out of ${tasks.length} total`)
+      }
     } catch (error) {
       console.error('Fatal error in parallel sync:', error)
       this.stats.errors++
@@ -328,31 +364,52 @@ export class ParallelDataSync {
    * Adaptively handles partial cycle completion (e.g., if requesting cycles 1-10 but only get data from 1-5, then sends next request for 5-10)
    */
   private async syncDataByCycleRange(startCycle: number, endCycle: number): Promise<void> {
-    try {
-      // Sync all data types in parallel
-      await Promise.all([
-        this.syncCyclesByCycleRange(startCycle, endCycle),
-        this.syncReceiptsByCycleRange(startCycle, endCycle),
-        this.syncOriginalTxsByCycleRange(startCycle, endCycle),
-      ])
+    // Sync all data types in parallel with individual error tracking
+    const results = await Promise.allSettled([
+      this.syncCycleRecordsByCycleRange(startCycle, endCycle),
+      this.syncReceiptsByCycleRange(startCycle, endCycle),
+      this.syncOriginalTxsByCycleRange(startCycle, endCycle),
+    ])
 
-      this.stats.completedCycles += endCycle - startCycle + 1
+    const dataTypes = ['Cycle Records', 'Receipts', 'OriginalTxs']
+    const failedTypes: string[] = []
+    const errors: unknown[] = []
 
-      const progress = ((this.stats.completedCycles / this.stats.totalCyclesToSync) * 100).toFixed(1)
-      console.log(
-        `Progress: ${this.stats.completedCycles}/${this.stats.totalCyclesToSync} cycles (${progress}%) [batch: ${startCycle}-${endCycle}]`
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        failedTypes.push(dataTypes[index])
+        errors.push(result.reason)
+      }
+    })
+
+    if (failedTypes.length > 0) {
+      console.error(
+        `Error syncing cycle batch ${startCycle}-${endCycle}: Failed data types: ${failedTypes.join(', ')}`
       )
-    } catch (error) {
-      console.error(`Error syncing cycle batch ${startCycle}-${endCycle}:`, error)
+      errors.forEach((error, index) => {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.error(`  ${failedTypes[index]}: ${errorMessage}`)
+      })
       this.stats.errors++
-      throw error
+      throw new Error(
+        `Failed to sync ${
+          failedTypes.length
+        } data type(s) for batch ${startCycle}-${endCycle}: ${failedTypes.join(', ')}`
+      )
     }
+
+    this.stats.completedCycles += endCycle - startCycle + 1
+
+    const progress = ((this.stats.completedCycles / this.stats.totalCyclesToSync) * 100).toFixed(1)
+    console.log(
+      `Progress: ${this.stats.completedCycles}/${this.stats.totalCyclesToSync} cycles (${progress}%) [batch: ${startCycle}-${endCycle}]`
+    )
   }
 
   /**
-   * Sync cycles across a batch of cycles using multi-cycle fetching
+   * Sync cycle records across a batch of cycles using multi-cycle fetching
    */
-  private async syncCyclesByCycleRange(startCycle: number, endCycle: number): Promise<void> {
+  private async syncCycleRecordsByCycleRange(startCycle: number, endCycle: number): Promise<void> {
     try {
       const response = await this.fetchDataFromDistributor(
         DataType.CYCLE,
@@ -370,11 +427,13 @@ export class ParallelDataSync {
       const compressionRatio = sizeMetadata?.compressionRatio
       const compressionSavings = sizeMetadata?.compressionSavings
       const networkElapsed = (response.data as ResponseDataWithMetadata)?.__networkElapsed || 0
+      const deserializedTime = (response.data as ResponseDataWithMetadata)?._deserializedTime || 0
 
       if (config.verbose || networkElapsed > 1000) {
         // Build log message with compression info if available
         let logMessage =
-          `[API Timing] Cycles fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
+          `[API Timing] Cycle Records fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
+          `deserialization: ${deserializedTime}ms, ` +
           `records: ${cycles.length}`
 
         // Only show compression metrics if compression actually reduced the size (ratio < 1)
@@ -393,7 +452,7 @@ export class ParallelDataSync {
       }
 
       if (!response || !response.data || !response.data.cycleInfo) {
-        console.error(`Error fetching cycles for cycle batch ${startCycle}-${endCycle}:`, response)
+        console.error(`Error fetching cycle records for cycle batch ${startCycle}-${endCycle}:`, response)
         return // Couldn't fetch any cycles
       }
 
@@ -414,10 +473,10 @@ export class ParallelDataSync {
       this.stats.totalCycles += cycleRecords.length
 
       if (config.verbose) {
-        console.log(`[Cycles ${startCycle}-${endCycle}] Cycles: +${response.length}`)
+        console.log(`[Cycles ${startCycle}-${endCycle}] Cycle Records: +${cycleRecords.length}`)
       }
     } catch (error) {
-      console.error(`Error fetching cycles for cycle batch ${startCycle}-${endCycle}:`, error)
+      console.error(`Error fetching cycle records for cycle batch ${startCycle}-${endCycle}:`, error)
       throw error
     }
   }
@@ -477,11 +536,13 @@ export class ParallelDataSync {
         const compressionRatio = sizeMetadata?.compressionRatio
         const compressionSavings = sizeMetadata?.compressionSavings
         const networkElapsed = (response.data as ResponseDataWithMetadata)?.__networkElapsed || 0
+        const deserializedTime = (response.data as ResponseDataWithMetadata)?._deserializedTime || 0
 
         if (config.verbose || networkElapsed > 1000) {
           // Build log message with compression info if available
           let logMessage =
             `[API Timing] Receipts fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
+            `deserialization: ${deserializedTime}ms, ` +
             `records: ${receipts.length}`
 
           // Only show compression metrics if compression actually reduced the size (ratio < 1)
@@ -533,6 +594,16 @@ export class ParallelDataSync {
           )
         } else {
           nextFetchPromise = null
+        }
+
+        const startTime = Date.now()
+        // Deserialize receipts
+        receipts.forEach((receipt) => {
+          ReceiptDB.deserializeDbReceipt(receipt)
+        })
+        const elapsed = Date.now() - startTime
+        if (elapsed > 100) {
+          console.log(`Deserializing ${receipts.length} receipts took: ${elapsed}ms`)
         }
 
         // Process receipts (overlaps with next fetch if prefetch enabled)
@@ -615,11 +686,13 @@ export class ParallelDataSync {
         const compressionRatio = sizeMetadata?.compressionRatio
         const compressionSavings = sizeMetadata?.compressionSavings
         const networkElapsed = (response.data as ResponseDataWithMetadata)?.__networkElapsed || 0
+        const deserializedTime = (response.data as ResponseDataWithMetadata)?._deserializedTime || 0
 
         if (config.verbose || networkElapsed > 1000) {
           // Build log message with compression info if available
           let logMessage =
             `[API Timing] OriginalTxs fetch (cycles ${startCycle}-${endCycle}): ${networkElapsed}ms, ` +
+            `deserialization: ${deserializedTime}ms, ` +
             `records: ${originalTxs.length}`
 
           // Only show compression metrics if compression actually reduced the size (ratio < 1)
@@ -671,6 +744,16 @@ export class ParallelDataSync {
           )
         } else {
           nextFetchPromise = null
+        }
+
+        const startTime = Date.now()
+        // Deserialize originalTxs
+        originalTxs.forEach((originalTx) => {
+          OriginalTxDataDB.deserializeDbOriginalTxData(originalTx)
+        })
+        const elapsed = Date.now() - startTime
+        if (elapsed > 100) {
+          console.log(`Deserializing ${originalTxs.length} originalTxs took ${elapsed}ms`)
         }
 
         // Process originalTxs (overlaps with next fetch if prefetch enabled)
