@@ -104,8 +104,9 @@ export class DataSyncManager {
 
       const parallelDataSync = new ParallelDataSync({
         concurrency: config.parallelSyncConcurrency,
-        retryAttempts: 3,
-        retryDelayMs: 1000,
+        cyclesPerBatch: config.cyclesPerBatch,
+        retryAttempts: config.syncRetryAttempts,
+        enablePrefetch: config.enablePrefetch,
       })
 
       const cycleBatches = await parallelDataSync.createCycleBatches(0, latestDistributorCycle)
@@ -623,8 +624,9 @@ export class DataSyncManager {
 
         const parallelDataSync = new ParallelDataSync({
           concurrency: config.parallelSyncConcurrency,
-          retryAttempts: 3,
-          retryDelayMs: 1000,
+          cyclesPerBatch: config.cyclesPerBatch,
+          retryAttempts: config.syncRetryAttempts,
+          enablePrefetch: config.enablePrefetch,
         })
 
         const cycleBatches = []

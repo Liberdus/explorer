@@ -72,7 +72,8 @@ export async function bulkInsertReceipts(receipts: Receipt[]): Promise<void> {
     )
 
     const sql = `INSERT OR REPLACE INTO receipts ${fields} VALUES ${allPlaceholders}`
-    await db.run(receiptDatabase, sql, values)
+    // Serialize write through storage-level queue + transaction for atomicity
+    await db.executeDbWriteWithTransaction(receiptDatabase, sql, values)
     console.log('Successfully bulk inserted receipts', receipts.length)
   } catch (e) {
     console.log(e)
@@ -83,14 +84,28 @@ export async function bulkInsertReceipts(receipts: Receipt[]): Promise<void> {
 export async function processReceiptData(
   receipts: Receipt[],
   saveOnlyNewData = false,
+  filterExistingAccounts = true, // When true, queries DB to filter out older account data before insert
   forwardToSubscribers = false
 ): Promise<void> {
   if (receipts && receipts.length <= 0) return
-  const bucketSize = 1000
+  const bucketSize = 2000
+  const bucketSizeForReceipts = 1000 // Receipts size can be big, better to save less than the bucket size
   let combineReceipts: Receipt[] = []
   let combineAccounts: Account[] = [] // For new accounts to bulk insert; Not for accounts that are already stored in database
   let combineTransactions: Transaction[] = []
   let accountHistoryStateList: AccountHistoryStateDB.AccountHistoryState[] = []
+
+  // Optimization: If saveOnlyNewData is true, batch query existing receipt IDs BEFORE the loop
+  // to avoid N+1 query problem (individual SELECTs for each receipt)
+  let existingReceiptIds: Set<string> = new Set()
+  if (saveOnlyNewData && receipts.length > 0) {
+    const receiptIds = receipts.map((r) => r.tx.txId)
+    const placeholders = receiptIds.map(() => '?').join(', ')
+    const sql = `SELECT receiptId FROM receipts WHERE receiptId IN (${placeholders})`
+    const existingReceipts = (await db.all(receiptDatabase, sql, receiptIds)) as { receiptId: string }[]
+    existingReceiptIds = new Set(existingReceipts.map((r) => r.receiptId))
+  }
+
   for (const receiptObj of receipts) {
     const {
       afterStates,
@@ -118,8 +133,10 @@ export async function processReceiptData(
       applyTimestamp: applyTimestamp ?? calculatedApplyTimestamp,
     }
     if (saveOnlyNewData) {
-      const receiptExist = await queryReceiptByReceiptId(tx.txId)
-      if (!receiptExist) combineReceipts.push(modifiedReceiptObj as unknown as Receipt)
+      // Check against pre-fetched set instead of querying database for each receipt
+      if (!existingReceiptIds.has(tx.txId)) {
+        combineReceipts.push(modifiedReceiptObj as unknown as Receipt)
+      }
     } else combineReceipts.push(modifiedReceiptObj as unknown as Receipt)
     const txReceipt = appReceiptData
     receiptsMap.set(tx.txId, tx.timestamp)
@@ -128,8 +145,7 @@ export async function processReceiptData(
       forwardData(receiptObj)
     }
 
-    // Receipts size can be big, better to save per 100
-    if (combineReceipts.length >= 100) {
+    if (combineReceipts.length >= bucketSizeForReceipts) {
       await bulkInsertReceipts(combineReceipts)
       combineReceipts = []
     }
@@ -288,22 +304,30 @@ export async function processReceiptData(
     }
   }
 
-  // Batch query all collected account IDs once
-  const accountIdsToQuery = combineAccounts.map((acc) => acc.accountId)
-  const existingAccounts = await AccountDB.queryAccountTimestampsBatch(accountIdsToQuery)
-  for (const accObj of combineAccounts) {
-    const accountExist = existingAccounts.get(accObj.accountId)
-    if (accountExist) {
-      if (accountExist.timestamp > accObj.timestamp) {
-        // await AccountDB.updateAccount(accObj)
-        // Remove the account from the list
-        combineAccounts = combineAccounts.filter((acc) => acc.accountId !== accObj.accountId)
-      }
-      if (accountExist.createdTimestamp > accObj.createdTimestamp) {
-        await AccountDB.updateCreatedTimestamp(accObj.accountId, accObj.createdTimestamp)
+  // Optimization: The bulkInsertAccounts SQL already handles:
+  // 1. Keeping newer data via CASE WHEN excluded.timestamp > accounts.timestamp
+  // 2. Preserving oldest createdTimestamp via MIN(accounts.createdTimestamp, excluded.createdTimestamp)
+  // By default (filterExistingAccounts=false), we skip the batch query and individual updates - just bulk insert everything
+
+  if (filterExistingAccounts) {
+    // Legacy path: Batch query all collected account IDs once and filter before insert
+    const accountIdsToQuery = combineAccounts.map((acc) => acc.accountId)
+    const existingAccounts = await AccountDB.queryAccountTimestampsBatch(accountIdsToQuery)
+    for (const accObj of combineAccounts) {
+      const accountExist = existingAccounts.get(accObj.accountId)
+      if (accountExist) {
+        if (accountExist.timestamp > accObj.timestamp) {
+          // await AccountDB.updateAccount(accObj)
+          // Remove the account from the list
+          combineAccounts = combineAccounts.filter((acc) => acc.accountId !== accObj.accountId)
+        }
+        if (accountExist.createdTimestamp > accObj.createdTimestamp) {
+          await AccountDB.updateCreatedTimestamp(accObj.accountId, accObj.createdTimestamp)
+        }
       }
     }
   }
+
   // Insert the combined accounts in bucketSize
   if (combineAccounts.length > 0) {
     for (let i = 0; i < combineAccounts.length; i += bucketSize) {
@@ -399,7 +423,10 @@ export async function queryReceiptCountByCycles(
   let receipts: { cycle: number; 'COUNT(*)': number }[] = []
   try {
     const sql = `SELECT cycle, COUNT(*) FROM receipts GROUP BY cycle HAVING cycle BETWEEN ? AND ? ORDER BY cycle ASC`
-    receipts = (await db.all(receiptDatabase, sql, [start, end])) as { cycle: number; 'COUNT(*)': number }[]
+    receipts = (await db.all(receiptDatabase, sql, [start, end])) as {
+      cycle: number
+      'COUNT(*)': number
+    }[]
   } catch (e) {
     console.log(e)
   }

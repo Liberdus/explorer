@@ -193,7 +193,7 @@ let config: Config = {
   useParallelSync: process.env.USE_PARALLEL_SYNC !== 'false', // Enable by default
   cyclesPerBatch: Number(process.env.CYCLES_PER_BATCH) || 100, // Batch 100 cycles together ( matching MAX_BETWEEN_CYCLES_PER_REQUEST, can be lower if needed )
   enablePrefetch: process.env.ENABLE_PREFETCH !== 'false', // Enable prefetch by default
-  syncRetryAttempts: Number(process.env.SYNC_RETRY_ATTEMPTS) || 3, // Retry failed requests 3 times
+  syncRetryAttempts: Number(process.env.SYNC_RETRY_ATTEMPTS) || 5, // Retry failed requests 5 times
   dexScreenerAPI:
     'https://api.dexscreener.com/latest/dex/search?q=0x693ed886545970F0a3ADf8C59af5cCdb6dDF0a76',
   dexScreenerLink: 'https://dexscreener.com/polygon/0x041e48a5b11c29fdbd92498eb05573c52728398c',

@@ -70,7 +70,8 @@ export async function bulkInsertAccountHistoryStates(
     )
 
     const sql = `INSERT OR REPLACE INTO accountHistoryState ${fields} VALUES ${allPlaceholders}`
-    await db.run(accountHistoryStateDatabase, sql, values)
+    // Serialize write through storage-level queue + transaction for atomicity
+    await db.executeDbWriteWithTransaction(accountHistoryStateDatabase, sql, values)
     console.log('Successfully bulk inserted AccountHistoryStates', accountHistoryStates.length)
   } catch (e) {
     console.log(e)

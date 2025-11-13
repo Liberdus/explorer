@@ -79,7 +79,8 @@ export async function bulkInsertAccounts(accounts: Account[]): Promise<void> {
         ${keepNewerData('accountType')},
         ${keepNewerData('isGlobal')},
       createdTimestamp = MIN(accounts.createdTimestamp, excluded.createdTimestamp)`
-    await db.run(accountDatabase, sql, values)
+    // Serialize write through storage-level queue + transaction for atomicity
+    await db.executeDbWriteWithTransaction(accountDatabase, sql, values)
     console.log('Successfully bulk inserted Accounts', accounts.length)
   } catch (e) {
     console.log(e)
