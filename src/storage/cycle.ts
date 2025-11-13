@@ -62,7 +62,8 @@ export async function bulkInsertCycles(cycles: Cycle[]): Promise<void> {
     )
 
     const sql = `INSERT OR REPLACE INTO cycles ${fields} VALUES ${allPlaceholders}`
-    await db.run(cycleDatabase, sql, values)
+    // Serialize write through storage-level queue + transaction for atomicity
+    await db.executeDbWriteWithTransaction(cycleDatabase, sql, values)
     console.log('Successfully bulk inserted Cycles', cycles.length)
   } catch (e) {
     console.log(e)
@@ -248,7 +249,6 @@ export interface CycleGap {
  */
 export async function queryMissingCycleRanges(targetCycle: number): Promise<CycleGap[]> {
   try {
-
     // Get first and last cycle for edge gap detection
     const firstCycleResult = (await db.get(
       cycleDatabase,

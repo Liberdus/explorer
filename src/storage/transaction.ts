@@ -61,7 +61,8 @@ export async function bulkInsertTransactions(transactions: Transaction[]): Promi
     )
 
     const sql = `INSERT OR REPLACE INTO transactions ${fields} VALUES ${allPlaceholders}`
-    await db.run(transactionDatabase, sql, values)
+    // Serialize write through storage-level queue + transaction for atomicity
+    await db.executeDbWriteWithTransaction(transactionDatabase, sql, values)
     console.log('Successfully bulk inserted transactions', transactions.length)
   } catch (e) {
     console.log(e)
@@ -378,7 +379,9 @@ export async function queryActiveAccountsCountByTxFee(
       WHERE timestamp < ? AND timestamp > ? ${excludeZeroFeeTxs ? ' AND txFee > 0' : ''}
     `
     const values = [beforeTimestamp, afterTimestamp]
-    activeAccounts = (await db.get(transactionDatabase, sql, values)) as { 'COUNT(DISTINCT txFrom)': number }
+    activeAccounts = (await db.get(transactionDatabase, sql, values)) as {
+      'COUNT(DISTINCT txFrom)': number
+    }
   } catch (e) {
     console.log('Error querying active accounts by txFee:', e)
   }

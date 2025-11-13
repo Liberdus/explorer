@@ -1,6 +1,11 @@
 import { Utils as StringUtils } from '@shardus/types'
 import { Database } from 'sqlite3'
 
+// Simple write queue using Promise chain - serializes all database writes
+// This prevents write contention while allowing parallel reads (SELECTs)
+// Only INSERT/UPDATE/DELETE operations should use this queue
+let writeQueueTail: Promise<unknown> = Promise.resolve()
+
 interface QueryTiming {
   id: number
   sql: string
@@ -29,7 +34,7 @@ export const createDB = async (dbPath: string, dbName: string): Promise<Database
   await run(db, 'PRAGMA synchronous = NORMAL')
   await run(db, 'PRAGMA temp_store = MEMORY')
   await run(db, 'PRAGMA cache_size = -256000') // Increased to ~256MB cache for better performance
-  await run(db, 'PRAGMA wal_autocheckpoint = 5000') // Checkpoint every 5000 pages (less frequent = less lock contention)
+  await run(db, 'PRAGMA wal_autocheckpoint = 10000') // Checkpoint every 10000 pages (less frequent = less lock contention)
   await run(db, 'PRAGMA mmap_size = 536870912') // 512MB memory-mapped I/O for faster reads (reduced disk I/O)
   await run(db, 'PRAGMA busy_timeout = 30000') // Wait up to 30s if database is locked
   await run(db, 'PRAGMA threads = 4') // Use up to 4 threads for parallel operations
@@ -59,6 +64,73 @@ export const createDB = async (dbPath: string, dbName: string): Promise<Database
   })
   console.log(`Database ${dbName} Initialized!`)
   return db
+}
+
+/**
+ * Create read-only database connection optimized for SELECT queries
+ * - Shorter busy_timeout (reads shouldn't block in WAL mode)
+ * - No synchronous writes (read-only)
+ * - Large cache and mmap for fast reads
+ */
+export const createReadDB = async (dbPath: string, dbName: string): Promise<Database> => {
+  console.log('dbName (Read)', dbName, 'dbPath', dbPath)
+  const db = new Database(dbPath, (err) => {
+    if (err) {
+      console.log('Error opening read database:', err)
+      throw err
+    }
+  })
+  await run(db, 'PRAGMA journal_mode=WAL') // WAL mode allows concurrent reads with writes
+  await run(db, 'PRAGMA synchronous = OFF') // Read-only connection doesn't need sync
+  await run(db, 'PRAGMA temp_store = MEMORY')
+  await run(db, 'PRAGMA cache_size = -128000') // 128MB cache (smaller than write connection)
+  await run(db, 'PRAGMA mmap_size = 536870912') // 512MB memory-mapped I/O for faster reads
+  await run(db, 'PRAGMA busy_timeout = 5000') // Shorter timeout - reads shouldn't block in WAL mode
+  await run(db, 'PRAGMA threads = 4') // Use up to 4 threads for parallel operations
+  await run(db, 'PRAGMA query_only = ON') // Enforce read-only mode at SQLite level
+  db.on('profile', (sql, time) => {
+    const engineMs = typeof time === 'number' ? time : Number(time)
+    const queue = queuedBySql.get(sql)
+    const id = queue && queue.length > 0 ? queue[0] : undefined
+    if (id === undefined) {
+      printQueryTimingLog('profile event without pending query (read)', {
+        engineMs,
+        sql: formatSqlForLog(sql),
+      })
+      return
+    }
+    const entry = pendingQueries.get(id)
+    if (!entry) {
+      printQueryTimingLog('profile missing pending entry (read)', {
+        engineMs,
+        sql: formatSqlForLog(sql),
+      })
+      return
+    }
+    entry.engineMs = engineMs
+    if (engineMs > SQL_ENGINE_WARN_THRESHOLD_MS) {
+      console.warn(`[DB Engine Read] Slow Query: ${engineMs} ms for SQL: ${formatSqlForLog(sql)}`)
+    }
+  })
+  console.log(`Read Database ${dbName} Initialized!`)
+  return db
+}
+
+/**
+ * Manually checkpoint the WAL file to prevent it from growing too large
+ * Uses PASSIVE mode which won't block readers
+ * Call this periodically during long-running sync operations
+ */
+export async function checkpointWAL(
+  db: Database,
+  mode: 'PASSIVE' | 'FULL' | 'RESTART' = 'PASSIVE'
+): Promise<void> {
+  try {
+    await run(db, `PRAGMA wal_checkpoint(${mode})`)
+    console.log(`[WAL Checkpoint] Executed ${mode} checkpoint`)
+  } catch (error) {
+    console.error('[WAL Checkpoint] Failed to checkpoint WAL:', error)
+  }
 }
 
 /**
@@ -159,6 +231,81 @@ export async function all<T>(db: Database, sql: string, params = []): Promise<T[
       }
     })
   })
+}
+
+/**
+ * Executes a database write operation through the shared write queue
+ * Use this for INSERT/UPDATE/DELETE operations to prevent write contention
+ * Do NOT use for SELECT queries - they can run in parallel
+ */
+export async function executeDbWrite<T>(writeOperation: () => Promise<T>): Promise<T> {
+  const enqueuedAt = Date.now()
+
+  // Wait for previous write to finish, ignoring errors to prevent propagation
+  const myTurn = writeQueueTail.catch(() => undefined)
+
+  // Create and chain the new write operation
+  const currentWrite = myTurn.then(async () => {
+    const startedAt = Date.now()
+    const promiseQueueMs = startedAt - enqueuedAt
+
+    // Log if we waited a long time in the Promise queue
+    if (promiseQueueMs > 100) {
+      console.log(`[Promise Queue] Waited ${promiseQueueMs}ms in Promise queue before starting DB operation`)
+    }
+
+    const value = await writeOperation()
+    const completedAt = Date.now()
+    const executionMs = completedAt - startedAt
+
+    // Log slow DB operations (includes transaction + SQLite busy_timeout)
+    if (executionMs > 500) {
+      console.log(
+        `[DB Operation] Total: ${executionMs}ms (Promise queue: ${promiseQueueMs}ms, DB execution+waiting: ${executionMs}ms)`
+      )
+    }
+
+    return value
+  })
+
+  // Update queue tail to current write (for next operation to wait on)
+  writeQueueTail = currentWrite.catch(() => undefined)
+
+  // Return the actual operation result
+  return currentWrite
+}
+
+/**
+ * Execute work within a database transaction
+ * Uses BEGIN (deferred) since our write queue already serializes writes
+ * This reduces lock contention compared to BEGIN IMMEDIATE
+ * @param db Database instance
+ * @param work Async function containing the work to execute within the transaction
+ * @returns Result of the work function
+ */
+export async function executeInTransaction<T>(db: Database, work: () => Promise<T>): Promise<T> {
+  await run(db, 'BEGIN') // Deferred transaction - acquires RESERVED lock on first write, not at BEGIN
+  try {
+    const result = await work()
+    await run(db, 'COMMIT')
+    return result
+  } catch (error) {
+    await run(db, 'ROLLBACK')
+    throw error
+  }
+}
+
+export async function executeDbWriteWithTransaction(
+  db: Database,
+  sql: string,
+  params: unknown[] | object = []
+): Promise<void> {
+  // Serialize write through storage-level queue + transaction for atomicity
+  await executeDbWrite(() =>
+    executeInTransaction(db, async () => {
+      await run(db, sql, params)
+    })
+  )
 }
 
 export function extractValues(object: object): string[] {

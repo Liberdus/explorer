@@ -60,7 +60,8 @@ export async function bulkInsertOriginalTxsData(originalTxsData: OriginalTxData[
     )
 
     const sql = `INSERT OR REPLACE INTO originalTxsData ${fields} VALUES ${allPlaceholders}`
-    await db.run(originalTxDataDatabase, sql, values)
+    // Serialize write through storage-level queue + transaction for atomicity
+    await db.executeDbWriteWithTransaction(originalTxDataDatabase, sql, values)
     console.log(`Successfully bulk inserted OriginalTxsData`, originalTxsData.length)
   } catch (e) {
     console.log(e)
