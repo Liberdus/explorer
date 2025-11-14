@@ -648,16 +648,6 @@ export class ParallelDataSync {
           nextFetchPromise = null
         }
 
-        const startTime = Date.now()
-        // Deserialize receipts
-        receipts.forEach((receipt) => {
-          ReceiptDB.deserializeDbReceipt(receipt)
-        })
-        const elapsed = Date.now() - startTime
-        if (elapsed > 100) {
-          console.log(`Deserializing ${receipts.length} receipts took: ${elapsed}ms`)
-        }
-
         // Add receipts to buffer - will flush to DB when buffer reaches threshold
         await this.addToBuffer('receipt', receipts)
 
@@ -1018,8 +1008,28 @@ export class ParallelDataSync {
 
       this.receiptBufferLock = true
       try {
-        const toFlush = [...this.receiptBuffer]
+        const toFlush = [...this.receiptBuffer] as any
         this.receiptBuffer = []
+
+        const startTime = Date.now()
+        // Deserialize receipts in chunks to prevent event loop blocking
+        const CHUNK_SIZE = 20
+        for (let i = 0; i < toFlush.length; i += CHUNK_SIZE) {
+          const end = Math.min(i + CHUNK_SIZE, toFlush.length)
+          // Deserialize chunk of receipts
+          for (let j = i; j < end; j++) {
+            // eslint-disable-next-line security/detect-object-injection
+            ReceiptDB.deserializeDbReceipt(toFlush[j])
+          }
+          // Yield to event loop after each chunk (except the last one)
+          if (end < toFlush.length) {
+            await new Promise((resolve) => setImmediate(resolve))
+          }
+        }
+        const elapsed = Date.now() - startTime
+        if (elapsed > 100) {
+          console.log(`Deserializing ${toFlush.length} receipts took: ${elapsed}ms`)
+        }
         console.log(`[Buffer Flush] Flushing ${toFlush.length} receipts to database`)
         if (processData) await ReceiptDB.processReceiptData(toFlush, false, false)
 
