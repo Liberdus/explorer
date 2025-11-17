@@ -1,10 +1,15 @@
 import { Utils as StringUtils } from '@shardus/types'
 import { Database } from 'sqlite3'
 
+const enableWritingQueue = false
+
 // Simple write queue using Promise chain - serializes all database writes
 // This prevents write contention while allowing parallel reads (SELECTs)
 // Only INSERT/UPDATE/DELETE operations should use this queue
 let writeQueueTail: Promise<unknown> = Promise.resolve()
+
+// Control whether to use manual WAL checkpoints
+export const useManualCheckPoint = false
 
 interface QueryTiming {
   id: number
@@ -34,7 +39,11 @@ export const createDB = async (dbPath: string, dbName: string): Promise<Database
   await run(db, 'PRAGMA synchronous = NORMAL')
   await run(db, 'PRAGMA temp_store = MEMORY')
   await run(db, 'PRAGMA cache_size = -256000') // Increased to ~256MB cache for better performance
-  await run(db, 'PRAGMA wal_autocheckpoint = 10000') // Checkpoint every 10000 pages (less frequent = less lock contention)
+  let checkPointPageCount = 10000
+  if (useManualCheckPoint) {
+    checkPointPageCount = 0 // Disable automatic checkpoints
+  }
+  await run(db, `PRAGMA wal_autocheckpoint = ${checkPointPageCount}`) // Checkpoint every 10000 pages (less frequent = less lock contention)
   await run(db, 'PRAGMA mmap_size = 536870912') // 512MB memory-mapped I/O for faster reads (reduced disk I/O)
   await run(db, 'PRAGMA busy_timeout = 30000') // Wait up to 30s if database is locked
   await run(db, 'PRAGMA threads = 4') // Use up to 4 threads for parallel operations
@@ -300,12 +309,21 @@ export async function executeDbWriteWithTransaction(
   sql: string,
   params: unknown[] | object = []
 ): Promise<void> {
-  // Serialize write through storage-level queue + transaction for atomicity
-  await executeDbWrite(() =>
-    executeInTransaction(db, async () => {
-      await run(db, sql, params)
-    })
-  )
+  // Use write queue if enabled
+  if (enableWritingQueue) {
+    // Serialize write throuh promise queue
+    await executeDbWrite(() =>
+      executeInTransaction(db, async () => {
+        await run(db, sql, params)
+      })
+    )
+    return
+  }
+
+  // Use transaction directly
+  await executeInTransaction(db, async () => {
+    await run(db, sql, params)
+  })
 }
 
 export function extractValues(object: object): string[] {
