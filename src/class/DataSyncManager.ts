@@ -171,6 +171,8 @@ export class DataSyncManager {
 
     try {
       // Compare cycles data
+      console.log('\nComparing cycles data...')
+      console.log('CycleNumber', 'Local-Marker', ' Distributor-Marker')
       const localCycles = await CycleDB.queryCycleRecordsBetween(startCycle, endCycle)
       const distributorResponse = await queryFromDistributor(DataType.CYCLE, {
         start: startCycle,
@@ -188,7 +190,7 @@ export class DataSyncManager {
           const distributorCycle = distributorCycles.find(
             (c: { counter: number; marker: string }) => c.counter === localCycle.counter
           )
-
+          console.log(localCycle.counter, localCycle.cycleMarker, distributorCycle?.marker)
           if (!distributorCycle) {
             throw new Error(`Cycle ${localCycle.counter} exists locally but not in distributor`)
           } else if (localCycle.cycleMarker !== distributorCycle.marker) {
@@ -201,6 +203,8 @@ export class DataSyncManager {
       }
 
       // Compare receipts count
+      console.log('\nComparing receipts count...')
+      console.log('CycleNumber', 'Local-Receipts', 'Distributor-Receipts')
       const receiptsResponse = await queryFromDistributor(DataType.RECEIPT, {
         startCycle,
         endCycle,
@@ -210,9 +214,9 @@ export class DataSyncManager {
       if (receiptsResponse?.data?.receipts) {
         const distributorReceipts: { cycle: number; receipts: number }[] = receiptsResponse.data.receipts
         const localReceiptsCount = await ReceiptDB.queryReceiptCountByCycles(startCycle, endCycle)
-
         for (const distReceipt of distributorReceipts) {
           const localReceipt = localReceiptsCount.find((r) => r.cycle === distReceipt.cycle)
+          console.log(distReceipt.cycle, localReceipt?.receipts, distReceipt.receipts)
           if (localReceipt && localReceipt.receipts > distReceipt.receipts) {
             throw new Error(
               `Receipts count in local DB has more in cycle ${distReceipt.cycle}: ` +
@@ -223,6 +227,8 @@ export class DataSyncManager {
       }
 
       // Compare originalTxs count
+      console.log('\nComparing originalTxs count...')
+      console.log('CycleNumber', 'Local-OriginalTxs', 'Distributor-OriginalTxs')
       const originalTxsResponse = await queryFromDistributor(DataType.ORIGINALTX, {
         startCycle,
         endCycle,
@@ -239,6 +245,7 @@ export class DataSyncManager {
 
         for (const distTx of distributorOriginalTxs) {
           const localTx = localOriginalTxsCount.find((t) => t.cycle === distTx.cycle)
+          console.log(distTx.cycle, localTx?.originalTxsData, distTx.originalTxsData)
           if (localTx && localTx.originalTxsData > distTx.originalTxsData) {
             throw new Error(
               `OriginalTxs count mismatch in cycle ${distTx.cycle}: ` +
@@ -466,8 +473,6 @@ export class DataSyncManager {
       console.log(
         `Comparing cycles ${startCycle} to ${endCycle} with ${allDistributorReceipts.length} distributor receipts and ${allDistributorOriginalTxs.length} distributor originalTxs`
       )
-      console.log(allDistributorReceipts, localReceipts)
-      console.log(allDistributorOriginalTxs, localOriginalTxs)
 
       for (let cycle = startCycle; cycle <= endCycle; cycle++) {
         const distReceipts = allDistributorReceipts.find((r) => r.cycle === cycle)?.receipts || 0
@@ -631,8 +636,9 @@ export class DataSyncManager {
 
         const cycleBatches = []
         // For each range, create cycle batches and merge them into one
+        console.log('\nPreparing cycle batches for the following ranges:')
         for (const range of mergedRanges) {
-          console.log(`\nFor range: ${range.startCycle} to ${range.endCycle} (${range.gapSize} cycles)`)
+          console.log(` - range: ${range.startCycle} to ${range.endCycle} (${range.gapSize} cycles)`)
           const cycleBatch = parallelDataSync.createCycleBatches(range.startCycle, range.endCycle)
           cycleBatches.push(...cycleBatch)
         }
