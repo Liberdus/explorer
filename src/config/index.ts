@@ -189,7 +189,7 @@ let config: Config = {
     MAX_ACCOUNT_HISTORY_STATES_PER_REQUEST: 100,
     MAX_STATS_PER_REQUEST: 1000000,
   },
-  parallelSyncConcurrency: Number(process.env.PARALLEL_SYNC_CONCURRENCY) || 10, // 10 parallel workers
+  parallelSyncConcurrency: Number(process.env.PARALLEL_SYNC_CONCURRENCY) || 5, // 5 parallel sync fetches
   useParallelSync: process.env.USE_PARALLEL_SYNC !== 'false', // Enable by default
   cyclesPerBatch: Number(process.env.CYCLES_PER_BATCH) || 100, // Batch 100 cycles together ( matching MAX_BETWEEN_CYCLES_PER_REQUEST, can be lower if needed )
   enablePrefetch: process.env.ENABLE_PREFETCH !== 'false', // Enable prefetch by default

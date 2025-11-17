@@ -7,18 +7,20 @@ import {
   CycleDB,
   ReceiptDB,
   OriginalTxDataDB,
-  // receiptDatabase,
-  // originalTxDataDatabase,
-  // cycleDatabase,
+  receiptDatabase,
+  originalTxDataDatabase,
+  cycleDatabase,
 } from '../storage'
 import { Cycle, Receipt, OriginalTxData } from '../types'
 import axios, { AxiosInstance } from 'axios'
 import http from 'http'
 import https from 'https'
-// import { checkpointWAL } from '../storage/sqlite3storage'
+import { useManualCheckPoint, checkpointWAL } from '../storage/sqlite3storage'
 
 // For Debugging Purpose - Set to false to skip processing data and saving to DB
 const processData = true
+
+const DESERIALIZE_RECEIPTS_CHUNK_SIZE = 20 // Number of receipts to deserialize at a time
 
 /**
  * Configuration for parallel sync
@@ -103,25 +105,13 @@ export class ParallelDataSync {
   private originalTxBufferLock = false
   private cycleBufferLock = false
 
-  // // WAL checkpoint tracking
-  // private flushCount = 0 // Total number of buffer flushes
-  // private readonly CHECKPOINT_FREQUENCY = 10 // Run WAL checkpoint every N flushes to prevent WAL from growing too large
-
-  // // Flush pending flag to prevent multiple workers from waiting to flush
-  // private receiptFlushPending = false
-
-  // // Adaptive flush delay system - adds delays before DB writes to prevent overload
-  // private flushTimestamps: number[] = [] // Timestamps of recent flushes
-  // private readonly FLUSH_WINDOW_MS = 10000 // Track flushes in last 10 seconds
-  // private readonly FAST_FLUSH_THRESHOLD = 5 // If 5+ flushes in window, system is overloaded
-  // private minFlushDelay = 200 // Min delay before flush (ms)
-  // private maxFlushDelay = 1000 // Max delay before flush (ms)
-  // private readonly OVERLOAD_MIN_DELAY = 3000 // When overloaded, min delay increases to 3s
-  // private readonly OVERLOAD_MAX_DELAY = 5000 // When overloaded, max delay increases to 5s
+  // WAL checkpoint tracking
+  private flushCount = 0 // Total number of buffer flushes
+  private readonly CHECKPOINT_FREQUENCY = 10 // Run WAL checkpoint every N flushes to prevent WAL from growing too large
 
   constructor(syncConfig?: Partial<ParallelSyncConfig>) {
     this.syncConfig = {
-      concurrency: syncConfig?.concurrency || config.parallelSyncConcurrency || 10,
+      concurrency: syncConfig?.concurrency || config.parallelSyncConcurrency || 5,
       cyclesPerBatch: syncConfig?.cyclesPerBatch || config.cyclesPerBatch || 100,
       retryAttempts: syncConfig?.retryAttempts || config.syncRetryAttempts || 5,
       retryDelayMs: syncConfig?.retryDelayMs || 1000,
@@ -349,7 +339,7 @@ export class ParallelDataSync {
       // Three-phase approach for optimal performance:
       // Phase 1: Use main queue (concurrency: 5) for parallel API fetching
       // Phase 2: Buffer data in memory until ACCUMULATION_THRESHOLD (1000) is reached
-      // Phase 3: DB writes are batched and serialized via storage-level queue
+      // Phase 3: DB writes are batched and serialized via write queue
       // This combines parallel I/O with batched, serialized DB writes to minimize contention
       const tasks = cycleBatches.map((batch) =>
         this.queue.add(() => this.syncDataByCycleRange(batch.startCycle, batch.endCycle))
@@ -981,45 +971,19 @@ export class ParallelDataSync {
     if (type === 'receipt') {
       if (this.receiptBuffer.length === 0) return
 
-      // // If another worker is already flushing, return immediately (it will flush our data too)
-      // if (this.receiptFlushPending) {
-      //   return
-      // }
-
-      // // Mark flush as pending
-      // this.receiptFlushPending = true
-
-      // // Apply adaptive delay BEFORE acquiring lock to spread out DB writes (receipts only)
-      // const delay = this.getAdaptiveFlushDelay()
-      // if (delay > 0) {
-      //   const recentFlushCount = this.flushTimestamps.length
-      //   const delayRange = `${this.minFlushDelay}-${this.maxFlushDelay}ms`
-      //   console.log(
-      //     `[Adaptive Cooling] Receipts - Waiting ${delay}ms before flush ` +
-      //       `(recent flushes: ${recentFlushCount}, range: ${delayRange})`
-      //   )
-      //   await new Promise((resolve) => setTimeout(resolve, delay))
-      // }
-
-      // // If another worker is already locking, return immediately (it will flush our data too)
-      // if (this.receiptBufferLock) {
-      //   return
-      // }
-
       this.receiptBufferLock = true
       try {
-        const toFlush = [...this.receiptBuffer] as any
+        const toFlush = [...this.receiptBuffer]
         this.receiptBuffer = []
 
         const startTime = Date.now()
         // Deserialize receipts in chunks to prevent event loop blocking
-        const CHUNK_SIZE = 20
-        for (let i = 0; i < toFlush.length; i += CHUNK_SIZE) {
-          const end = Math.min(i + CHUNK_SIZE, toFlush.length)
+        for (let i = 0; i < toFlush.length; i += DESERIALIZE_RECEIPTS_CHUNK_SIZE) {
+          const end = Math.min(i + DESERIALIZE_RECEIPTS_CHUNK_SIZE, toFlush.length)
           // Deserialize chunk of receipts
           for (let j = i; j < end; j++) {
             // eslint-disable-next-line security/detect-object-injection
-            ReceiptDB.deserializeDbReceipt(toFlush[j])
+            ReceiptDB.deserializeDbReceipt(toFlush[j] as any)
           }
           // Yield to event loop after each chunk (except the last one)
           if (end < toFlush.length) {
@@ -1033,13 +997,13 @@ export class ParallelDataSync {
         console.log(`[Buffer Flush] Flushing ${toFlush.length} receipts to database`)
         if (processData) await ReceiptDB.processReceiptData(toFlush, false, false)
 
-        // // Track flush timestamp for adaptive delay system (receipts only)
-        // this.recordFlushTimestamp()
+        if (useManualCheckPoint) {
+          // Increment flush count and potentially checkpoint WAL
+          this.flushCount++
+          await this.maybeCheckpointWAL()
+        }
       } finally {
         this.receiptBufferLock = false
-
-        // // Clear flush pending flag
-        // this.receiptFlushPending = false
       }
     } else if (type === 'originalTx') {
       if (this.originalTxBuffer.length === 0) return
@@ -1087,85 +1051,27 @@ export class ParallelDataSync {
     await this.flushBuffer('cycle')
   }
 
-  // /**
-  //  * Conditionally checkpoint WAL files if enough flushes have occurred
-  //  * This prevents WAL files from growing too large during long sync operations
-  //  */
-  // private async maybeCheckpointWAL(): Promise<void> {
-  //   if (this.flushCount % this.CHECKPOINT_FREQUENCY === 0) {
-  //     console.log(
-  //       `[WAL Checkpoint] Running periodic checkpoint after ${this.flushCount} buffer flushes (~${
-  //         this.flushCount * this.ACCUMULATION_THRESHOLD
-  //       } records)`
-  //     )
-  //     // Run checkpoints on all three databases in parallel
-  //     // Use PASSIVE mode to avoid blocking readers
-  //     await Promise.all([
-  //       checkpointWAL(receiptDatabase, 'PASSIVE'),
-  //       checkpointWAL(originalTxDataDatabase, 'PASSIVE'),
-  //       checkpointWAL(cycleDatabase, 'PASSIVE'),
-  //     ])
-  //   }
-  // }
-
-  // /**
-  //  * Record flush timestamp and clean up old timestamps
-  //  * Used to track flush frequency and detect system overload
-  //  */
-  // private recordFlushTimestamp(): void {
-  //   const now = Date.now()
-  //   this.flushTimestamps.push(now)
-
-  //   // Clean up old timestamps outside the tracking window
-  //   this.flushTimestamps = this.flushTimestamps.filter((timestamp) => now - timestamp < this.FLUSH_WINDOW_MS)
-  // }
-
-  // /**
-  //  * Calculate adaptive flush delay based on recent flush frequency
-  //  * Returns a random delay within a range that adapts to system load
-  //  */
-  // private getAdaptiveFlushDelay(): number {
-  //   // Clean up old timestamps first
-  //   const now = Date.now()
-  //   this.flushTimestamps = this.flushTimestamps.filter((timestamp) => now - timestamp < this.FLUSH_WINDOW_MS)
-
-  //   // Check if system is overloaded (too many flushes in recent window)
-  //   const recentFlushCount = this.flushTimestamps.length
-  //   const isOverloaded = recentFlushCount >= this.FAST_FLUSH_THRESHOLD
-  //   const wasOverloaded = this.minFlushDelay === this.OVERLOAD_MIN_DELAY
-
-  //   // Adjust delay range based on system load
-  //   if (isOverloaded) {
-  //     // System overloaded - use longer delays
-  //     const wasNormal = this.minFlushDelay === 200
-  //     this.minFlushDelay = this.OVERLOAD_MIN_DELAY
-  //     this.maxFlushDelay = this.OVERLOAD_MAX_DELAY
-  //     if (wasNormal) {
-  //       // Log when transitioning from normal to overloaded
-  //       console.log(
-  //         `[Adaptive Cooling] ⚠️  OVERLOAD DETECTED! ${recentFlushCount} flushes in last ${
-  //           this.FLUSH_WINDOW_MS / 1000
-  //         }s. ` + `Increasing cooling delay: ${this.minFlushDelay}-${this.maxFlushDelay}ms`
-  //       )
-  //     }
-  //   } else if (recentFlushCount < this.FAST_FLUSH_THRESHOLD / 2) {
-  //     // System healthy - reduce delays back to normal
-  //     if (wasOverloaded) {
-  //       // Log when recovering from overload
-  //       console.log(
-  //         `[Adaptive Cooling] ✓ System recovered! ${recentFlushCount} flushes in last ${
-  //           this.FLUSH_WINDOW_MS / 1000
-  //         }s. ` + `Reducing cooling delay: 200-1000ms`
-  //       )
-  //     }
-  //     this.minFlushDelay = 200
-  //     this.maxFlushDelay = 1000
-  //   }
-
-  //   // Return random delay within current range to stagger DB writes
-  //   const delay = this.minFlushDelay + Math.floor(Math.random() * (this.maxFlushDelay - this.minFlushDelay))
-  //   return delay
-  // }
+  /**
+   * Conditionally checkpoint WAL files if enough flushes have occurred
+   * This prevents WAL files from growing too large during long sync operations
+   */
+  private async maybeCheckpointWAL(): Promise<void> {
+    if (!useManualCheckPoint) return
+    if (this.flushCount % this.CHECKPOINT_FREQUENCY === 0) {
+      console.log(
+        `[WAL Checkpoint] Running periodic checkpoint after ${this.flushCount} buffer flushes (~${
+          this.flushCount * this.ACCUMULATION_THRESHOLD
+        } records)`
+      )
+      // Run checkpoints on all three databases in parallel
+      // Use PASSIVE mode to avoid blocking readers
+      await Promise.all([
+        checkpointWAL(receiptDatabase, 'PASSIVE'),
+        checkpointWAL(originalTxDataDatabase, 'PASSIVE'),
+        checkpointWAL(cycleDatabase, 'PASSIVE'),
+      ])
+    }
+  }
 
   /**
    * Get current statistics
