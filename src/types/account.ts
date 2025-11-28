@@ -231,7 +231,6 @@ export interface NetworkParameters {
   proposalFee: bigint
   devProposalFee: bigint
   faucetAmount: bigint
-  defaultToll: bigint
   nodeRewardAmountUsd: bigint
   nodePenaltyUsd: bigint
   stakeRequiredUsd: bigint
@@ -249,6 +248,12 @@ export interface NetworkParameters {
   txPause: boolean
   certCycleDuration: number
   enableNodeSlashing: boolean
+  defaultToll: bigint
+  minToll: bigint
+  tollNetworkTaxPercent: number
+  tollTimeout: number
+  messageMaxLength: number // Maximum length of chat message
+  messageRetentionDays: number // Number of days to retain chat messages
   slashing: {
     enableLeftNetworkEarlySlashing: boolean
     enableSyncTimeoutSlashing: boolean
@@ -257,6 +262,15 @@ export interface NetworkParameters {
     syncTimeoutPenaltyPercent: number
     nodeRefutedPenaltyPercent: number
   }
+  stakeLockTime: number
+  nodeRewardAmountUsdStr: string
+  nodePenaltyUsdStr: string
+  stakeRequiredUsdStr: string
+  transactionFeeUsdStr: string
+  stabilityFactorStr: string
+  minTollUsdStr: string
+  defaultTollUsdStr: string
+  goldenTicketServerUrl: string
 }
 
 export interface Windows {

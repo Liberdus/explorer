@@ -108,7 +108,8 @@ export const OverviewSection: React.FC = () => {
   // When fee, txs count, and price all change, we calculate: (feeGrowth / txsGrowth) × priceGrowth
   // Example: If fee grows 10%, txs grows 5%, price grows 2%, avgFee changes by (1.10/1.05 × 1.02 - 1) = 7.24%
   const avgTransactionFeeChange =
-    (((1 + transactionFeeChange / 100) / (1 + newUserTxsChange / 100)) * (1 + stabilityFactorStrChange / 100) -
+    (((1 + transactionFeeChange / 100) / (1 + newUserTxsChange / 100)) *
+      (1 + stabilityFactorStrChange / 100) -
       1) *
     100
 
@@ -140,7 +141,7 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: 'Total Transaction Fee (24H)',
-      value: `$${transactionFee * parseFloat(stabilityFactorStr)}`,
+      value: `$${Math.round(transactionFee * parseFloat(stabilityFactorStr) * 100) / 100}`,
       ...formatPercentage(transactionFeeChange),
       route: '/charts/transactionfee',
     },
@@ -149,9 +150,10 @@ export const OverviewSection: React.FC = () => {
       title: 'Avg Transaction Fee (24H)',
       value: `$${
         newUserTxs
-          ? ((transactionFee / newUserTxs) * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
-              maximumFractionDigits: 4,
-            })
+          ? `${
+              Math.round(Math.round((transactionFee / newUserTxs) * parseFloat(stabilityFactorStr) * 100)) /
+              100
+            }`
           : 0
       }`,
       ...formatPercentage(avgTransactionFeeChange),
@@ -160,7 +162,7 @@ export const OverviewSection: React.FC = () => {
     { title: 'Network Utilization (24H)', value: 0 },
     {
       title: 'Burnt Fees (24H)',
-      value: `$${newBurntFee * parseFloat(stabilityFactorStr)}`,
+      value: `$${Math.round(newBurntFee * parseFloat(stabilityFactorStr) * 100) / 100}`,
       ...formatPercentage(newBurntFeeChange),
       route: '/charts/dailylibburnt',
     },
@@ -220,17 +222,13 @@ export const OverviewSection: React.FC = () => {
     },
     {
       title: 'Network Rev (24H)',
-      value: `$${(newBurntFee * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
-        maximumFractionDigits: 2,
-      })}`,
+      value: `$${Math.round(newBurntFee * parseFloat(stabilityFactorStr) * 100) / 100}`,
       ...formatPercentage(newBurntFeeChange),
       route: '/charts/dailylibburnt',
     },
     {
       title: 'Network Exp (24H)',
-      value: `$${(newNetworkExpense * parseFloat(stabilityFactorStr)).toLocaleString(undefined, {
-        maximumFractionDigits: 2,
-      })}`,
+      value: `$${Math.round(newNetworkExpense * parseFloat(stabilityFactorStr) * 100) / 100}`,
       ...formatPercentage(newNetworkExpenseChange),
       route: '/charts/dailylibdistributed',
     },

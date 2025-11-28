@@ -59,15 +59,15 @@ export const formatFullAmount = (num: number): string => {
   return fixed.replace(/\.?0+$/, '')
 }
 
-export const getBaseTxFeeLIB = (parameters: NetworkParameters): string => {
-  if (!parameters) return '0'
-  const { transactionFee, stabilityScaleDiv, stabilityScaleMul } = parameters
-  const txFeeLIB = (transactionFee * BigInt(stabilityScaleDiv)) / BigInt(stabilityScaleMul)
-  return calculateValue(txFeeLIB)
+export const getBaseTxFeeLIB = (parameters: NetworkParameters): number => {
+  if (!parameters) return 0
+  const { transactionFeeUsdStr, stabilityFactorStr } = parameters
+  const txFeeLIB = parseFloat(transactionFeeUsdStr) / parseFloat(stabilityFactorStr)
+  return txFeeLIB
 }
 
 export const getBaseTxFeeUSD = (parameters: NetworkParameters): string => {
   if (!parameters) return '0'
-  const { transactionFee } = parameters
-  return calculateValue(transactionFee)
+  const { transactionFeeUsdStr } = parameters
+  return transactionFeeUsdStr
 }
