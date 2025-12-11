@@ -38,11 +38,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+benchmark-data
+
 collector-db
 collector-stats-db
 collector.log
 server.log
 aggregator.log
+benchmark.log
 
 # currently, in order to work well, tsconfig is being overrided when compiled
 # can be removed once we sort out currently tsconfig issues
