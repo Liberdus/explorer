@@ -1,0 +1,82 @@
+# Artillery load test - Combined Account & Transaction queries
+# Run: artillery run benchmark/artillery-combined.yml
+# With custom options: artillery run --duration 300 --arrival-rate 150 benchmark/artillery-combined.yml
+
+config:
+  target: "http://127.0.0.1:6001"
+  phases:
+    - duration: 30
+      arrivalRate: 20
+      name: "Ramp up"
+    - duration: 60
+      arrivalRate: 50
+      name: "Warm up"
+    - duration: 180
+      arrivalRate: 100
+      name: "Sustained load"
+    - duration: 60
+      arrivalRate: 200
+      name: "Spike test"
+    - duration: 30
+      arrivalRate: 50
+      name: "Ramp down"
+
+  # Load test data from CSV
+  payload:
+    path: "../benchmark-data/combined.csv"
+    fields:
+      - "accountId"
+      - "txId"
+      - "receiptId"
+      - "cycleNumber"
+    order: "random"
+    skipHeader: true
+
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 1
+    p95: 250
+    p99: 600
+
+  # Metrics plugins (optional)
+  plugins:
+    metrics-by-endpoint:
+      # Group metrics by endpoint for detailed analysis
+      stripQueryString: false
+
+scenarios:
+  # 50% of traffic: Transaction queries
+  - name: "Transaction by ID"
+    weight: 50
+    flow:
+      - get:
+          url: "/api/transaction?txId={{ txId }}"
+          expect:
+            - statusCode: 200
+
+  # 30% of traffic: Account queries
+  - name: "Account by ID"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/account?accountId={{ accountId }}"
+          expect:
+            - statusCode: 200
+
+  # 10% of traffic: Receipt queries
+  - name: "Receipt by ID"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/receipt?txId={{ receiptId }}"
+          expect:
+            - statusCode: 200
+
+  # 10% of traffic: Cycle queries
+  - name: "Cycle by Number"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/cycleinfo?cycleNumber={{ cycleNumber }}"
+          expect:
+            - statusCode: 200

@@ -1,0 +1,40 @@
+# Artillery load test for Account queries
+# Run: artillery run benchmark/artillery-accounts.yml
+# Or with custom target: artillery run --target http://127.0.0.1:6001 benchmark/artillery-accounts.yml
+
+config:
+  target: "http://127.0.0.1:6001"
+  phases:
+    - duration: 60
+      arrivalRate: 50
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 100
+      name: "Sustained load"
+    - duration: 60
+      arrivalRate: 200
+      name: "Spike test"
+
+  # Load test data from CSV
+  payload:
+    path: "../benchmark-data/accounts.csv"
+    fields:
+      - "accountId"
+    order: "random"  # Pick random rows
+    skipHeader: true
+
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 1  # Max 1% errors
+    p95: 200         # 95th percentile < 200ms
+    p99: 500         # 99th percentile < 500ms
+
+scenarios:
+  - name: "Query Account by ID"
+    flow:
+      - get:
+          url: "/api/account?accountId={{ accountId }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: success
