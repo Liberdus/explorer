@@ -113,9 +113,18 @@ export async function bulkInsertCoinStats(dailyCoinStats: DbDailyCoinStats[]): P
   }
 }
 
-export async function queryLatestDailyCoinStats(count: number): Promise<DailyCoinStats[]> {
+export async function queryLatestDailyCoinStats(
+  count: number,
+  select: keyof DailyCoinStats | (keyof DailyCoinStats)[] | 'all' = 'all'
+): Promise<DailyCoinStats[]> {
   try {
-    const sql = `SELECT * FROM daily_coin_stats ORDER BY dateStartTime DESC ${count ? 'LIMIT ' + count : ''}`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const sql = `SELECT ${selectClause} FROM daily_coin_stats ORDER BY dateStartTime DESC ${count ? 'LIMIT ' + count : ''}`
     const dailyCoinStats: DbDailyCoinStats[] = await db.all(dailyCoinStatsDatabase, sql)
     if (config.verbose) console.log('dailyCoinStats count', dailyCoinStats)
     return dailyCoinStats

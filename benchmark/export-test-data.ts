@@ -14,9 +14,9 @@ interface ExportedTestData {
   cycleMarkers: string[]
 }
 
-async function exportTestData() {
-  const sampleSize = parseInt(process.argv[2]) || 500
-  const outputDir = path.join(__dirname, '../benchmark-data')
+async function exportTestData(): Promise<void> {
+  const sampleSize = parseInt(process.argv[2]) || 100000
+  const outputDir = path.join(__dirname, '../../benchmark-data')
 
   console.log(`Exporting ${sampleSize} test data samples...\n`)
 

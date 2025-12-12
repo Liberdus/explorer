@@ -5,6 +5,7 @@ Comprehensive load testing and benchmarking suite for the Liberdus Explorer API 
 ## Features
 
 - **Real Data Testing**: Uses actual accountIds, txIds, cycle numbers, and markers from your database
+- **Random Data Selection**: Retrieves data in random order to simulate realistic query patterns
 - **Comprehensive Coverage**: Tests all major API endpoints (accounts, transactions, cycles, receipts, stats)
 - **Realistic Load Patterns**: Randomized queries simulating real user behavior
 - **Detailed Metrics**: Requests/sec, latency (avg, p50, p95, p99), throughput, errors
@@ -33,7 +34,7 @@ Comprehensive load testing and benchmarking suite for the Liberdus Explorer API 
 
 ### 1. Collect Test Data
 
-First, verify your database has data and collect sample IDs:
+First, verify your database has data and collect sample IDs (in random order):
 
 ```bash
 npm run benchmark:collect-data
@@ -47,6 +48,8 @@ This will display sample data like:
 ✓ Collected 100000 receipt IDs
 ✓ Collected 100000 cycle numbers
 ```
+
+**Note**: Data is collected using `ORDER BY RANDOM()` to ensure diverse query patterns during benchmarking.
 
 ### 2. Run Benchmarks
 

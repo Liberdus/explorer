@@ -152,13 +152,21 @@ export async function queryAccountCount(query: QueryAccountCountParams | null = 
 type QueryAccountsParams = QueryAccountCountParams & {
   skip?: number
   limit?: number /* default 10, set 0 for all */
+  random?: boolean /* if true, returns results in random order */
+  select?: keyof Account | (keyof Account)[] | 'all' /* fields to select, defaults to 'all' */
 }
 
 export async function queryAccounts(query: QueryAccountsParams): Promise<Account[]> {
-  const { skip = 0, limit = 10, startCycleNumber, endCycleNumber, type } = query
+  const { skip = 0, limit = 10, startCycleNumber, endCycleNumber, type, random = false, select = 'all' } = query
   let accounts: DbAccount[] = []
   try {
-    let sql = `SELECT * FROM accounts`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    let sql = `SELECT ${selectClause} FROM accounts`
     const values: unknown[] = []
     if (type) {
       sql = db.updateSqlStatementClause(sql, values)
@@ -170,7 +178,9 @@ export async function queryAccounts(query: QueryAccountsParams): Promise<Account
       sql += `cycleNumber BETWEEN ? AND ?`
       values.push(startCycleNumber, endCycleNumber)
     }
-    if (startCycleNumber || endCycleNumber) {
+    if (random) {
+      sql += ` ORDER BY RANDOM()`
+    } else if (startCycleNumber || endCycleNumber) {
       sql += ` ORDER BY cycleNumber ASC, timestamp ASC`
     } else {
       sql += ` ORDER BY cycleNumber DESC, timestamp DESC`
@@ -182,9 +192,15 @@ export async function queryAccounts(query: QueryAccountsParams): Promise<Account
       sql += ` OFFSET ${skip}`
     }
     accounts = (await db.all(accountDatabase, sql, values)) as DbAccount[]
-    accounts.forEach((account: DbAccount) => {
-      if (account.data) account.data = StringUtils.safeJsonParse(account.data)
-    })
+    // Only parse data field if it was selected
+    const shouldParseData = select === 'all' ||
+      (Array.isArray(select) && select.includes('data')) ||
+      select === 'data'
+    if (shouldParseData) {
+      accounts.forEach((account: DbAccount) => {
+        if (account.data) account.data = StringUtils.safeJsonParse(account.data)
+      })
+    }
   } catch (e) {
     console.log(e)
   }

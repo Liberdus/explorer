@@ -120,11 +120,26 @@ export async function insertOrUpdateCycle(cycle: Cycle): Promise<void> {
   }
 }
 
-export async function queryLatestCycleRecords(count: number): Promise<Cycle[]> {
+export async function queryLatestCycleRecords(
+  count: number,
+  random = false,
+  select: keyof Cycle | (keyof Cycle)[] | 'all' = 'all'
+): Promise<Cycle[]> {
   try {
-    const sql = `SELECT * FROM cycles ORDER BY counter DESC LIMIT ${count}`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const orderBy = random ? 'RANDOM()' : 'counter DESC'
+    const sql = `SELECT ${selectClause} FROM cycles ORDER BY ${orderBy} LIMIT ${count}`
     const cycleRecords = (await db.all(cycleDatabase, sql)) as DbCycle[]
-    if (cycleRecords.length > 0) {
+    // Only parse cycleRecord field if it was selected
+    const shouldParseCycleRecord = select === 'all' ||
+      (Array.isArray(select) && select.includes('cycleRecord')) ||
+      select === 'cycleRecord'
+    if (cycleRecords.length > 0 && shouldParseCycleRecord) {
       cycleRecords.forEach((cycleRecord: DbCycle) => {
         if (cycleRecord.cycleRecord)
           cycleRecord.cycleRecord = StringUtils.safeJsonParse(cycleRecord.cycleRecord)

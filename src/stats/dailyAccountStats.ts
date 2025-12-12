@@ -91,9 +91,18 @@ export async function bulkInsertAccountsStats(dailyAccountsStats: DbDailyAccount
   }
 }
 
-export async function queryLatestDailyAccountStats(count: number): Promise<DailyAccountStats[]> {
+export async function queryLatestDailyAccountStats(
+  count: number,
+  select: keyof DailyAccountStats | (keyof DailyAccountStats)[] | 'all' = 'all'
+): Promise<DailyAccountStats[]> {
   try {
-    const sql = `SELECT * FROM daily_accounts ORDER BY dateStartTime DESC ${count ? 'LIMIT ' + count : ''}`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const sql = `SELECT ${selectClause} FROM daily_accounts ORDER BY dateStartTime DESC ${count ? 'LIMIT ' + count : ''}`
     const dailyAccountsStats: DbDailyAccountStats[] = await db.all(dailyAccountStatsDatabase, sql)
     if (config.verbose) console.log('dailyAccountStats count', dailyAccountsStats)
     return dailyAccountsStats

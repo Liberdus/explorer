@@ -10,7 +10,7 @@ Load test your API from the command line using exported test data!
 npm run benchmark:export-data
 ```
 
-This creates `benchmark-data/` with CSV/JSON files containing 100000+ real IDs.
+This creates `benchmark-data/` with CSV/JSON files containing 100000+ real IDs (collected in random order).
 
 ### 2. Choose Your Tool
 
@@ -29,6 +29,8 @@ npm run benchmark:artillery-transactions
 # Test combined workload (50% tx, 30% accounts, etc.)
 npm run benchmark:artillery-combined
 ```
+
+**Note**: All npm scripts automatically save results to `artillery-results.json` and generate an HTML report (`artillery-results.json.html`) that opens in your browser.
 
 #### **Option B: autocannon (Advanced, Random IDs)**
 
@@ -63,6 +65,8 @@ p95:                 142 ms
 p99:                 198 ms
 Errors:              0
 ```
+
+Plus an interactive HTML report with charts and graphs!
 
 ### autocannon-advanced Output
 

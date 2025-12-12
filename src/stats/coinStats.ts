@@ -57,9 +57,18 @@ export async function bulkInsertCoinsStats(coinStats: CoinStats[]): Promise<void
   }
 }
 
-export async function queryLatestCoinStats(count?: number): Promise<CoinStats[]> {
+export async function queryLatestCoinStats(
+  count?: number,
+  select: keyof CoinStats | (keyof CoinStats)[] | 'all' = 'all'
+): Promise<CoinStats[]> {
   try {
-    const sql = `SELECT * FROM coin_stats ORDER BY cycle DESC LIMIT ${count ? count : 100}`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const sql = `SELECT ${selectClause} FROM coin_stats ORDER BY cycle DESC LIMIT ${count ? count : 100}`
     const coinStats: CoinStats[] = await db.all(coinStatsDatabase, sql)
     if (config.verbose) console.log('coinStats count', coinStats)
     return coinStats

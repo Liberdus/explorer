@@ -62,7 +62,8 @@ npm run benchmark:example
 
 - ✅ Queries actual `accountId`, `txId`, `receiptId` from your database
 - ✅ Tests real cycle numbers and markers
-- ✅ Randomizes data to avoid cache effects
+- ✅ Collects data in random order using `ORDER BY RANDOM()`
+- ✅ Randomizes data to avoid cache effects and sequential patterns
 - ✅ Simulates realistic user query patterns
 
 ### Comprehensive Coverage
@@ -103,8 +104,8 @@ Tests all major endpoints:
 
 - **Connections**: 50-150 concurrent (per test)
 - **Duration**: 10-30 seconds per test
-- **Sample size**: 100000 real IDs from database
-- **Randomization**: Each request uses different IDs
+- **Sample size**: 100000 real IDs from database (collected randomly)
+- **Randomization**: Each request uses different IDs from the random sample
 
 ## 🎯 Use Cases
 

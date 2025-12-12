@@ -123,10 +123,12 @@ npm run benchmark -- transaction                  # Filter by keyword
 
 ### Real Data Testing
 The benchmark suite:
-1. **Connects to your database** and collects 100000 real IDs
+1. **Connects to your database** and collects 100000 real IDs in random order
 2. **Randomizes requests** to simulate different users
 3. **Tests actual query patterns** (by ID, by range, paginated, etc.)
 4. **Measures performance** under realistic load
+
+**Note**: Data collection uses `ORDER BY RANDOM()` to ensure a diverse sample set and avoid sequential query patterns.
 
 ### Test Coverage
 - ✅ 25+ different endpoint configurations

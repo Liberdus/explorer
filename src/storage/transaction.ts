@@ -182,6 +182,8 @@ export async function queryTransactionCount(
 type QueryTransactionsParams = QueryTransactionCountParams & {
   skip?: number
   limit?: number /* default 10, set 0 for all */
+  random?: boolean /* if true, returns results in random order */
+  select?: keyof Transaction | (keyof Transaction)[] | 'all' /* fields to select, defaults to 'all' */
 }
 
 export async function queryTransactions(query: QueryTransactionsParams): Promise<DbTransaction[]> {
@@ -194,10 +196,18 @@ export async function queryTransactions(query: QueryTransactionsParams): Promise
     endCycleNumber,
     beforeTimestamp,
     afterTimestamp,
+    random = false,
+    select = 'all',
   } = query
   let transactions: DbTransaction[] = []
   try {
-    let sql = `SELECT * FROM transactions`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    let sql = `SELECT ${selectClause} FROM transactions`
     const values: unknown[] = []
     if (txType) {
       if (txType === TransactionSearchParams.all) {
@@ -229,7 +239,9 @@ export async function queryTransactions(query: QueryTransactionsParams): Promise
       sql += `timestamp > ?`
       values.push(afterTimestamp)
     }
-    if (beforeTimestamp > 0) {
+    if (random) {
+      sql += ` ORDER BY RANDOM()`
+    } else if (beforeTimestamp > 0) {
       sql += ` ORDER BY timestamp DESC`
     } else if (afterTimestamp > 0) {
       sql += ` ORDER BY timestamp ASC`
@@ -246,7 +258,11 @@ export async function queryTransactions(query: QueryTransactionsParams): Promise
     }
     transactions = (await db.all(transactionDatabase, sql, values)) as DbTransaction[]
     // console.log('queryTransactions', sql, values, transactions)
-    if (transactions.length > 0) {
+    // Only deserialize data fields if they were selected
+    const shouldDeserialize = select === 'all' ||
+      (Array.isArray(select) && (select.includes('data') || select.includes('originalTxData'))) ||
+      select === 'data' || select === 'originalTxData'
+    if (transactions.length > 0 && shouldDeserialize) {
       transactions.forEach((transaction: DbTransaction) => {
         deserializeDbTransaction(transaction)
       })

@@ -36,36 +36,36 @@ export async function collectTestData(sampleSize = 100000): Promise<TestData> {
   }
 
   try {
-    // Collect account IDs
+    // Collect account IDs (only select accountId field for performance)
     console.log('Fetching account IDs...')
-    const accounts = await AccountDB.queryAccounts({ limit: sampleSize })
+    const accounts = await AccountDB.queryAccounts({ limit: sampleSize, random: true, select: 'accountId' })
     testData.accountIds = accounts.map(acc => acc.accountId).filter(Boolean)
     if (testData.accountIds.length > 0) {
       testData.validAccountId = testData.accountIds[0]
     }
     console.log(`  ✓ Collected ${testData.accountIds.length} account IDs`)
 
-    // Collect transaction IDs
+    // Collect transaction IDs (only select txId field for performance)
     console.log('Fetching transaction IDs...')
-    const transactions = await TransactionDB.queryTransactions({ limit: sampleSize })
+    const transactions = await TransactionDB.queryTransactions({ limit: sampleSize, random: true, select: 'txId' })
     testData.txIds = transactions.map(tx => tx.txId).filter(Boolean)
     if (testData.txIds.length > 0) {
       testData.validTxId = testData.txIds[0]
     }
     console.log(`  ✓ Collected ${testData.txIds.length} transaction IDs`)
 
-    // Collect receipt IDs
+    // Collect receipt IDs (only select receiptId field for performance)
     console.log('Fetching receipt IDs...')
-    const receipts = await ReceiptDB.queryReceipts({ limit: sampleSize })
+    const receipts = await ReceiptDB.queryReceipts({ limit: sampleSize, random: true, select: 'receiptId' })
     testData.receiptIds = receipts.map(r => r.receiptId).filter(Boolean)
     if (testData.receiptIds.length > 0) {
       testData.validReceiptId = testData.receiptIds[0]
     }
     console.log(`  ✓ Collected ${testData.receiptIds.length} receipt IDs`)
 
-    // Collect cycle data
+    // Collect cycle data (only select counter and cycleMarker fields for performance)
     console.log('Fetching cycle data...')
-    const cycles = await CycleDB.queryLatestCycleRecords(sampleSize)
+    const cycles = await CycleDB.queryLatestCycleRecords(sampleSize, true, ['counter', 'cycleMarker'])
     testData.cycleNumbers = cycles.map(c => c.counter).filter(n => n !== undefined)
     testData.cycleMarkers = cycles.map(c => c.cycleMarker as string).filter(Boolean)
 

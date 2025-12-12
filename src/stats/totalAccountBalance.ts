@@ -48,11 +48,18 @@ export async function insertTotalAccountBalance(totalAccountBalance: TotalAccoun
 export async function queryTotalAccountBalances(
   skip = 0,
   limit = 100,
-  cycle?: number
+  cycle?: number,
+  select: keyof TotalAccountBalance | (keyof TotalAccountBalance)[] | 'all' = 'all'
 ): Promise<TotalAccountBalance[]> {
   let totalAccountBalances: TotalAccountBalance[] = []
   try {
-    let sql = `SELECT * FROM total_account_balances`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    let sql = `SELECT ${selectClause} FROM total_account_balances`
     const values: unknown[] = []
     if (cycle !== undefined) {
       sql += ` WHERE cycleNumber = ?`

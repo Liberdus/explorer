@@ -77,9 +77,18 @@ export async function bulkInsertValidatorsStats(validators: ValidatorStats[]): P
   }
 }
 
-export async function queryLatestValidatorStats(count: number): Promise<ValidatorStats[]> {
+export async function queryLatestValidatorStats(
+  count: number,
+  select: keyof ValidatorStats | (keyof ValidatorStats)[] | 'all' = 'all'
+): Promise<ValidatorStats[]> {
   try {
-    const sql = `SELECT * FROM validators ORDER BY cycle DESC LIMIT ${count ? count : 100}`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const sql = `SELECT ${selectClause} FROM validators ORDER BY cycle DESC LIMIT ${count ? count : 100}`
     const validatorsStats: ValidatorStats[] = await db.all(validatorStatsDatabase, sql)
     if (config.verbose) console.log('validatorStats count', validatorsStats)
     return validatorsStats
