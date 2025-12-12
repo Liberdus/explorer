@@ -78,15 +78,33 @@ export async function bulkInsertTransactionsStats(
 
 export async function queryLatestDailyTransactionStats(
   count: number,
-  txsWithFee = false
+  txsWithFee = false,
+  select: keyof DbDailyTransactionStats | (keyof DbDailyTransactionStats)[] | 'all' = 'all'
 ): Promise<DailyTransactionStats[]> {
   try {
-    const sql = `SELECT * FROM daily_transactions ORDER BY dateStartTime DESC ${
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const sql = `SELECT ${selectClause} FROM daily_transactions ORDER BY dateStartTime DESC ${
       count ? 'LIMIT ' + count : ''
     }`
     const dailyTransactionsStats: DbDailyTransactionStats[] = await db.all(dailyTransactionStatsDatabase, sql)
     if (config.verbose) console.log('dailyTransactionStats count', dailyTransactionsStats)
-    return parseDailyTransactionStats(dailyTransactionsStats, txsWithFee)
+
+    // Only parse JSON fields if they were selected
+    const shouldParse = select === 'all' ||
+      (Array.isArray(select) && (select.includes('txsByType') || select.includes('txsWithFeeByType'))) ||
+      select === 'txsByType' || select === 'txsWithFeeByType'
+
+    if (shouldParse) {
+      return parseDailyTransactionStats(dailyTransactionsStats, txsWithFee)
+    }
+
+    // Return raw results without parsing if JSON fields not selected
+    return dailyTransactionsStats as unknown as DailyTransactionStats[]
   } catch (e) {
     console.log(e)
     return []

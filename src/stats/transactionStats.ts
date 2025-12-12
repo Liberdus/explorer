@@ -174,9 +174,18 @@ export async function bulkInsertTransactionsStats(transactionsStats: Transaction
   }
 }
 
-export async function queryLatestTransactionStats(count: number): Promise<TransactionStats[]> {
+export async function queryLatestTransactionStats(
+  count: number,
+  select: keyof TransactionStats | (keyof TransactionStats)[] | 'all' = 'all'
+): Promise<TransactionStats[]> {
   try {
-    const sql = `SELECT * FROM transactions ORDER BY cycle DESC LIMIT ${count ? count : 100}`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const sql = `SELECT ${selectClause} FROM transactions ORDER BY cycle DESC LIMIT ${count ? count : 100}`
     const transactionsStats: TransactionStats[] = await db.all(transactionStatsDatabase, sql)
     if (config.verbose) console.log('transactionStats count', transactionsStats)
     return transactionsStats

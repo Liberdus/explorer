@@ -121,6 +121,8 @@ type QueryOriginalTxDataCountParams = {
 type QueryOriginalTxsDataParams = QueryOriginalTxDataCountParams & {
   skip?: number
   limit?: number /* default 10, set 0 for all */
+  random?: boolean /* if true, returns results in random order */
+  select?: keyof OriginalTxData | (keyof OriginalTxData)[] | 'all' /* fields to select, defaults to 'all' */
 }
 
 export async function queryOriginalTxDataCount(
@@ -160,10 +162,16 @@ export async function queryOriginalTxDataCount(
 }
 
 export async function queryOriginalTxsData(query: QueryOriginalTxsDataParams): Promise<OriginalTxData[]> {
-  const { skip = 0, limit = 10, accountId, startCycle, endCycle, txType, afterTimestamp } = query
+  const { skip = 0, limit = 10, accountId, startCycle, endCycle, txType, afterTimestamp, random = false, select = 'all' } = query
   let originalTxsData: DbOriginalTxData[] = []
   try {
-    let sql = `SELECT * FROM originalTxsData`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    let sql = `SELECT ${selectClause} FROM originalTxsData`
     const values: unknown[] = []
     if (accountId) {
       sql = db.updateSqlStatementClause(sql, values)
@@ -185,7 +193,9 @@ export async function queryOriginalTxsData(query: QueryOriginalTxsDataParams): P
       sql += `timestamp>?`
       values.push(afterTimestamp)
     }
-    if (startCycle || endCycle) {
+    if (random) {
+      sql += ` ORDER BY RANDOM()`
+    } else if (startCycle || endCycle) {
       sql += ` ORDER BY cycle ASC, timestamp ASC`
     } else {
       sql += ` ORDER BY cycle DESC, timestamp DESC`
@@ -197,7 +207,13 @@ export async function queryOriginalTxsData(query: QueryOriginalTxsDataParams): P
       sql += ` OFFSET ${skip}`
     }
     originalTxsData = (await db.all(originalTxDataDatabase, sql, values)) as DbOriginalTxData[]
-    originalTxsData.forEach((originalTxData: DbOriginalTxData) => deserializeDbOriginalTxData(originalTxData))
+    // Only deserialize originalTxData field if it was selected
+    const shouldDeserialize = select === 'all' ||
+      (Array.isArray(select) && select.includes('originalTxData')) ||
+      select === 'originalTxData'
+    if (shouldDeserialize) {
+      originalTxsData.forEach((originalTxData: DbOriginalTxData) => deserializeDbOriginalTxData(originalTxData))
+    }
   } catch (e) {
     console.log(e)
   }

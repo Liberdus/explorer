@@ -364,19 +364,29 @@ type QueryReceiptCountParams = {
 type QueryReceiptsParams = QueryReceiptCountParams & {
   skip?: number
   limit?: number /* default 10, set 0 for all */
+  random?: boolean /* if true, returns results in random order */
+  select?: keyof Receipt | (keyof Receipt)[] | 'all' /* fields to select, defaults to 'all' */
 }
 
 export async function queryReceipts(query: QueryReceiptsParams): Promise<Receipt[]> {
-  const { skip = 0, limit = 10, startCycleNumber, endCycleNumber } = query
+  const { skip = 0, limit = 10, startCycleNumber, endCycleNumber, random = false, select = 'all' } = query
   let receipts: DbReceipt[] = []
   try {
-    let sql = `SELECT * FROM receipts`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    let sql = `SELECT ${selectClause} FROM receipts`
     const values: unknown[] = []
     if (startCycleNumber || endCycleNumber) {
       sql += ` WHERE cycle BETWEEN ? AND ?`
       values.push(startCycleNumber, endCycleNumber)
     }
-    if (startCycleNumber || endCycleNumber) {
+    if (random) {
+      sql += ` ORDER BY RANDOM()`
+    } else if (startCycleNumber || endCycleNumber) {
       sql += ` ORDER BY cycle ASC, timestamp ASC`
     } else {
       sql += ` ORDER BY cycle DESC, timestamp DESC`
@@ -388,7 +398,14 @@ export async function queryReceipts(query: QueryReceiptsParams): Promise<Receipt
       sql += ` OFFSET ${skip}`
     }
     receipts = (await db.all(receiptDatabase, sql, values)) as DbReceipt[]
-    receipts.forEach((receipt: DbReceipt) => deserializeDbReceipt(receipt))
+    // Only deserialize if any serialized fields were selected
+    const serializableFields = ['tx', 'beforeStates', 'afterStates', 'appReceiptData', 'signedReceipt', 'globalModification']
+    const shouldDeserialize = select === 'all' ||
+      (Array.isArray(select) && select.some(field => serializableFields.includes(field as string))) ||
+      serializableFields.includes(select as string)
+    if (shouldDeserialize) {
+      receipts.forEach((receipt: DbReceipt) => deserializeDbReceipt(receipt))
+    }
   } catch (e) {
     console.log(e)
   }

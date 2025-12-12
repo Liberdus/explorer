@@ -92,9 +92,18 @@ export async function bulkInsertNetworkStats(dailyNetworkStats: DbDailyNetworkSt
   }
 }
 
-export async function queryLatestDailyNetworkStats(count: number): Promise<DailyNetworkStats[]> {
+export async function queryLatestDailyNetworkStats(
+  count: number,
+  select: keyof DailyNetworkStats | (keyof DailyNetworkStats)[] | 'all' = 'all'
+): Promise<DailyNetworkStats[]> {
   try {
-    const sql = `SELECT * FROM daily_network ORDER BY dateStartTime DESC ${count ? 'LIMIT ' + count : ''}`
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const sql = `SELECT ${selectClause} FROM daily_network ORDER BY dateStartTime DESC ${count ? 'LIMIT ' + count : ''}`
     const dailyNetworkStats: DbDailyNetworkStats[] = await db.all(dailyNetworkStatsDatabase, sql)
     if (config.verbose) console.log('dailyNetworkStats count', dailyNetworkStats)
     return dailyNetworkStats

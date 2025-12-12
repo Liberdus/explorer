@@ -77,9 +77,18 @@ export async function insertOrUpdateNodeStats(nodeStats: NodeStats): Promise<voi
   }
 }
 
-export async function queryLatestNodeStats(limit = 100): Promise<NodeStats[]> {
+export async function queryLatestNodeStats(
+  limit = 100,
+  select: keyof NodeStats | (keyof NodeStats)[] | 'all' = 'all'
+): Promise<NodeStats[]> {
   try {
-    const sql = 'SELECT * FROM node_stats ORDER BY timestamp DESC LIMIT ?'
+    // Build SELECT clause
+    let selectClause = '*'
+    if (select !== 'all') {
+      const fields = Array.isArray(select) ? select : [select]
+      selectClause = fields.join(', ')
+    }
+    const sql = `SELECT ${selectClause} FROM node_stats ORDER BY timestamp DESC LIMIT ?`
     const nodeStats: NodeStats[] = await db.all(nodeStatsDatabase, sql, [limit])
     return nodeStats
   } catch (e) {

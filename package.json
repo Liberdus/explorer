@@ -34,9 +34,9 @@
     "benchmark:cycles": "npm run compile:benchmark && node dist/benchmark/test-suite.js cycle",
     "benchmark:autocannon-advanced": "npm run compile:benchmark && node dist/benchmark/autocannon-advanced.js",
     "benchmark:export-data": "npm run compile:benchmark && node dist/benchmark/export-test-data.js",
-    "benchmark:artillery-accounts": "artillery run benchmark/artillery-accounts.yml",
-    "benchmark:artillery-transactions": "artillery run benchmark/artillery-transactions.yml",
-    "benchmark:artillery-combined": "artillery run benchmark/artillery-combined.yml"
+    "benchmark:artillery-accounts": "artillery run --output artillery-results.json benchmark/artillery-accounts.yml && artillery report artillery-results.json",
+    "benchmark:artillery-transactions": "artillery run --output artillery-results.json benchmark/artillery-transactions.yml && artillery report artillery-results.json",
+    "benchmark:artillery-combined": "artillery run --output artillery-results.json benchmark/artillery-combined.yml && artillery report artillery-results.json"
   },
   "dependencies": {
     "@fastify/cors": "8.3.0",

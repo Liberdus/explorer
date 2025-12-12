@@ -6,7 +6,7 @@ This guide shows how to run load tests directly from the command line using expo
 
 ### 1. Export Test Data
 
-First, export your database IDs to files:
+First, export your database IDs to files (collected in random order):
 
 ```bash
 npm run benchmark:export-data
@@ -23,6 +23,8 @@ benchmark-data/
 ├── cycles.csv             # Cycle numbers (one per line)
 └── combined.csv           # All data in one CSV
 ```
+
+**Note**: Data is retrieved using `ORDER BY RANDOM()` to ensure diverse sampling and avoid sequential patterns.
 
 ### 2. Choose Your Tool
 
@@ -49,37 +51,45 @@ npm install -g artillery
 #### Test Accounts Only
 
 ```bash
+# Auto-generates HTML report + shows console metrics
 npm run benchmark:artillery-accounts
-# or
+
+# Or run directly with Artillery CLI (console only, no HTML)
 artillery run benchmark/artillery-accounts.yml
 ```
 
 **What it does:**
 
-- Loads 100000 account IDs from CSV
+- Loads 100000 account IDs from CSV (collected randomly)
 - Tests: `GET /api/account?accountId={randomId}`
 - Phases: 60s warmup → 120s sustained load → 60s spike
 - Connections: 50 → 100 → 200 per second
+- **npm script auto-generates**: JSON results + HTML report
 
 #### Test Transactions Only
 
 ```bash
+# Auto-generates HTML report + shows console metrics
 npm run benchmark:artillery-transactions
-# or
+
+# Or run directly with Artillery CLI (console only, no HTML)
 artillery run benchmark/artillery-transactions.yml
 ```
 
 **What it does:**
 
-- Loads 100000 transaction IDs from CSV
+- Loads 100000 transaction IDs from CSV (collected randomly)
 - 70% regular queries, 30% with balance changes
 - Same load phases as accounts
+- **npm script auto-generates**: JSON results + HTML report
 
 #### Test Combined Workload
 
 ```bash
+# Auto-generates HTML report + shows console metrics (recommended)
 npm run benchmark:artillery-combined
-# or
+
+# Or run directly with Artillery CLI (console only, no HTML)
 artillery run benchmark/artillery-combined.yml
 ```
 
@@ -88,6 +98,23 @@ artillery run benchmark/artillery-combined.yml
 - Uses combined CSV with all data types
 - 50% transactions, 30% accounts, 10% receipts, 10% cycles
 - Simulates realistic mixed traffic
+- Data collected in random order for diverse sampling
+- **npm script auto-generates**: JSON results + HTML report
+
+### What You Get
+
+When using the npm scripts (`npm run benchmark:artillery-*`), you automatically get:
+
+1. **Real-time console metrics** during the test
+2. **JSON results** saved to `artillery-results.json`
+3. **Interactive HTML report** (`artillery-results.json.html`) with:
+   - 📊 Interactive charts and graphs
+   - 📈 Response time distribution
+   - 🎯 Latency percentiles visualization
+   - 📋 Detailed scenario breakdowns
+   - 🔥 Request rate over time
+
+**Note**: You may see a deprecation warning about `artillery report` - it still works fine for local HTML generation.
 
 ### Custom Artillery Options
 
@@ -102,20 +129,15 @@ artillery run --target http://production-server.com benchmark/artillery-accounts
 ```bash
 # Run for 5 minutes with 200 req/s
 artillery run --duration 300 --arrival-rate 200 benchmark/artillery-accounts.yml
+
+# Add --quiet for cleaner output
+artillery run --quiet --duration 300 --arrival-rate 200 benchmark/artillery-accounts.yml
 ```
 
 #### Override Environment Variables
 
 ```bash
 API_URL=http://127.0.0.1:3000 artillery run benchmark/artillery-accounts.yml
-```
-
-#### Generate HTML Report
-
-```bash
-artillery run --output results.json benchmark/artillery-combined.yml
-artillery report results.json --output report.html
-open report.html  # Beautiful charts and graphs!
 ```
 
 ### Artillery Configuration
