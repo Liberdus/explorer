@@ -1,0 +1,37 @@
+{
+  "extends": "./node_modules/gts/tsconfig-google.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmitOnError": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noImplicitReturns": false,
+    "noEmit": false,
+    "incremental": false,
+    "moduleResolution": "node",
+    "isolatedModules": true,
+    "jsx": "preserve"
+  },
+  "include": [
+    "benchmark/**/*",
+    "src/storage/**/*",
+    "src/stats/**/*",
+    "src/types/**/*",
+    "src/class/**/*",
+    "src/config/**/*",
+    "src/utils/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/pages/**/*",
+    "src/frontend/**/*",
+    "src/server.ts",
+    "src/collector.ts",
+    "src/aggregator.ts"
+  ]
+}

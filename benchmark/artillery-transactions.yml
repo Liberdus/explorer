@@ -1,0 +1,48 @@
+# Artillery load test for Transaction queries
+# Run: artillery run benchmark/artillery-transactions.yml
+
+config:
+  target: "http://127.0.0.1:6001"
+  phases:
+    - duration: 60
+      arrivalRate: 50
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 100
+      name: "Sustained load"
+    - duration: 60
+      arrivalRate: 200
+      name: "Spike test"
+
+  # Load test data from CSV
+  payload:
+    path: "../benchmark-data/transactions.csv"
+    fields:
+      - "txId"
+    order: "random"
+    skipHeader: true
+
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 1
+    p95: 200
+    p99: 500
+
+scenarios:
+  - name: "Query Transaction by ID"
+    weight: 70
+    flow:
+      - get:
+          url: "/api/transaction?txId={{ txId }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+  - name: "Query Transaction with Balance Changes"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/transaction?txId={{ txId }}&balanceChanges=true"
+          expect:
+            - statusCode: 200
+            - contentType: json
