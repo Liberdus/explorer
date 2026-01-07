@@ -5,6 +5,8 @@ import { config } from '../config'
 import { queryFromDistributor, DataType, downloadAndSyncGenesisAccounts } from './DataSync'
 import { ParallelDataSync } from './ParallelDataSync'
 
+const verifyAllData = true
+
 /**
  * Represents a cycle with mismatched transaction data
  */
@@ -109,7 +111,7 @@ export class DataSyncManager {
         enablePrefetch: config.enablePrefetch,
       })
 
-      const cycleBatches = await parallelDataSync.createCycleBatches(0, latestDistributorCycle)
+      const cycleBatches = parallelDataSync.createCycleBatches(0, latestDistributorCycle)
 
       await parallelDataSync.startSyncing(cycleBatches)
 
@@ -118,7 +120,7 @@ export class DataSyncManager {
     } else {
       // Existing data - use DataSyncManager to identify and patch gaps/mismatches
       console.log('📊 Existing data detected - running recovery analysis')
-      const recoveryPlan = await this.generateRecoveryPlan(latestDistributorCycle)
+      const recoveryPlan = await this.generateRecoveryPlan(latestDistributorCycle, verifyAllData)
 
       // Execute the complete sync (recovery + normal sync)
       await this.executeSyncWithRecovery(recoveryPlan)
@@ -369,7 +371,9 @@ export class DataSyncManager {
       // Build verification ranges for each gap
       for (const gap of gaps) {
         const lookbackStart = Math.max(0, gap.startCycle - this.lookbackCycles)
-        const lookbackEnd = gap.startCycle - 1
+        // If lookback would be negative (gap starts at 0), verify the gap range itself
+        // This handles the verifyAllData case where we want to check the entire range
+        const lookbackEnd = gap.startCycle - 1 < 0 ? gap.endCycle : gap.startCycle - 1
 
         // Only verify if there's a valid lookback range
         if (lookbackEnd >= lookbackStart && lookbackEnd >= 0) {
@@ -474,12 +478,18 @@ export class DataSyncManager {
         `Comparing cycles ${startCycle} to ${endCycle} with ${allDistributorReceipts.length} distributor receipts and ${allDistributorOriginalTxs.length} distributor originalTxs`
       )
 
-      for (let cycle = startCycle; cycle <= endCycle; cycle++) {
-        const distReceipts = allDistributorReceipts.find((r) => r.cycle === cycle)?.receipts || 0
-        const distOriginalTxs = allDistributorOriginalTxs.find((t) => t.cycle === cycle)?.originalTxsData || 0
+      // Convert arrays to Maps for O(1) lookup instead of O(n) find operations
+      const distReceiptsMap = new Map(allDistributorReceipts.map((r) => [r.cycle, r.receipts]))
+      const distOriginalTxsMap = new Map(allDistributorOriginalTxs.map((t) => [t.cycle, t.originalTxsData]))
+      const localReceiptsMap = new Map(localReceipts.map((r) => [r.cycle, r.receipts]))
+      const localOriginalTxsMap = new Map(localOriginalTxs.map((t) => [t.cycle, t.originalTxsData]))
 
-        const localReceiptsCount = localReceipts.find((r) => r.cycle === cycle)?.receipts || 0
-        const localOriginalTxsCount = localOriginalTxs.find((t) => t.cycle === cycle)?.originalTxsData || 0
+      for (let cycle = startCycle; cycle <= endCycle; cycle++) {
+        const distReceipts = distReceiptsMap.get(cycle) || 0
+        const distOriginalTxs = distOriginalTxsMap.get(cycle) || 0
+
+        const localReceiptsCount = localReceiptsMap.get(cycle) || 0
+        const localOriginalTxsCount = localOriginalTxsMap.get(cycle) || 0
 
         const receiptsMismatch = localReceiptsCount !== distReceipts
         const originalTxsMismatch = localOriginalTxsCount !== distOriginalTxs
@@ -535,8 +545,15 @@ export class DataSyncManager {
    *
    * Orchestrates gap detection and data verification to create a complete recovery strategy.
    * NOTE: This should only be called when there's existing data in DB (not fresh start)
+   *
+   * @param currentDistributorCycle - The latest cycle available on the distributor
+   * @param verifyAllData - If true, verifies ALL cycles from 0 to currentDistributorCycle
+   *                         Useful for detecting incomplete data in full cycles.
    */
-  async generateRecoveryPlan(currentDistributorCycle: number): Promise<DataSyncRecoveryPlan> {
+  async generateRecoveryPlan(
+    currentDistributorCycle: number,
+    verifyAllData = false
+  ): Promise<DataSyncRecoveryPlan> {
     try {
       const lastLocalCycles = await CycleDB.queryLatestCycleRecords(1)
       const lastLocalCycle = lastLocalCycles.length > 0 ? lastLocalCycles[0].counter : -1
@@ -546,19 +563,39 @@ export class DataSyncManager {
       console.log(`${'='.repeat(70)}`)
       console.log(`Current distributor cycle: ${currentDistributorCycle}`)
       console.log(`Last local cycle: ${lastLocalCycle}`)
+      if (verifyAllData) console.log(`Checking all cycles for full data verification`)
 
-      // Step 1: Identify missing cycle ranges
+      // Step 1: Always identify actual missing cycle ranges (for recovery)
       const missingCycleRanges = await this.identifyMissingCycleRanges(currentDistributorCycle)
 
-      // Step 2: Verify data integrity with lookback (only if there are gaps)
+      // Step 2: Determine verification ranges (separate from missing ranges)
+      let verificationRanges: CycleGap[]
+      if (verifyAllData) {
+        // Full verification mode: Verify ALL cycles for data integrity
+        console.log(`Full verification mode: verifying entire range 0 to ${currentDistributorCycle}`)
+        verificationRanges = [
+          {
+            startCycle: 0,
+            endCycle: currentDistributorCycle,
+            gapSize: currentDistributorCycle + 1,
+          },
+        ]
+      } else {
+        // Normal mode: Only verify lookback windows before gaps
+        verificationRanges = missingCycleRanges
+      }
+
+      // Step 3: Verify data integrity using the verification ranges
       const mismatchedCycles =
-        missingCycleRanges.length > 0 ? await this.verifyDataIntegrityWithLookback(missingCycleRanges) : []
+        verificationRanges.length > 0 ? await this.verifyDataIntegrityWithLookback(verificationRanges) : []
 
       // Calculate lookback ranges for reporting
       const lookbackVerificationRanges: CycleGap[] = []
-      for (const gap of missingCycleRanges) {
+      for (const gap of verificationRanges) {
         const lookbackStart = Math.max(0, gap.startCycle - this.lookbackCycles)
-        const lookbackEnd = gap.startCycle - 1
+        // If lookback would be negative (gap starts at 0), verify the gap range itself
+        // This handles the verifyAllData case where we want to report the entire verified range
+        const lookbackEnd = gap.startCycle - 1 < 0 ? gap.endCycle : gap.startCycle - 1
         if (lookbackEnd >= lookbackStart && lookbackEnd >= 0) {
           lookbackVerificationRanges.push({
             startCycle: lookbackStart,

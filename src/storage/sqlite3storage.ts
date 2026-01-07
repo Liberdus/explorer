@@ -1,7 +1,7 @@
 import { Utils as StringUtils } from '@shardus/types'
 import { Database } from 'sqlite3'
 
-const enableWritingQueue = false
+const enableWritingQueue = true
 
 // Simple write queue using Promise chain - serializes all database writes
 // This prevents write contention while allowing parallel reads (SELECTs)
