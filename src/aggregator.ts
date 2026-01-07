@@ -35,6 +35,9 @@ export const addExitListeners = (): void => {
   })
 }
 
+// Number of days to look back for recalculation (to repair after data patches)
+const RECALCULATION_DAYS = 0 // (default 0, set to e.g., 7 to recalculate last 7 days)
+
 const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000
 
 const measure_time = false
@@ -99,6 +102,58 @@ const start = async (): Promise<void> => {
   const lastStoredDailyCoinStats = await DailyCoinStatsDB.queryLatestDailyCoinStats(1)
   if (lastStoredDailyCoinStats.length > 0)
     lastCheckedDateTimeForCoinStats = lastStoredDailyCoinStats[0].dateStartTime + ONE_DAY_IN_MS
+
+  if (RECALCULATION_DAYS > 0) {
+    // Recalculate cycle-based stats
+    const latestCycleRecord = (await CycleDB.queryLatestCycleRecords(1))[0]
+    if (latestCycleRecord) {
+      const cycleDuration = latestCycleRecord.cycleRecord.duration // in seconds
+      const cyclesPerDay = (24 * 60 * 60) / cycleDuration
+      const recalculationCycles = Math.floor(RECALCULATION_DAYS * cyclesPerDay)
+
+      lastCheckedCycleForValidators = Math.max(0, lastCheckedCycleForValidators - recalculationCycles)
+      lastCheckedCycleForTxs = Math.max(0, lastCheckedCycleForTxs - recalculationCycles)
+      lastCheckedCycleForCoinStats = Math.max(0, lastCheckedCycleForCoinStats - recalculationCycles)
+
+      console.log(
+        `Recalculation window for cycle-based stats: ${RECALCULATION_DAYS} days (~${recalculationCycles} cycles, starting from cycle ${lastCheckedCycleForValidators})`
+      )
+    }
+
+    // Recalculate daily stats
+    const recalculationOffset = RECALCULATION_DAYS * ONE_DAY_IN_MS
+    lastCheckedDateTimeForTransactions = Math.max(
+      lastCheckedDateTime,
+      lastCheckedDateTimeForTransactions - recalculationOffset
+    )
+    lastCheckedDateTimeForAccounts = Math.max(
+      lastCheckedDateTime,
+      lastCheckedDateTimeForAccounts - recalculationOffset
+    )
+    lastCheckedDateTimeForNetworkStats = Math.max(
+      lastCheckedDateTime,
+      lastCheckedDateTimeForNetworkStats - recalculationOffset
+    )
+    lastCheckedDateTimeForCoinStats = Math.max(
+      lastCheckedDateTime,
+      lastCheckedDateTimeForCoinStats - recalculationOffset
+    )
+    // Also update lastCheckedDateTime to trigger daily stats recalculation
+    lastCheckedDateTime = Math.max(
+      lastCheckedDateTime,
+      Math.min(
+        lastCheckedDateTimeForTransactions,
+        lastCheckedDateTimeForAccounts,
+        lastCheckedDateTimeForNetworkStats,
+        lastCheckedDateTimeForCoinStats
+      ) - ONE_DAY_IN_MS
+    )
+    console.log(
+      `Recalculation window for daily stats: ${RECALCULATION_DAYS} days (starting from ${new Date(
+        lastCheckedDateTimeForTransactions
+      ).toUTCString()})`
+    )
+  }
 
   let lastCheckedCycleForNodeStats = await MetadataDB.getLastStoredCycleNumber(
     MetadataDB.MetadataType.NodeStats
