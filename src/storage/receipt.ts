@@ -307,7 +307,7 @@ export async function processReceiptData(
   // Optimization: The bulkInsertAccounts SQL already handles:
   // 1. Keeping newer data via CASE WHEN excluded.timestamp > accounts.timestamp
   // 2. Preserving oldest createdTimestamp via MIN(accounts.createdTimestamp, excluded.createdTimestamp)
-  // By default (filterExistingAccounts=false), we skip the batch query and individual updates - just bulk insert everything
+  // Hence, if filterExistingAccounts is true, we skip the batch query and individual updates - just bulk insert everything
 
   if (filterExistingAccounts) {
     // Legacy path: Batch query all collected account IDs once and filter before insert

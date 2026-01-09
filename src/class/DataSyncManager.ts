@@ -5,7 +5,8 @@ import { config } from '../config'
 import { queryFromDistributor, DataType, downloadAndSyncGenesisAccounts } from './DataSync'
 import { ParallelDataSync } from './ParallelDataSync'
 
-const verifyAllData = true
+// Flag to verify all data from distributor (set to true to enable full verification)
+const verifyAllData = false
 
 /**
  * Represents a cycle with mismatched transaction data
