@@ -1,13 +1,20 @@
 import React from 'react'
 import Link from 'next/link'
 import { toEthereumAddress, truncateAddress } from '../../../utils/transformAddress'
-import { formatFullAmount } from '../../../utils/calculateValue'
 
 import styles from './StateTab.module.scss'
 import { BalanceChange } from '../../../../storage/accountHistoryState'
 
 interface StateTabProps {
   balanceChanges?: BalanceChange[]
+}
+
+const getDecimals = (num: number): number => {
+  const str = num.toString()
+
+  if (!str.includes('.')) return 0
+
+  return str.split('.')[1].length
 }
 
 export const StateTab: React.FC<StateTabProps> = ({ balanceChanges }) => {
@@ -31,9 +38,11 @@ export const StateTab: React.FC<StateTabProps> = ({ balanceChanges }) => {
         <div className={styles.divider}></div>
         {balanceChanges.map((change, index) => {
           // Calculate difference with high precision to avoid floating point errors
-          const beforeValue = Number(change.before)
-          const afterValue = Number(change.after)
-          const difference = afterValue - beforeValue
+          const beforeValue = change.before
+          const afterValue = change.after
+          const amount = afterValue - beforeValue
+          const maxDecimals = Math.max(getDecimals(beforeValue), getDecimals(afterValue))
+          const difference = amount.toFixed(maxDecimals).replace(/\.?0+$/, '')
 
           return (
             <div key={index} className={styles.gridRow}>
@@ -42,13 +51,15 @@ export const StateTab: React.FC<StateTabProps> = ({ balanceChanges }) => {
                   {truncateAddress(toEthereumAddress(change.accountId))}
                 </Link>
               </div>
-              <div className={styles.value}>{formatFullAmount(beforeValue)}</div>
-              <div className={styles.value}>{formatFullAmount(afterValue)}</div>
+              <div className={styles.value}>{beforeValue}</div>
+              <div className={styles.value}>{afterValue}</div>
               <div
-                className={difference > 0 ? styles.positive : difference < 0 ? styles.negative : styles.value}
+                className={
+                  difference > '0' ? styles.positive : difference < '0' ? styles.negative : styles.value
+                }
               >
-                {difference > 0 ? '+' : ''}
-                {formatFullAmount(difference)} LIB
+                {difference > '0' ? '+' : ''}
+                {difference} LIB
               </div>
             </div>
           )
