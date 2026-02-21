@@ -42,7 +42,9 @@ export const StateTab: React.FC<StateTabProps> = ({ balanceChanges }) => {
           const afterValue = change.after
           const amount = afterValue - beforeValue
           const maxDecimals = Math.max(getDecimals(beforeValue), getDecimals(afterValue))
-          const difference = amount.toFixed(maxDecimals).replace(/\.?0+$/, '')
+          const difference = maxDecimals > 0
+            ? amount.toFixed(maxDecimals).replace(/\.?0+$/, '')
+            : amount.toFixed(maxDecimals)
 
           return (
             <div key={index} className={styles.gridRow}>
