@@ -175,8 +175,8 @@ let config: Config = {
     indexOriginalTxData: true,
   },
   saveAccountHistoryState: true,
-  DISTRIBUTOR_RECONNECT_INTERVAL: 10_000, // in ms
-  CONNECT_TO_DISTRIBUTOR_MAX_RETRY: 10,
+  DISTRIBUTOR_RECONNECT_INTERVAL: 10 * 1000, // in ms
+  CONNECT_TO_DISTRIBUTOR_MAX_RETRY: 8640, // Retry for up to 1 day before giving up (10s interval)
   explorerMode: process.env.EXPLORER_MODE || explorerMode.WS.toString(),
   storeReceiptBeforeStates: false,
   requestLimits: {
