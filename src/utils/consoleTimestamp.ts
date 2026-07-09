@@ -6,14 +6,23 @@ type PatchedConsole = Console & {
 
 const patchedConsole = console as PatchedConsole
 
-// Guard against wrapping console.log multiple times in the same process.
+// Guard against wrapping console methods multiple times in the same process.
 if (!patchedConsole[PATCHED_CONSOLE_LOG_FLAG]) {
-  const originalLog = console.log.bind(console)
+  const methodsToPatch: Array<'log' | 'info' | 'warn' | 'error' | 'debug'> = [
+    'log',
+    'info',
+    'warn',
+    'error',
+    'debug',
+  ]
 
-  // Prefix every log line with an ISO timestamp while preserving original arguments.
-  console.log = (...args: unknown[]): void => {
-    const timestamp = new Date().toISOString()
-    originalLog(`[${timestamp}]`, ...args)
+  // Prefix selected console output with an ISO timestamp while preserving arguments.
+  for (const method of methodsToPatch) {
+    const originalMethod = console[method].bind(console)
+    console[method] = (...args: unknown[]): void => {
+      const timestamp = new Date().toISOString()
+      originalMethod(`[${timestamp}]`, ...args)
+    }
   }
 
   // Mark console as already patched so later imports do not wrap again.
