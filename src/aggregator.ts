@@ -1,3 +1,4 @@
+import './utils/consoleTimestamp'
 import * as crypto from '@shardus/crypto-utils'
 import cron from 'node-cron'
 import * as StatsStorage from './stats'

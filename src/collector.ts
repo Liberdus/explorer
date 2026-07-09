@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv'
 dotenv.config()
+import './utils/consoleTimestamp'
 import path = require('path')
 import fs = require('fs')
 import WebSocket from 'ws'

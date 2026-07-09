@@ -1,4 +1,5 @@
 // require("dotenv").config();
+import './utils/consoleTimestamp'
 import path from 'path'
 import fs from 'fs'
 import fastifyCors from '@fastify/cors'
