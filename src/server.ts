@@ -450,7 +450,9 @@ const start = async (): Promise<void> => {
     }
 
     const startTime = Date.now()
-    const timeoutMs = 120 * 1000 // 120 seconds
+
+    // Setting the timeout to 59 seconds to ensure we can respond before Cloudflare times out after 60 seconds.
+    const timeoutMs = 59 * 1000
     const checkIntervalMs = 1000 // 1 second
 
     await utils.sleep(checkIntervalMs)
