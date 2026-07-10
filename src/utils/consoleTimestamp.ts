@@ -6,6 +6,11 @@ type PatchedConsole = Console & {
 
 const patchedConsole = console as PatchedConsole
 
+const trimLogString = (value: string): string => value.replace(/^\n+/, '').replace(/\n+$/, '')
+
+const normalizeLogArgs = (args: unknown[]): unknown[] =>
+  args.map((arg) => (typeof arg === 'string' ? trimLogString(arg) : arg))
+
 // Guard against wrapping console methods multiple times in the same process.
 if (!patchedConsole[PATCHED_CONSOLE_LOG_FLAG]) {
   const methodsToPatch: Array<'log' | 'info' | 'warn' | 'error' | 'debug'> = [
@@ -20,8 +25,9 @@ if (!patchedConsole[PATCHED_CONSOLE_LOG_FLAG]) {
   for (const method of methodsToPatch) {
     const originalMethod = console[method].bind(console)
     console[method] = (...args: unknown[]): void => {
+      const normalizedArgs = normalizeLogArgs(args)
       const timestamp = new Date().toISOString()
-      originalMethod(`[${timestamp}]`, ...args)
+      originalMethod(`[${timestamp}]`, ...normalizedArgs)
     }
   }
 
