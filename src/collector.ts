@@ -35,6 +35,14 @@ const DistributorFirehoseEvent = 'FIREHOSE'
 let ws: WebSocket
 let reconnecting = false
 let connected = false
+let pingInterval: NodeJS.Timeout | null = null
+
+const clearHeartbeat = (): void => {
+  if (pingInterval) {
+    clearInterval(pingInterval)
+    pingInterval = null
+  }
+}
 
 const env = process.env
 const args = process.argv
@@ -260,10 +268,28 @@ export const checkAndSyncData = async (): Promise<() => Promise<void>> => {
 const attemptReconnection = (): void => {
   console.log(`Re-connecting Distributor in ${config.DISTRIBUTOR_RECONNECT_INTERVAL / 1000}s...`)
   reconnecting = true
+  connected = false
   setTimeout(connectToDistributor, config.DISTRIBUTOR_RECONNECT_INTERVAL)
 }
 
 const connectToDistributor = (): void => {
+  // Whoever already has a socket connecting/open owns the connection — the
+  // startup loop and the reconnect timer must not terminate each other's handshake.
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return
+
+  // Drop any previous socket/listeners so a delayed close on a half-open
+  // connection cannot schedule a second reconnect after we already reconnected.
+  clearHeartbeat()
+  if (ws) {
+    ws.removeAllListeners()
+    ws.on('error', () => undefined) // absorb late async errors from the discarded socket
+    try {
+      ws.terminate()
+    } catch {
+      // ignore cleanup errors from an already-dead socket
+    }
+  }
+
   const collectorInfo = {
     subscriptionType: DistributorFirehoseEvent,
     timestamp: Date.now(),
@@ -272,14 +298,37 @@ const connectToDistributor = (): void => {
     StringUtils.safeStringify(Crypto.sign({ collectorInfo, sender: config.collectorInfo.publicKey }))
   )
   const URL = `${DISTRIBUTOR_URL}?data=${queryString}`
-  ws = new WebSocket(URL)
+  let isAlive = false
+
+  // Bound the handshake so a socket stuck in CONNECTING can't block retries forever.
+  ws = new WebSocket(URL, { handshakeTimeout: 30_000 })
   ws.onopen = () => {
     console.log(
       `✅ Socket connected to the Distributor @ ${config.distributorInfo.ip}:${config.distributorInfo.port}`
     )
     connected = true
     reconnecting = false
+    isAlive = true
+
+    // Application-level heartbeat: TCP alone often will not notice a crashed
+    // peer for a long time. Missed pong → terminate → onclose → reconnect.
+    clearHeartbeat()
+    pingInterval = setInterval(() => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return
+      if (!isAlive) {
+        console.error('Distributor WebSocket heartbeat timeout. Terminating connection...')
+        clearHeartbeat()
+        ws.terminate()
+        return
+      }
+      isAlive = false
+      ws.ping()
+    }, config.DISTRIBUTOR_PING_INTERVAL)
   }
+
+  ws.on('pong', () => {
+    isAlive = true
+  })
 
   // Listening to messages from the server (child process)
   ws.on('message', (data: string) => {
@@ -296,6 +345,8 @@ const connectToDistributor = (): void => {
 
   // Listening to Socket termination event from the Distributor
   ws.onclose = (closeEvent: WebSocket.CloseEvent) => {
+    clearHeartbeat()
+    connected = false
     console.log('❌ Connection with Server Terminated!.')
     switch (closeEvent.code) {
       case DistributorSocketCloseCodes.DUPLICATE_CONNECTION_CODE:

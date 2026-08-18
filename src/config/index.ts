@@ -81,6 +81,7 @@ export interface Config {
   }
   saveAccountHistoryState: boolean
   DISTRIBUTOR_RECONNECT_INTERVAL: number
+  DISTRIBUTOR_PING_INTERVAL: number
   CONNECT_TO_DISTRIBUTOR_MAX_RETRY: number
   explorerMode: string
   storeReceiptBeforeStates: boolean
@@ -176,6 +177,7 @@ let config: Config = {
   },
   saveAccountHistoryState: true,
   DISTRIBUTOR_RECONNECT_INTERVAL: 10 * 1000, // in ms
+  DISTRIBUTOR_PING_INTERVAL: 30 * 1000, // WebSocket ping interval to detect dead connections
   CONNECT_TO_DISTRIBUTOR_MAX_RETRY: 8640, // Retry for up to 1 day before giving up (10s interval)
   explorerMode: process.env.EXPLORER_MODE || explorerMode.WS.toString(),
   storeReceiptBeforeStates: false,
