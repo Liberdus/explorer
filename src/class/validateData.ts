@@ -1,4 +1,4 @@
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '@shardus/lib-crypto-utils'
 import * as utils from '../utils'
 import { config } from '../config'
 import { insertOrUpdateCycle } from '../storage/cycle'
@@ -6,7 +6,7 @@ import { processReceiptData } from '../storage/receipt'
 import { processOriginalTxData } from '../storage/originalTxData'
 import { CycleLogWriter, ReceiptLogWriter, OriginalTxDataLogWriter } from './DataLogWriter'
 import { Cycle, OriginalTxData, Receipt } from '../types'
-import { Utils as StringUtils } from '@shardus/types'
+import { Utils as StringUtils } from '@shardus/lib-types'
 
 export interface Data {
   receipt?: Receipt

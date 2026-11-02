@@ -2,7 +2,7 @@ import * as db from './sqlite3storage'
 import { originalTxDataDatabase } from '.'
 import { config } from '../config/index'
 import { TransactionType, OriginalTxData, TransactionSearchType } from '../types'
-import { Utils as StringUtils } from '@shardus/types'
+import { Utils as StringUtils } from '@shardus/lib-types'
 
 type DbOriginalTxData = OriginalTxData & {
   originalTxData: string

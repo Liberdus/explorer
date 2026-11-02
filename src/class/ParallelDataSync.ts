@@ -1,6 +1,6 @@
 import PQueue from 'p-queue'
-import * as crypto from '@shardus/crypto-utils'
-import { P2P, Utils as StringUtils } from '@shardus/types'
+import * as crypto from '@shardus/lib-crypto-utils'
+import { P2P, Utils as StringUtils } from '@shardus/lib-types'
 import { config, DISTRIBUTOR_URL } from '../config'
 import { DataType } from './DataSync'
 import {

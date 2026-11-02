@@ -1,9 +1,9 @@
 import axios, { AxiosResponse } from 'axios'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '@shardus/lib-crypto-utils'
 import { AccountDB, CycleDB, ReceiptDB, TransactionDB, OriginalTxDataDB } from '../storage'
 import { config, DISTRIBUTOR_URL } from '../config'
 import { Cycle } from '../types'
-import { Utils as StringUtils } from '@shardus/types'
+import { Utils as StringUtils } from '@shardus/lib-types'
 
 export enum DataType {
   CYCLE = 'cycleinfo',

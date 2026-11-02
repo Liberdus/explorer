@@ -1,8 +1,8 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { config as CONFIG } from './config'
 import { Account, Receipt, Transaction, AppReceipt, TransactionType } from './types'
-import { Utils as StringUtils } from '@shardus/types'
-import * as crypto from '@shardus/crypto-utils'
+import { Utils as StringUtils } from '@shardus/lib-types'
+import * as crypto from '@shardus/lib-crypto-utils'
 
 export enum SubscriptionType {
   RECEIPT = '/data/receipt',

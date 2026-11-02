@@ -1,7 +1,7 @@
 import * as db from './sqlite3storage'
 import { transactionDatabase } from '.'
 import { config } from '../config/index'
-import { Utils as StringUtils } from '@shardus/types'
+import { Utils as StringUtils } from '@shardus/lib-types'
 import { Transaction, TransactionType, TransactionSearchType, TransactionSearchParams } from '../types'
 
 type DbTransaction = Transaction & {

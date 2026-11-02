@@ -12,7 +12,7 @@ import {
 } from '../stats'
 import { AccountDB, CycleDB, TransactionDB } from '../storage'
 import { TransactionType, AccountType } from '../types'
-import { P2P } from '@shardus/types'
+import { P2P } from '@shardus/lib-types'
 import { config, NetworkAccountId } from '../config/index'
 import {
   BaseTxStats,

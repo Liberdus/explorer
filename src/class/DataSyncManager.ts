@@ -1,4 +1,4 @@
-import { P2P } from '@shardus/types'
+import { P2P } from '@shardus/lib-types'
 import { CycleDB, ReceiptDB, OriginalTxDataDB, AccountDB, TransactionDB } from '../storage'
 import { CycleGap } from '../storage/cycle'
 import { config } from '../config'

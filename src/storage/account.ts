@@ -2,7 +2,7 @@ import * as db from './sqlite3storage'
 import { accountDatabase } from '.'
 import { config } from '../config/index'
 import { Account, AccountSearchType, AccountType, AccountsCopy } from '../types'
-import { Utils as StringUtils } from '@shardus/types'
+import { Utils as StringUtils } from '@shardus/lib-types'
 
 type DbAccount = Account & {
   data: string

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '@shardus/lib-crypto-utils'
 import { config, DISTRIBUTOR_URL } from '../src/config'
 import { queryFromDistributor, DataType } from '../src/class/DataSync'
 crypto.init(config.hashKey)

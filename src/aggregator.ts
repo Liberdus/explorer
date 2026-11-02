@@ -1,5 +1,5 @@
 import './utils/consoleTimestamp'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '@shardus/lib-crypto-utils'
 import cron from 'node-cron'
 import * as StatsStorage from './stats'
 import {
@@ -15,7 +15,7 @@ import {
 import * as Storage from './storage'
 import { CycleDB } from './storage'
 import * as StatsFunctions from './class/StatsFunctions'
-import { Utils as StringUtils } from '@shardus/types'
+import { Utils as StringUtils } from '@shardus/lib-types'
 import { config } from './config'
 
 crypto.init(config.hashKey)

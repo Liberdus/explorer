@@ -1,4 +1,4 @@
-import { P2P, StateManager } from '@shardus/types'
+import { P2P, StateManager } from '@shardus/lib-types'
 
 export interface Cycle {
   cycleMarker: StateManager.StateMetaDataTypes.CycleMarker

@@ -1,4 +1,4 @@
-import { Signature } from '@shardus/crypto-utils'
+import { Signature } from '@shardus/lib-crypto-utils'
 import { AccountsCopy } from './account'
 
 export type Proposal = {
